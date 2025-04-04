@@ -1,0 +1,34 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[dependency-groups]
+dev = [
+  "langchain-core>=0.3.49",
+  "pre-commit>=4.2.0",
+  "pytest-dotenv>=0.5.2",
+  "pytest>=8.3.5",
+  "requests>=2.32.3",
+  "ruff>=0.11.2"
+]
+
+[project]
+dependencies = [
+  "docling>=0.1.0",
+  "langchain-openai>=0.3.12",
+  "langchain>=0.3.22",
+  "langgraph>=0.3.21",
+  "rdflib>=7.1.4",
+  "robyn>=0.53.0"
+]
+description = "Add your description here"
+name = "mcp-ontokg"
+readme = "README.md"
+requires-python = ">=3.12"
+version = "0.1.0"
+
+[project.scripts]
+render-ontokg = "src.cli.serve:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

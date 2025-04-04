@@ -1,0 +1,38 @@
+---
+config:
+  flowchart:
+    curve: linear
+    htmlLabels: true
+    useMaxWidth: true
+  look: handDrawn
+  theme: base
+  themeVariables:
+    fontFamily: '''Architects Daughter'', cursive'
+    fontSize: 20px
+    lineColor: '#FFAB91'
+    primaryBorderColor: '#143642'
+    primaryColor: '#FFF3E0'
+    primaryTextColor: '#372237'
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	decide_ontology(decide_ontology)
+	project_triples(project_triples)
+	sublimate_ontology(sublimate_ontology)
+	update_ontology(update_ontology)
+	criticise_kg(criticise_kg)
+	update_kg(update_kg)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> decide_ontology;
+	decide_ontology --> project_triples;
+	project_triples --> sublimate_ontology;
+	update_kg --> __end__;
+	sublimate_ontology -. &nbsp;success&nbsp; .-> update_ontology;
+	sublimate_ontology -. &nbsp;failure&nbsp; .-> project_triples;
+	update_ontology -. &nbsp;success&nbsp; .-> criticise_kg;
+	update_ontology -. &nbsp;failure&nbsp; .-> project_triples;
+	criticise_kg -. &nbsp;success&nbsp; .-> update_kg;
+	criticise_kg -. &nbsp;failure&nbsp; .-> project_triples;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

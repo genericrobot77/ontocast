@@ -1,0 +1,160 @@
+@prefix schema: <https://schema.org/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fca: <http://growgraph.dev/fcaont#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<https://growgraph.dev/fcaont#> a owl:Ontology ;
+    rdfs:label "French (Supreme) Court of Appeal Ontology" ;
+    dcterms:created "2024-12-18" ;
+    owl:versionInfo "3.0" ;
+    dcterms:license "https://creativecommons.org/licenses/by/4.0/" .
+
+
+schema:Event a rdfs:Class .
+schema:Person a rdfs:Class .
+schema:Organization a rdfs:Class .
+fca:Conviction a rdfs:Class ;
+    rdfs:label "Conviction" ;
+    rdfs:comment "Legal decision regarding guilt of an accused individual." .
+
+fca:Offence a rdfs:Class ;
+    rdfs:label "Offence" ;
+    rdfs:comment "An act or omission which constitutes a criminal wrongdoing." ;
+    rdfs:subClassOf schema:Event .
+
+
+fca:hasOffenseType a rdf:Property ;
+    rdfs:label "has Offense Type" ;
+    rdfs:comment "Relates an offense to its offense type." ;
+    rdfs:domain fca:Offence ;
+    rdfs:range fca:OffenseType .
+
+
+fca:Fact a rdfs:Class ;
+    rdfs:label "Fact" ;
+    rdfs:comment "A fact related to an event or offence in criminal cases." .
+
+
+fca:issues a rdf:Property ;
+    rdfs:label "issues" ;
+    rdfs:comment "Indicates that an organization issues or triggers an event." ;
+    rdfs:domain schema:Organization ;
+    rdfs:range schema:Event .
+
+fca:takesPlaceOn a rdf:Property ;
+    rdfs:label "takesPlaceOn" ;
+    rdfs:comment "Specifies the date on which an event occurs." ;
+    rdfs:domain schema:Event ;
+    rdfs:range schema:Date .
+
+fca:contains a rdf:Property ;
+    rdfs:label "contains" ;
+    rdfs:comment "Denotes events or facts involved in a related event." ;
+    rdfs:domain schema:Event ;
+    rdfs:range schema:Event .
+
+fca:hasConviction a rdf:Property ;
+    rdfs:label "hasConviction" ;
+    rdfs:domain schema:Person ;
+    rdfs:range fca:Conviction ;
+    rdfs:comment "Indicates a person’s conviction." .
+
+fca:hasPunishment a rdf:Property ;
+    rdfs:label "hasPunishment" ;
+    rdfs:domain fca:Conviction ;
+    rdfs:range fca:Punishment ;
+    rdfs:comment "Indicates a punishment related to a conviction." .
+
+
+fca:isAssociatedWith a rdf:Property ;
+    rdfs:label "isAssociatedWith" ;
+    rdfs:domain fca:Conviction ;
+    rdfs:range fca:Offence ;
+    rdfs:comment "Associates a conviction with an offence." .
+
+fca:concerns a rdf:Property ;
+    rdfs:label "concerns" ;
+    rdfs:comment "Describes the involvement of an event in another event or issue." ;
+    rdfs:domain schema:Event ;
+    rdfs:range schema:Event .
+
+fca:hasFact a rdf:Property ;
+    rdfs:label "hasFact" ;
+    rdfs:comment "Indicates a fact associated with an event." ;
+    rdfs:domain schema:Event ;
+    rdfs:range fca:Fact .
+
+fca:prosecutes a rdf:Property ;
+    rdfs:label "prosecutes" ;
+    rdfs:comment "Indicates that a person is prosecuting an event." ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Event .
+
+fca:initiates a rdf:Property ;
+    rdfs:label "initiates" ;
+    rdfs:comment "Describes the initiation of an event by a person." ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Event .
+
+fca:residesAt a rdf:Property ;
+    rdfs:label "residesAt" ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Place ;
+    rdfs:comment "Indicates the residence of a person." .
+
+fca:hasProfession a rdf:Property ;
+    rdfs:label "hasProfession" ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Occupation ;
+    rdfs:comment "Indicates the profession of a person." .
+
+fca:hasMaritalStatus a rdf:Property ;
+    rdfs:label "hasMaritalStatus" ;
+    rdfs:domain schema:Person ;
+    rdfs:range fca:MaritalStatus ;
+    rdfs:comment "Indicates the marital status of a person." .
+
+
+fca:MaritalStatus a rdfs:Class ;
+    rdfs:label "Marital Status" ;
+    rdfs:comment "Marital status of a person, e.g., single, married, divorced, pacs, widowed." ;
+    owl:oneOf (fca:Single fca:Married fca:Divorced fca:Pacs fca:Widowed) .
+
+fca:Single a fca:MaritalStatus ;
+    rdfs:label "Single" ;
+    rdfs:comment "Person is not married or in a legal partnership." .
+
+fca:Married a fca:MaritalStatus ;
+    rdfs:label "Married" ;
+    rdfs:comment "Person is legally married." .
+
+fca:Divorced a fca:MaritalStatus ;
+    rdfs:label "Divorced" ;
+    rdfs:comment "Person is legally divorced." .
+
+fca:Pacs a fca:MaritalStatus ;
+    rdfs:label "PACS" ;
+    rdfs:comment "Person is in a French civil partnership (PACS)." .
+
+fca:Widowed a fca:MaritalStatus ;
+    rdfs:label "Widowed" ;
+    rdfs:comment "Person's spouse has passed away." .
+
+
+fca:knows a rdf:Property ;
+    rdfs:label "knows" ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Person ;
+    rdfs:comment "Indicates acquaintance or relation between two persons." .
+
+
+fca:Age a rdf:Property ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:nonNegativeInteger ;
+    rdfs:label "age" ;
+    rdfs:comment "The age of a person in years. Must be a non-negative integer." ;
+    schema:unitCode "ANN"^^xsd:string .
