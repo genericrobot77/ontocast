@@ -19,7 +19,8 @@ dependencies = [
   "langchain>=0.3.22",
   "langgraph>=0.3.21",
   "rdflib>=7.1.4",
-  "robyn>=0.53.0"
+  "robyn>=0.53.0",
+  "suthing>=0.3.0"
 ]
 description = "Add your description here"
 name = "mcp-ontokg"

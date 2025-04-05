@@ -1,0 +1,73 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fsec: <http://growgraph.dev/fsec#> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+
+fsec:Document rdf:type rdfs:Class ;
+    rdfs:label "Document" ;
+    rdfs:comment "A general document, such as a financial filing or report." .
+
+fsec:FinancialStatement rdf:type rdfs:Class ;
+    rdfs:subClassOf fsec:Document ;
+    rdfs:label "Financial Statement" ;
+    rdfs:comment "A document providing detailed financial information about a company." .
+
+fsec:Report rdf:type rdfs:Class ;
+    rdfs:subClassOf fsec:Document ;
+    rdfs:label "Report" ;
+    rdfs:comment "A specific type of document used for periodic reporting purposes." .
+
+fsec:SecuritiesFiling rdf:type rdfs:Class ;
+    rdfs:subClassOf fsec:Document ;
+    rdfs:label "Securities Filing" ;
+    rdfs:comment "A filing made with a regulatory authority related to securities, such as a Form 10-Q." .
+
+fsec:Security rdf:type rdfs:Class ;
+    rdfs:label "Security" ;
+    rdfs:comment "A financial instrument representing ownership, debt, or other rights." .
+
+fsec:DebtSecurity rdf:type rdfs:Class ;
+    rdfs:subClassOf fsec:Security ;
+    rdfs:label "Debt Security" ;
+    rdfs:comment "A type of security representing borrowed money to be repaid." .
+
+
+fsec:hasDate rdf:type rdf:Property ;
+    rdfs:domain fsec:Document ;
+    rdfs:range xsd:date ;
+    rdfs:label "has date" ;
+    rdfs:comment "Associates a document with a specific date." .
+
+fsec:hasIssuer rdf:type rdf:Property ;
+    rdfs:domain fsec:Security ;
+    rdfs:range schema:Organization ;
+    rdfs:label "has issuer" ;
+    rdfs:comment "Relates a security to the organization issuing it." .
+
+fsec:hasExchange rdf:type rdf:Property ;
+    rdfs:domain fsec:Security ;
+    rdfs:range schema:Exchange ;
+    rdfs:label "has exchange" ;
+    rdfs:comment "Specifies the exchange where a security is listed." .
+
+fsec:hasTradingSymbol rdf:type rdf:Property ;
+    rdfs:domain fsec:Security ;
+    rdfs:range xsd:string ;
+    rdfs:label "has trading symbol" ;
+    rdfs:comment "Relates a security to its trading symbol." .
+
+fsec:hasPrincipalOffice rdf:type rdf:Property ;
+    rdfs:domain schema:Organization ;
+    rdfs:range schema:Place ;
+    rdfs:label "has principal office" ;
+    rdfs:comment "Relates an organization to its principal place of business." .
+
+fsec:hasContactNumber rdf:type rdf:Property ;
+    rdfs:domain schema:Organization ;
+    rdfs:range xsd:string ;
+    rdfs:label "has contact number" ;
+    rdfs:comment "Relates an organization to its official contact number." .

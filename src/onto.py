@@ -21,6 +21,15 @@ class OntologySummary(BaseModel):
     )
 
 
+class OntologySelector(BaseModel):
+    short_name: Optional[str] = Field(
+        description="A short name (identifier) for the ontology that could be used to represent the domain of the document, None if no ontology is suitable"
+    )
+    present: bool = Field(
+        description="Whether an ontology that could represent the domain of the document is present in the list of ontologies"
+    )
+
+
 def get_ontology_summary(ontology_str: str) -> OntologySummary:
     llm = ChatOpenAI(model="gpt-4o-mini")
 
@@ -64,6 +73,7 @@ class Ontology(BaseModel):
         ..., description="A short name (identifier) for the ontology"
     )
     version: Optional[str] = Field(None, description="Version of the ontology")
+    uri: Optional[str] = Field(None, description="URI of the ontology")
 
     class Config:
         arbitrary_types_allowed = (
@@ -131,3 +141,15 @@ class AgentState:
                 logging.error(f"Failed to load ontology {fname}: {str(e)}")
 
         self.knowledge_graph = Graph()
+
+    @property
+    def current_ontology(self) -> Ontology:
+        if self.current_ontology_name is None:
+            raise ValueError("No ontology selected")
+        return next(
+            o for o in self.ontologies if o.short_name == self.current_ontology_name
+        )
+
+    @property
+    def ontology_names(self) -> list[str]:
+        return [o.short_name for o in self.ontologies]

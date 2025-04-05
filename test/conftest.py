@@ -1,4 +1,7 @@
 import pytest
+from src.onto import AgentState
+import pathlib
+from suthing import FileHandle
 
 
 @pytest.fixture
@@ -13,3 +16,35 @@ def test_ontology():
         rdfs:label "Test Domain Ontology" ;
         rdfs:comment "An ontology for testing that covers basic concepts and relationships in a test domain. Used for validating ontology processing functionality." .
     """
+
+
+# @pytest.fixture
+# def criminal_ontology() -> Ontology:
+#     return Ontology.from_file(pathlib.Path("data/ontologies/criminal.ttl"))
+
+
+# @pytest.fixture
+# def security_ontology() -> Ontology:
+#     return Ontology.from_file(pathlib.Path("data/ontologies/fin-securities.ttl"))
+
+
+@pytest.fixture
+def agent_state():
+    return AgentState(ontology_path="data/ontologies")
+
+
+@pytest.fixture
+def apple_report():
+    return FileHandle.load(pathlib.Path("data/json/fin.10Q.apple.json"))
+
+
+@pytest.fixture
+def random_report():
+    return FileHandle.load(pathlib.Path("data/json/random.json"))
+
+
+@pytest.fixture
+def legal_report():
+    return FileHandle.load(
+        pathlib.Path("data/json/legal.pourvoi_n°22-86.022_10_01_2023.json")
+    )

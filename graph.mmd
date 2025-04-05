@@ -5,6 +5,11 @@ config:
     htmlLabels: true
     useMaxWidth: true
   look: handDrawn
+  nodes:
+    __end__:
+      label: End
+    __start__:
+      label: Start
   theme: base
   themeVariables:
     fontFamily: '''Architects Daughter'', cursive'
@@ -16,23 +21,26 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
-	decide_ontology(decide_ontology)
-	project_triples(project_triples)
-	sublimate_ontology(sublimate_ontology)
-	update_ontology(update_ontology)
-	criticise_kg(criticise_kg)
-	update_kg(update_kg)
+	Select_Ontology(Select Ontology)
+	Text_to_Triples(Text to Triples)
+	Validate_Triples(Validate Triples)
+	Sublimate_Ontology(Sublimate Ontology)
+	Update_Existing_Ontology(Update Existing Ontology)
+	Criticise_KG(Criticise KG)
+	Update_KG(Update KG)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> decide_ontology;
-	decide_ontology --> project_triples;
-	project_triples --> sublimate_ontology;
-	update_kg --> __end__;
-	sublimate_ontology -. &nbsp;success&nbsp; .-> update_ontology;
-	sublimate_ontology -. &nbsp;failure&nbsp; .-> project_triples;
-	update_ontology -. &nbsp;success&nbsp; .-> criticise_kg;
-	update_ontology -. &nbsp;failure&nbsp; .-> project_triples;
-	criticise_kg -. &nbsp;success&nbsp; .-> update_kg;
-	criticise_kg -. &nbsp;failure&nbsp; .-> project_triples;
+	Select_Ontology --> Text_to_Triples;
+	Text_to_Triples --> Validate_Triples;
+	Update_KG --> __end__;
+	__start__ --> Select_Ontology;
+	Validate_Triples -. &nbsp;success&nbsp; .-> Sublimate_Ontology;
+	Validate_Triples -. &nbsp;failure&nbsp; .-> Text_to_Triples;
+	Sublimate_Ontology -. &nbsp;success&nbsp; .-> Update_Existing_Ontology;
+	Sublimate_Ontology -. &nbsp;failure&nbsp; .-> Text_to_Triples;
+	Update_Existing_Ontology -. &nbsp;success&nbsp; .-> Criticise_KG;
+	Update_Existing_Ontology -. &nbsp;failure&nbsp; .-> Text_to_Triples;
+	Criticise_KG -. &nbsp;success&nbsp; .-> Update_KG;
+	Criticise_KG -. &nbsp;failure&nbsp; .-> Text_to_Triples;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc

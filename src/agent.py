@@ -4,10 +4,15 @@ from langgraph.graph import END, StateGraph, START
 import rdflib
 import re
 
-from src.util import call_openai_api
-from src.onto import AgentState
+from src.onto import AgentState, OntologySelector
+from langchain_openai import ChatOpenAI
+from langchain.output_parsers import PydanticOutputParser
+from langchain.prompts import PromptTemplate
 
 logger = logging.getLogger(__name__)
+
+current_ontology_uri = "https://example.com/current-ontology#"
+current_ns_uri = "https://example.com/current-document#"
 
 
 def extract_struct(text, key):
@@ -17,29 +22,76 @@ def extract_struct(text, key):
     return match.group(1).strip() if match else None
 
 
-# Define state structure
 def project_triples(state: AgentState) -> str:
-    prompt = """
-        Process this document.
-        There are two independent tasks: task A and task B.
+    if state.current_ontology_name is None:
+        uri = current_ontology_uri
+    else:
+        uri = state.current_ontology.uri
+        ontology_str = state.current_ontology.graph.serialize(format="turtle").decode(
+            "utf-8"
+        )
+
+    ontology_instruction = (
+        f"""
+        Here is the ontology ({state.current_ontology.uri}):
+            
+        ```ttl
+        {ontology_str}
+        ```
+    """
+        if state.current_ontology_name is not None
+        else ""
+    )
+
+    ontology_addendum = (
+        "and the provided ontology {uri}, "
+        if state.current_ontology_name is not None
+        else ""
+    )
+
+    template_prompt = """
         Generate semantic triples in turtle (ttl) format from the text below.
+
+        {ontology_instruction}
                 
         Follow the instructions:
         
-        - mark extracted semantic triples as ```ttl ```.
-        - use commonly known ontologies (RDFS, OWL, schema etc) to place encountered abstract entities/properties and facts within a broader ontology.
-        - entities representing facts must use the namespace `@prefix cd: <https://growgraph.dev/current#> .` 
+        - mark the block of extracted semantic triples as ```ttl ```.
+        - use commonly known ontologies (RDFS, OWL, schema etc) {ontology_addendum}to place encountered abstract entities/properties and facts within a broader ontology.
+        - entities representing facts must use the namespace `@prefix co: <{uri}> .` 
+        - entities representing abstract concepts must use the namespace `@prefix cd: {current_ns_uri} .` 
         - all entities from `cd:` namespace must IMPERATIVELY linked to entities from basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
         - all facts must form a connected graph with respect to namespace `cd`.
+        - pay attention to typing facts, such as using xsd:date for dates, xsd:integer for numbers, ISO for currencies, etc.
+        - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
         - make semantic representation as atomic as possible.
+
+
+        Here is the document:
+        {state.input_text}
     """
 
-    response = call_openai_api(prompt)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
 
-    return response
+    prompt = PromptTemplate(
+        template=template_prompt,
+        input_variables=["ontology_uri", "text", "ontology_str"],
+    )
+
+    response = llm(
+        prompt.format_prompt(
+            ontology_uri=uri,
+            text=state.input_text,
+            ontology_addendum=ontology_addendum,
+            current_ns_uri=current_ns_uri,
+            ontology_instruction=ontology_instruction,
+        )
+    )
+
+    return response.content
 
 
-def format_output(response_raw: str) -> dict:
+def validate_ttl(response_raw: str) -> dict:
     """Format final output with knowledge graph and ontology status."""
 
     extracted_ttl = extract_struct(response_raw, "ttl")
@@ -52,39 +104,65 @@ def format_output(response_raw: str) -> dict:
     return g
 
 
-def decide_ontology(state: AgentState) -> AgentState:
+def select_ontology(state: AgentState) -> AgentState:
+    llm = ChatOpenAI(model="gpt-4o-mini")
+
+    # Define the output parser
+    parser = PydanticOutputParser(pydantic_object=OntologySelector)
+
     ontologies_desc = "\n\n".join(
         [
-            f"Ontology name: {o.title} \n Description:{o.description}"
+            f"Ontology name: {o.short_name} \n Description:{o.description}"
             for o in state.ontologies
         ]
     )
+    excerpt = state.input_text[:1000] + "..."
 
-    prompt = f"""
+    prompt = """
         You are a helpful assistant that decides which ontology to use for a given document.
         You are given a list of ontologies and a document.
-        You need to decide which ontology to use for the document.
-        You need to return the name of the ontology.
-        In case no ontology is suitable, return "none".
+        You need to decide which ontology can be used for the document to create a semantic graph.
         Here is the list of ontologies:
         {ontologies_desc}
-        Here is the document:
-        {state.input_text}
+        
+        Here is an excerpt from the document:
+        {excerpt}
+
+        {format_instructions}
     """
 
-    response = call_openai_api(prompt)
-    if response == "none":
-        state.current_ontology_name = None
-    elif response in [o.title for o in state.ontologies]:
-        state.current_ontology_name = response
-    else:
-        raise ValueError(f"Invalid ontology name: {response}")
+    # Create the prompt template with format instructions
+    prompt = PromptTemplate(
+        template=prompt,
+        input_variables=["excerpt", "ontologies_desc", "format_instructions"],
+    )
+
+    response = llm(
+        prompt.format_prompt(
+            excerpt=excerpt,
+            ontologies_desc=ontologies_desc,
+            format_instructions=parser.get_format_instructions(),
+        )
+    )
+    selector = parser.parse(response.content)
+
+    if selector.short_name in state.ontology_names:
+        state.current_ontology_name = selector.short_name
     return state
 
 
 # Define conditional routing functions (separate from state modifiers)
 def sublimate_ontology_route(state: AgentState) -> str:
     """Decide next step after sublimation"""
+    # Logic to decide route based on state
+    if state.knowledge_graph and len(state.knowledge_graph) > 0:
+        return "success"
+    else:
+        return "failure"
+
+
+def validate_ttl_route(state: AgentState) -> str:
+    """Decide next step after ttl validation"""
     # Logic to decide route based on state
     if state.knowledge_graph and len(state.knowledge_graph) > 0:
         return "success"
@@ -142,37 +220,44 @@ def update_kg(state: AgentState) -> AgentState:
 def create_agent_graph():
     """Create the agent workflow graph."""
     workflow = StateGraph(AgentState)
-    # Add all nodes first
-    workflow.add_node("decide_ontology", decide_ontology)
-    workflow.add_node("project_triples", project_triples)
-    workflow.add_node("sublimate_ontology", sublimate_ontology)
-    workflow.add_node("update_ontology", update_ontology)
-    workflow.add_node("criticise_kg", criticise_kg)
-    workflow.add_node("update_kg", update_kg)
+    workflow.add_node("Select Ontology", select_ontology)
+    workflow.add_node("Text to Triples", project_triples)
+    workflow.add_node("Validate Triples", validate_ttl)
+    workflow.add_node("Sublimate Ontology", sublimate_ontology)
+    workflow.add_node("Update Existing Ontology", update_ontology)
+    workflow.add_node("Criticise KG", criticise_kg)
+    workflow.add_node("Update KG", update_kg)
 
     # Standard edges
-    workflow.add_edge(START, "decide_ontology")
-    workflow.add_edge("decide_ontology", "project_triples")
-    workflow.add_edge("project_triples", "sublimate_ontology")
-    workflow.add_edge("update_kg", END)
+    workflow.add_edge(START, "Select Ontology")
+    workflow.add_edge("Select Ontology", "Text to Triples")
+    workflow.add_edge("Text to Triples", "Validate Triples")
+    workflow.add_edge("Update KG", END)
 
     # Conditional edges with clear routing functions
+
     workflow.add_conditional_edges(
-        "sublimate_ontology",
+        "Validate Triples",
+        validate_ttl_route,
+        {"success": "Sublimate Ontology", "failure": "Text to Triples"},
+    )
+
+    workflow.add_conditional_edges(
+        "Sublimate Ontology",
         sublimate_ontology_route,
-        {"success": "update_ontology", "failure": "project_triples"},
+        {"success": "Update Existing Ontology", "failure": "Text to Triples"},
     )
 
     workflow.add_conditional_edges(
-        "update_ontology",
+        "Update Existing Ontology",
         update_ontology_route,
-        {"success": "criticise_kg", "failure": "project_triples"},
+        {"success": "Criticise KG", "failure": "Text to Triples"},
     )
 
     workflow.add_conditional_edges(
-        "criticise_kg",
+        "Criticise KG",
         criticise_kg_route,
-        {"success": "update_kg", "failure": "project_triples"},
+        {"success": "Update KG", "failure": "Text to Triples"},
     )
 
     return workflow.compile()

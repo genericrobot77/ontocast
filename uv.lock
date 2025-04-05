@@ -165,6 +165,18 @@ wheels = [
 ]
 
 [[package]]
+name = "dataclass-wizard"
+version = "0.34.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4a/b2/a8df2f4d5d2d49405e4cd794c0f331345800d5f656139fcb8f6a7b26ff0b/dataclass-wizard-0.34.0.tar.gz", hash = "sha256:f917db2220e395806a852f7c57e9011dd783b7fe3eee763bb56ae2d48968ab03", size = 279707 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/cf/1dd49a7905388b1eb9594ca19783e6629b4c6f770e4bba01e78fe60ce61a/dataclass_wizard-0.34.0-py2.py3-none-any.whl", hash = "sha256:9c184edd3526c3523fec2de5b6d6cdfcdc97ed7b2c5ba8bc574284b793704f01", size = 169166 },
+]
+
+[[package]]
 name = "dill"
 version = "0.3.9"
 source = { registry = "https://pypi.org/simple" }
@@ -884,6 +896,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "rdflib" },
     { name = "robyn" },
+    { name = "suthing" },
 ]
 
 [package.dev-dependencies]
@@ -904,6 +917,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=0.3.21" },
     { name = "rdflib", specifier = ">=7.1.4" },
     { name = "robyn", specifier = ">=0.53.0" },
+    { name = "suthing", specifier = ">=0.3.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2120,6 +2134,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/ac/e5e0a807163652a35be878c0ad5cfd8b1d29605edcadfb5df3c512cdf9f3/sqlalchemy-2.0.40-cp313-cp313-win32.whl", hash = "sha256:a669cbe5be3c63f75bcbee0b266779706f1a54bcb1000f302685b87d1b8c1500", size = 2080704 },
     { url = "https://files.pythonhosted.org/packages/1c/cb/f38c61f7f2fd4d10494c1c135ff6a6ddb63508d0b47bccccd93670637309/sqlalchemy-2.0.40-cp313-cp313-win_amd64.whl", hash = "sha256:641ee2e0834812d657862f3a7de95e0048bdcb6c55496f39c6fa3d435f6ac6ad", size = 2104564 },
     { url = "https://files.pythonhosted.org/packages/d1/7c/5fc8e802e7506fe8b55a03a2e1dab156eae205c91bee46305755e086d2e2/sqlalchemy-2.0.40-py3-none-any.whl", hash = "sha256:32587e2e1e359276957e6fe5dad089758bc042a971a8a09ae8ecf7a8fe23d07a", size = 1903894 },
+]
+
+[[package]]
+name = "suthing"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dataclass-wizard" },
+    { name = "pandas" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/b0/b969e375681bb6cafa1db96f73dccbac9b10e606b4626a197972bc7f1d56/suthing-0.3.0.tar.gz", hash = "sha256:b096b05bc800e0989634819b1de17ccb3bfd9065c39091e986e06e198d048137", size = 8569 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/9f/722a449cbe8bfb489b6e9a3f687fc7f81ad2bc92a023fdf7075fdfb0e97b/suthing-0.3.0-py3-none-any.whl", hash = "sha256:7e5192495cd9e413993eb590d888cf4f4ff8f7ce960e856e8307a1303777c492", size = 9743 },
 ]
 
 [[package]]
