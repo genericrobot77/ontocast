@@ -1,4 +1,5 @@
-from src.onto import get_ontology_summary, OntologySummary
+from src.onto import get_ontology_summary
+from src.onto import OntologySummary
 
 
 def test_extract_metadata(test_ontology):

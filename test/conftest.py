@@ -29,11 +29,6 @@ def test_ontology():
 
 
 @pytest.fixture
-def agent_state():
-    return AgentState(ontology_path="data/ontologies")
-
-
-@pytest.fixture
 def apple_report():
     return FileHandle.load(pathlib.Path("data/json/fin.10Q.apple.json"))
 
@@ -48,3 +43,11 @@ def legal_report():
     return FileHandle.load(
         pathlib.Path("data/json/legal.pourvoi_n°22-86.022_10_01_2023.json")
     )
+
+
+@pytest.fixture
+def agent_state_init():
+    try:
+        return AgentState.load("test/data/agent_state.init.json")
+    except (FileNotFoundError, Exception):
+        return AgentState(ontology_path="data/ontologies")

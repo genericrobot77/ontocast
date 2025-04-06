@@ -112,7 +112,9 @@ def select_ontology(state: AgentState) -> AgentState:
 
     ontologies_desc = "\n\n".join(
         [
-            f"Ontology name: {o.short_name} \n Description:{o.description}"
+            f"Ontology name: {o.short_name}\n"
+            f"Description: {o.description}\n"
+            f"Ontology URI: {o.uri}\n"
             for o in state.ontologies
         ]
     )
