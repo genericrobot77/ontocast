@@ -43,6 +43,7 @@ class RDFGraph(Graph):
 
     @classmethod
     def _from_turtle_str(cls, turtle_str: str) -> "RDFGraph":
+        turtle_str = bytes(turtle_str, "utf-8").decode("unicode_escape")
         g = cls()
         g.parse(data=turtle_str, format="turtle")
         return g
@@ -72,6 +73,19 @@ class OntologySelector(BaseModel):
     )
     present: bool = Field(
         description="Whether an ontology that could represent the domain of the document is present in the list of ontologies"
+    )
+
+
+class TriplesProjection(BaseModel):
+    semantic_graph: RDFGraph = Field(
+        default_factory=RDFGraph,
+        description="Semantic triples representing the document in turtle (ttl) format.",
+    )
+    ontology_relevance_score: Optional[float] = Field(
+        description="The perceived score of how relevant the provided ontology is to the document (between 0 and 1)? 0 if ontology is not relevant (or not provided), 1 if ontology is fully relevant."
+    )
+    triples_generation_score: Optional[float] = Field(
+        description="The perceived score of how well the triples generation task was performed (between 0 and 1)? 0 if the triples generation failed, 1 if the triples generation was perfect."
     )
 
 
@@ -128,10 +142,11 @@ class AgentState(BaseModel):
     input_text: Optional[str] = None
     current_ontology_name: Optional[str] = None
     ontologies: list[Ontology] = []
-    knowledge_graph: Optional[RDFGraph] = Field(
+    current_graph: Optional[RDFGraph] = Field(
         default_factory=RDFGraph, description="RDF knowledge graph"
     )
     ontology_modified: bool = False
+    failure_reason: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True

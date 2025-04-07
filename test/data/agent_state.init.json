@@ -20,5 +20,6 @@
         }
     ],
     "knowledge_graph": "\n",
-    "ontology_modified": false
+    "ontology_modified": false,
+    "failure_reason": null
 }

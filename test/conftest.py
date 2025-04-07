@@ -30,7 +30,8 @@ def test_ontology():
 
 @pytest.fixture
 def apple_report():
-    return FileHandle.load(pathlib.Path("data/json/fin.10Q.apple.json"))
+    r = FileHandle.load(pathlib.Path("data/json/fin.10Q.apple.json"))
+    return {"text": r["text"][:8870]}
 
 
 @pytest.fixture
@@ -51,3 +52,8 @@ def agent_state_init():
         return AgentState.load("test/data/agent_state.init.json")
     except (FileNotFoundError, Exception):
         return AgentState(ontology_path="data/ontologies")
+
+
+@pytest.fixture
+def agent_state_select_ontology():
+    return AgentState.load("test/data/agent_state.select_ontology.json")

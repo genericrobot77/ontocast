@@ -1,5 +1,5 @@
 from src.onto import AgentState, RDFGraph
-from src.agent import select_ontology
+from src.agent import select_ontology, project_text_to_triples_with_ontology
 from rdflib import URIRef, Literal
 
 
@@ -28,7 +28,7 @@ def test_agent_state_json():
     assert isinstance(loaded_state.knowledge_graph, RDFGraph)
 
 
-def test_agent_state_with_reports(
+def test_select_ontology(
     agent_state_init: AgentState,
     apple_report: dict,
     legal_report: dict,
@@ -47,3 +47,14 @@ def test_agent_state_with_reports(
     assert "fsec#" in agent_state.current_ontology.uri
 
     agent_state_init.serialize("test/data/agent_state.select_ontology.json")
+
+
+def test_agent_text_to_triples(
+    agent_state_select_ontology: AgentState,
+    apple_report: dict,
+):
+    agent_state_select_ontology.input_text = apple_report["text"]
+    agent_state = project_text_to_triples_with_ontology(agent_state_select_ontology)
+    assert "fsec#" in agent_state.current_ontology.uri
+
+    agent_state.serialize("test/data/agent_state.project_triples.json")

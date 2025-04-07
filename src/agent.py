@@ -4,7 +4,7 @@ from langgraph.graph import END, StateGraph, START
 import rdflib
 import re
 
-from src.onto import AgentState, OntologySelector
+from src.onto import AgentState, OntologySelector, TriplesProjection
 from langchain_openai import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
@@ -22,18 +22,19 @@ def extract_struct(text, key):
     return match.group(1).strip() if match else None
 
 
-def project_triples(state: AgentState) -> str:
+def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+    parser = PydanticOutputParser(pydantic_object=TriplesProjection)
+
     if state.current_ontology_name is None:
-        uri = current_ontology_uri
+        ontology_uri = current_ontology_uri
     else:
-        uri = state.current_ontology.uri
-        ontology_str = state.current_ontology.graph.serialize(format="turtle").decode(
-            "utf-8"
-        )
+        ontology_uri = state.current_ontology.uri
+        ontology_str = state.current_ontology.graph.serialize(format="turtle")
 
     ontology_instruction = (
         f"""
-        Here is the ontology ({state.current_ontology.uri}):
+        Be guided by the following ontology <{state.current_ontology.uri}>
             
         ```ttl
         {ontology_str}
@@ -49,6 +50,16 @@ def project_triples(state: AgentState) -> str:
         else ""
     )
 
+    if state.failure_reason is not None:
+        failure_instruction = f"""
+        The previous attempt to generate triples failed because of the following reason:
+        {state.failure_reason}
+
+        Please fix the errors and do your best to generate triples again.
+        """
+    else:
+        failure_instruction = ""
+
     template_prompt = """
         Generate semantic triples in turtle (ttl) format from the text below.
 
@@ -58,37 +69,53 @@ def project_triples(state: AgentState) -> str:
         
         - mark the block of extracted semantic triples as ```ttl ```.
         - use commonly known ontologies (RDFS, OWL, schema etc) {ontology_addendum}to place encountered abstract entities/properties and facts within a broader ontology.
-        - entities representing facts must use the namespace `@prefix co: <{uri}> .` 
-        - entities representing abstract concepts must use the namespace `@prefix cd: {current_ns_uri} .` 
+        - entities representing facts must use the namespace `@prefix co: <{ontology_uri}> .` 
+        - entities representing abstract concepts must use the namespace `@prefix cd: <{current_ns_uri}> .` 
         - all entities from `cd:` namespace must IMPERATIVELY linked to entities from basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
         - all facts must form a connected graph with respect to namespace `cd`.
-        - pay attention to typing facts, such as using xsd:date for dates, xsd:integer for numbers, ISO for currencies, etc.
+        - all facts and entities representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
         - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
-        - make semantic representation as atomic as possible.
+        - make semantic representation of facts and entities as atomic as possible (!!!).
 
+        {failure_instruction}
 
         Here is the document:
-        {state.input_text}
-    """
+        {text}
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+        {failure_instruction}
+
+        {format_instructions}
+    """
 
     prompt = PromptTemplate(
         template=template_prompt,
-        input_variables=["ontology_uri", "text", "ontology_str"],
+        input_variables=[
+            "ontology_uri",
+            "current_ns_uri",
+            "text",
+            "ontology_addendum",
+            "ontology_instruction",
+            "failure_instruction",
+            "format_instructions",
+        ],
     )
 
     response = llm(
         prompt.format_prompt(
-            ontology_uri=uri,
+            ontology_uri=ontology_uri,
+            current_ns_uri=current_ns_uri,
             text=state.input_text,
             ontology_addendum=ontology_addendum,
-            current_ns_uri=current_ns_uri,
             ontology_instruction=ontology_instruction,
+            failure_instruction=failure_instruction,
+            format_instructions=parser.get_format_instructions(),
         )
     )
 
-    return response.content
+    proj = parser.parse(response.content)
+
+    state.current_graph = proj.semantic_graph
+    return state
 
 
 def validate_ttl(response_raw: str) -> dict:
@@ -223,7 +250,7 @@ def create_agent_graph():
     """Create the agent workflow graph."""
     workflow = StateGraph(AgentState)
     workflow.add_node("Select Ontology", select_ontology)
-    workflow.add_node("Text to Triples", project_triples)
+    workflow.add_node("Text to Triples", project_text_to_triples_with_ontology)
     workflow.add_node("Validate Triples", validate_ttl)
     workflow.add_node("Sublimate Ontology", sublimate_ontology)
     workflow.add_node("Update Existing Ontology", update_ontology)
