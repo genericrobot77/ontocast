@@ -16,7 +16,7 @@ def update_mermaid_graph_in_markdown(file_path: str, new_graph: str):
         print("✅ Replaced existing Mermaid block.")
     else:
         # Append new section at the end
-        new_section = f"\n\n### Agent graph\n```mermaid\n{new_graph}\n```"
+        new_section = f"\n\n### Agent graph\n\n```mermaid\n{new_graph}\n```"
         new_content = content + new_section
         print("➕ Appended new Mermaid block at the end.")
 

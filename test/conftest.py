@@ -57,3 +57,8 @@ def agent_state_init():
 @pytest.fixture
 def agent_state_select_ontology():
     return AgentState.load("test/data/agent_state.select_ontology.json")
+
+
+@pytest.fixture
+def agent_state_project_triples():
+    return AgentState.load("test/data/agent_state.project_triples.json")

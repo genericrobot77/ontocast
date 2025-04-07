@@ -1,5 +1,9 @@
 from src.onto import AgentState, RDFGraph
-from src.agent import select_ontology, project_text_to_triples_with_ontology
+from src.agent import (
+    select_ontology,
+    project_text_to_triples_with_ontology,
+    current_ns_uri,
+)
 from rdflib import URIRef, Literal
 
 
@@ -59,3 +63,60 @@ def test_agent_text_to_triples(
     assert len(agent_state.current_graph) > 0
 
     agent_state.serialize("test/data/agent_state.project_triples.json")
+
+
+def test_agent_state_sublimate_ontology(
+    agent_state_project_triples: AgentState,
+):
+    query_ontology = f"""
+    PREFIX cd: <{current_ns_uri}>
+    
+    SELECT ?s ?p ?o
+    WHERE {{
+    ?s ?p ?o .
+    FILTER (
+        !(
+            STRSTARTS(STR(?s), STR(cd:)) ||
+            STRSTARTS(STR(?p), STR(cd:)) ||
+            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
+        )
+    )
+    }}
+    """
+    results = agent_state_project_triples.current_graph.query(query_ontology)
+
+    graph_onto_addendum = RDFGraph()
+
+    # Add filtered triples to the new graph
+    for s, p, o in results:
+        graph_onto_addendum.add((s, p, o))
+
+    # graph_onto_addendum_str = graph_onto_addendum.serialize(format="turtle")
+
+    query_facts = f"""
+        PREFIX cd: <{current_ns_uri}>
+
+        SELECT ?s ?p ?o
+        WHERE {{
+        ?s ?p ?o .
+        FILTER (
+            STRSTARTS(STR(?s), STR(cd:)) ||
+            STRSTARTS(STR(?p), STR(cd:)) ||
+            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
+        )
+        }}
+    """
+
+    graph_facts = RDFGraph()
+
+    results = agent_state_project_triples.current_graph.query(query_facts)
+
+    # Add filtered triples to the new graph
+    for s, p, o in results:
+        graph_facts.add((s, p, o))
+
+    # graph_facts_str = graph_facts.serialize(format="turtle")
+
+    assert len(agent_state_project_triples.current_graph) == len(graph_facts) + len(
+        graph_onto_addendum
+    )

@@ -1,9 +1,7 @@
 # mcp-ontokg
 
+## Agent graph
 
-
-
-### Agent graph
 ```mermaid
 ---
 config:

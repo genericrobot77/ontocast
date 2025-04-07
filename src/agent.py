@@ -185,7 +185,6 @@ def select_ontology(state: AgentState) -> AgentState:
     return state
 
 
-# Define conditional routing functions (separate from state modifiers)
 def sublimate_ontology_route(state: AgentState) -> str:
     """Decide next step after sublimation"""
     # Logic to decide route based on state
