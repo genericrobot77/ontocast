@@ -1,5 +1,27 @@
-from langchain_core.runnables.graph import MermaidDrawMethod
 from src.agent import create_agent_graph
+import re
+from pathlib import Path
+
+
+def update_mermaid_graph_in_markdown(file_path: str, new_graph: str):
+    md_path = Path(file_path)
+    content = md_path.read_text()
+
+    # Regex pattern to find "### Agent graph" followed by a mermaid block
+    pattern = r"(### Agent graph\s+```mermaid\n)(.*?)(\n```)"
+    replacement = r"\1" + new_graph + r"\3"
+
+    if re.search(pattern, content, flags=re.DOTALL):
+        new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+        print("✅ Replaced existing Mermaid block.")
+    else:
+        # Append new section at the end
+        new_section = f"\n\n### Agent graph\n```mermaid\n{new_graph}\n```"
+        new_content = content + new_section
+        print("➕ Appended new Mermaid block at the end.")
+
+    md_path.write_text(new_content)
+    print(f"📄 Updated {file_path}")
 
 
 frontmatter_config = {
@@ -23,19 +45,21 @@ frontmatter_config = {
 output_path = "graph.png"
 app = create_agent_graph()
 graph = app.get_graph()
-png_data = graph.draw_mermaid_png(
-    draw_method=MermaidDrawMethod.API,
-    frontmatter_config=frontmatter_config,
-    padding=20,
-)
-
-# Save the PNG data to a file
-with open(output_path, "wb") as f:
-    f.write(png_data)
-
-
 mmd_data = graph.draw_mermaid(frontmatter_config=frontmatter_config)
 
 # Save the PNG data to a file
 with open("graph.mmd", "w") as f:
     f.write(mmd_data)
+
+update_mermaid_graph_in_markdown("README.md", mmd_data)
+
+
+# png_data = graph.draw_mermaid_png(
+#     draw_method=MermaidDrawMethod.API,
+#     frontmatter_config=frontmatter_config,
+#     padding=20,
+# )
+
+# # Save the PNG data to a file
+# with open(output_path, "wb") as f:
+#     f.write(png_data)

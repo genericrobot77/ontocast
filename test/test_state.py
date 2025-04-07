@@ -56,5 +56,6 @@ def test_agent_text_to_triples(
     agent_state_select_ontology.input_text = apple_report["text"]
     agent_state = project_text_to_triples_with_ontology(agent_state_select_ontology)
     assert "fsec#" in agent_state.current_ontology.uri
+    assert len(agent_state.current_graph) > 0
 
     agent_state.serialize("test/data/agent_state.project_triples.json")

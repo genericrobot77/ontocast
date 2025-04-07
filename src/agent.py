@@ -1,10 +1,9 @@
 import logging
 
 from langgraph.graph import END, StateGraph, START
-import rdflib
 import re
 
-from src.onto import AgentState, OntologySelector, TriplesProjection
+from src.onto import AgentState, OntologySelector, TriplesProjection, RDFGraph
 from langchain_openai import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
@@ -50,16 +49,6 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
         else ""
     )
 
-    if state.failure_reason is not None:
-        failure_instruction = f"""
-        The previous attempt to generate triples failed because of the following reason:
-        {state.failure_reason}
-
-        Please fix the errors and do your best to generate triples again.
-        """
-    else:
-        failure_instruction = ""
-
     template_prompt = """
         Generate semantic triples in turtle (ttl) format from the text below.
 
@@ -75,7 +64,8 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
         - all facts must form a connected graph with respect to namespace `cd`.
         - all facts and entities representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
         - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
-        - make semantic representation of facts and entities as atomic as possible (!!!).
+        - make semantic representation of facts and entities as atomic (!!!)  as possible.
+        - data from tables should be represented as triples.
 
         {failure_instruction}
 
@@ -100,35 +90,50 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
         ],
     )
 
-    response = llm(
-        prompt.format_prompt(
-            ontology_uri=ontology_uri,
-            current_ns_uri=current_ns_uri,
-            text=state.input_text,
-            ontology_addendum=ontology_addendum,
-            ontology_instruction=ontology_instruction,
-            failure_instruction=failure_instruction,
-            format_instructions=parser.get_format_instructions(),
-        )
-    )
+    max_retries = 3
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            if state.failure_reason is not None:
+                failure_instruction = f"""
+                The previous attempt to generate triples failed because of the following reason:
+                {state.failure_reason}
 
-    proj = parser.parse(response.content)
+                Please fix the errors and do your best to generate triples again.
+                """
+            else:
+                failure_instruction = ""
+            response = llm(
+                prompt.format_prompt(
+                    ontology_uri=ontology_uri,
+                    current_ns_uri=current_ns_uri,
+                    text=state.input_text,
+                    ontology_addendum=ontology_addendum,
+                    ontology_instruction=ontology_instruction,
+                    failure_instruction=failure_instruction,
+                    format_instructions=parser.get_format_instructions(),
+                )
+            )
 
-    state.current_graph = proj.semantic_graph
+            proj = parser.parse(response.content)
+            state.current_graph = proj.semantic_graph
+            state.failure_reason = None
+            return state
+
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
+            state.failure_reason = str(e)
+            last_error = e
+            if attempt == max_retries - 1:  # Last attempt
+                logger.error("All retry attempts failed")
+                state.current_graph = RDFGraph()
+                state.failure_reason = (
+                    f"All attempts failed. Last error: {str(last_error)}"
+                )
+                return state
+            continue
+
     return state
-
-
-def validate_ttl(response_raw: str) -> dict:
-    """Format final output with knowledge graph and ontology status."""
-
-    extracted_ttl = extract_struct(response_raw, "ttl")
-    g = rdflib.Graph()
-    try:
-        _ = g.parse(data=extracted_ttl, format="turtle")
-    except Exception as e:
-        logger.error(f"{e}")
-
-    return g
 
 
 def select_ontology(state: AgentState) -> AgentState:
@@ -190,8 +195,7 @@ def sublimate_ontology_route(state: AgentState) -> str:
         return "failure"
 
 
-def validate_ttl_route(state: AgentState) -> str:
-    """Decide next step after ttl validation"""
+def project_text_to_triples_route(state: AgentState) -> str:
     # Logic to decide route based on state
     if state.knowledge_graph and len(state.knowledge_graph) > 0:
         return "success"
@@ -251,7 +255,6 @@ def create_agent_graph():
     workflow = StateGraph(AgentState)
     workflow.add_node("Select Ontology", select_ontology)
     workflow.add_node("Text to Triples", project_text_to_triples_with_ontology)
-    workflow.add_node("Validate Triples", validate_ttl)
     workflow.add_node("Sublimate Ontology", sublimate_ontology)
     workflow.add_node("Update Existing Ontology", update_ontology)
     workflow.add_node("Criticise KG", criticise_kg)
@@ -260,15 +263,14 @@ def create_agent_graph():
     # Standard edges
     workflow.add_edge(START, "Select Ontology")
     workflow.add_edge("Select Ontology", "Text to Triples")
-    workflow.add_edge("Text to Triples", "Validate Triples")
     workflow.add_edge("Update KG", END)
 
     # Conditional edges with clear routing functions
 
     workflow.add_conditional_edges(
-        "Validate Triples",
-        validate_ttl_route,
-        {"success": "Sublimate Ontology", "failure": "Text to Triples"},
+        "Text to Triples",
+        project_text_to_triples_route,
+        {"success": "Sublimate Ontology", "failure": END},
     )
 
     workflow.add_conditional_edges(
