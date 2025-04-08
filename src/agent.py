@@ -1,17 +1,30 @@
+from rdflib import Namespace
 import logging
 
 from langgraph.graph import END, StateGraph, START
 import re
 
-from src.onto import AgentState, OntologySelector, TriplesProjection, RDFGraph
-from langchain_openai import ChatOpenAI
-from langchain.output_parsers import PydanticOutputParser
+from src.onto import (
+    AgentState,
+    OntologySelector,
+    TriplesProjection,
+    RDFGraph,
+    Status,
+    OntologyUpdateCritique,
+    KGUpdateCritique,
+)
 from langchain.prompts import PromptTemplate
+
+from src.tools import LLMTool
 
 logger = logging.getLogger(__name__)
 
 current_ontology_uri = "https://example.com/current-ontology#"
 current_ns_uri = "https://example.com/current-document#"
+
+
+# Create a global instance of the LLM tool
+llm_tool = LLMTool()
 
 
 def extract_struct(text, key):
@@ -22,8 +35,7 @@ def extract_struct(text, key):
 
 
 def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
-    parser = PydanticOutputParser(pydantic_object=TriplesProjection)
+    parser = llm_tool.get_parser(TriplesProjection)
 
     if state.current_ontology_name is None:
         ontology_uri = current_ontology_uri
@@ -64,7 +76,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
         - all facts must form a connected graph with respect to namespace `cd`.
         - all facts and entities representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
         - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
-        - make semantic representation of facts and entities as atomic (!!!)  as possible.
+        - make semantic representation of facts and entities as atomic (!!!) as possible.
         - data from tables should be represented as triples.
 
         {failure_instruction}
@@ -103,7 +115,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
                 """
             else:
                 failure_instruction = ""
-            response = llm(
+            response = llm_tool.llm(
                 prompt.format_prompt(
                     ontology_uri=ontology_uri,
                     current_ns_uri=current_ns_uri,
@@ -118,6 +130,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
             proj = parser.parse(response.content)
             state.current_graph = proj.semantic_graph
             state.failure_reason = None
+            state.status = Status.SUCCESS
             return state
 
         except Exception as e:
@@ -130,6 +143,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
                 state.failure_reason = (
                     f"All attempts failed. Last error: {str(last_error)}"
                 )
+                state.status = Status.FAILED
                 return state
             continue
 
@@ -137,10 +151,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
 
 
 def select_ontology(state: AgentState) -> AgentState:
-    llm = ChatOpenAI(model="gpt-4o-mini")
-
-    # Define the output parser
-    parser = PydanticOutputParser(pydantic_object=OntologySelector)
+    parser = llm_tool.get_parser(OntologySelector)
 
     ontologies_desc = "\n\n".join(
         [
@@ -171,7 +182,7 @@ def select_ontology(state: AgentState) -> AgentState:
         input_variables=["excerpt", "ontologies_desc", "format_instructions"],
     )
 
-    response = llm(
+    response = llm_tool.llm(
         prompt.format_prompt(
             excerpt=excerpt,
             ontologies_desc=ontologies_desc,
@@ -185,59 +196,191 @@ def select_ontology(state: AgentState) -> AgentState:
     return state
 
 
-def sublimate_ontology_route(state: AgentState) -> str:
-    """Decide next step after sublimation"""
-    # Logic to decide route based on state
-    if state.knowledge_graph and len(state.knowledge_graph) > 0:
-        return "success"
-    else:
-        return "failure"
+def _sublimate_ontology(state: AgentState):
+    query_ontology = f"""
+    PREFIX cd: <{current_ns_uri}>
+    
+    SELECT ?s ?p ?o
+    WHERE {{
+    ?s ?p ?o .
+    FILTER (
+        !(
+            STRSTARTS(STR(?s), STR(cd:)) ||
+            STRSTARTS(STR(?p), STR(cd:)) ||
+            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
+        )
+    )
+    }}
+    """
+    results = state.current_graph.query(query_ontology)
+
+    graph_onto_addendum = RDFGraph()
+
+    # Add filtered triples to the new graph
+    for s, p, o in results:
+        graph_onto_addendum.add((s, p, o))
+
+    query_facts = f"""
+        PREFIX cd: <{current_ns_uri}>
+
+        SELECT ?s ?p ?o
+        WHERE {{
+        ?s ?p ?o .
+        FILTER (
+            STRSTARTS(STR(?s), STR(cd:)) ||
+            STRSTARTS(STR(?p), STR(cd:)) ||
+            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
+        )
+        }}
+    """
+
+    graph_facts = RDFGraph()
+
+    results = state.current_graph.query(query_facts)
+
+    # Add filtered triples to the new graph
+    for s, p, o in results:
+        graph_facts.add((s, p, o))
+
+    return graph_onto_addendum, graph_facts
 
 
-def project_text_to_triples_route(state: AgentState) -> str:
-    # Logic to decide route based on state
-    if state.knowledge_graph and len(state.knowledge_graph) > 0:
-        return "success"
-    else:
-        return "failure"
-
-
-def update_ontology_route(state: AgentState) -> str:
-    """Decide next step after ontology update"""
-    # Logic to decide route
-    if state.ontology_modified:
-        return "success"
-    else:
-        return "failure"
-
-
-def criticise_kg_route(state: AgentState) -> str:
-    """Decide next step after KG criticism"""
-    # Logic to decide route
-    # Placeholder for actual logic
-    return "success"
-
-
-# Define state modifying functions
 def sublimate_ontology(state: AgentState) -> AgentState:
-    """Extract ontology concepts from the knowledge graph"""
-    # Actual implementation to modify state
-    # ...
+    """Separate ontology from facts"""
+    try:
+        graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
+
+        ns_prefix_current_ontology = [
+            p
+            for p, ns in state.current_ontology.graph.namespaces()
+            if str(ns) == state.current_ontology.uri
+        ]
+
+        graph_onto_addendum.bind(
+            ns_prefix_current_ontology[0], Namespace(state.current_ontology.uri)
+        )
+        graph_facts.bind(
+            ns_prefix_current_ontology[0], Namespace(state.current_ontology.uri)
+        )
+        state.status = Status.SUCCESS
+        state.ontology_addendum = graph_onto_addendum
+        state.graph_facts = graph_facts
+    except Exception as e:
+        state.status = Status.FAILED
+        state.failure_reason = str(e)
+
+    return state
+
+
+def criticise_ontology_update(state: AgentState) -> AgentState:
+    parser = llm_tool.get_parser(OntologyUpdateCritique)
+
+    prompt = """
+        You are a helpful assistant that criticises the ontology update.
+        You need to decide whether the ontology update is satisfactory.
+        It is considered satisfactory if the ontology update captures all abstract classes and properties that present explicitly or implicitly in the document that are not already captured in the original ontology.
+
+        Here is the original ontology:
+        ```ttl
+        {ontology_original}
+        ```
+
+        Here is the document from which the ontology was update was derived:
+        {document}
+
+                Here is the ontology update:
+        ```ttl
+        {ontology_update}
+        ```
+
+        {format_instructions}
+    """
+
+    prompt = PromptTemplate(
+        template=prompt,
+        input_variables=[
+            "ontology_original",
+            "ontology_update",
+            "document",
+            "format_instructions",
+        ],
+    )
+
+    response = llm_tool.llm(
+        prompt.format_prompt(
+            ontology_original=state.current_ontology.graph.serialize(format="turtle"),
+            ontology_update=state.ontology_addendum.serialize(format="turtle"),
+            document=state.input_text,
+            format_instructions=parser.get_format_instructions(),
+        )
+    )
+    critique: OntologyUpdateCritique = parser.parse(response.content)
+
+    if critique.ontology_update_success:
+        state.status = Status.SUCCESS
+    else:
+        state.status = Status.FAILED
+        state.failure_reason = critique.ontology_update_critique_comment
     return state
 
 
 def update_ontology(state: AgentState) -> AgentState:
-    """Update the ontology with the new facts"""
-    # Actual implementation to modify state
-    # ...
+    """Update the ontology with the new types/classes/properties"""
+
+    state.current_ontology.graph += state.ontology_addendum
     state.ontology_modified = True
     return state
 
 
 def criticise_kg(state: AgentState) -> AgentState:
-    """Criticise the knowledge graph"""
-    # Actual implementation to modify state
-    # ...
+    parser = llm_tool.get_parser(KGUpdateCritique)
+
+    prompt = """
+        You are a helpful assistant that criticises the knowledge graph derived from the document with the help of a supporting ontology.
+        You need to decide whether the knowledge graph derivation was faithful to the document.
+        It is considered satisfactory if the knowledge graph captures all facts.
+
+        Here is the supporting ontology:
+        ```ttl
+        {ontology}
+        ```
+
+        Here is the document from which the ontology was update was derived:
+        {document}
+
+        Here's the knowledge graph of facts derived from the document:
+        ```ttl
+        {knowledge_graph}
+        ```
+
+        {format_instructions}
+    """
+
+    prompt = PromptTemplate(
+        template=prompt,
+        input_variables=[
+            "ontology",
+            "document",
+            "knowledge_graph",
+            "format_instructions",
+        ],
+    )
+
+    response = llm_tool.llm(
+        prompt.format_prompt(
+            ontology=state.current_ontology.graph.serialize(format="turtle"),
+            document=state.input_text,
+            knowledge_graph=state.current_graph.serialize(format="turtle"),
+            format_instructions=parser.get_format_instructions(),
+        )
+    )
+    critique: KGUpdateCritique = parser.parse(response.content)
+
+    if critique.kg_update_success:
+        state.status = Status.SUCCESS
+    else:
+        state.status = Status.FAILED
+        state.failure_reason = critique.kg_update_critique_comment
     return state
 
 
@@ -248,6 +391,38 @@ def update_kg(state: AgentState) -> AgentState:
     return state
 
 
+def project_text_to_triples_route(state: AgentState) -> Status:
+    # Logic to decide route based on state
+    if state.status == Status.SUCCESS:
+        return Status.SUCCESS
+    else:
+        return Status.FAILED
+
+
+def sublimate_ontology_route(state: AgentState) -> Status:
+    """Decide next step after sublimation"""
+    # Logic to decide route based on state
+    if state.knowledge_graph and len(state.knowledge_graph) > 0:
+        return Status.SUCCESS
+    else:
+        return Status.FAILED
+
+
+def criticise_ontology_update_route(state: AgentState) -> Status:
+    # Logic to decide route based on state
+    if state.status == Status.SUCCESS:
+        return Status.SUCCESS
+    else:
+        return Status.FAILED
+
+
+def criticise_kg_route(state: AgentState) -> str:
+    """Decide next step after KG criticism"""
+    # Logic to decide route
+    # Placeholder for actual logic
+    return Status.SUCCESS
+
+
 # Define the workflow graph
 def create_agent_graph():
     """Create the agent workflow graph."""
@@ -255,6 +430,7 @@ def create_agent_graph():
     workflow.add_node("Select Ontology", select_ontology)
     workflow.add_node("Text to Triples", project_text_to_triples_with_ontology)
     workflow.add_node("Sublimate Ontology", sublimate_ontology)
+    workflow.add_node("Criticise Ontology Update", criticise_ontology_update)
     workflow.add_node("Update Existing Ontology", update_ontology)
     workflow.add_node("Criticise KG", criticise_kg)
     workflow.add_node("Update KG", update_kg)
@@ -262,32 +438,31 @@ def create_agent_graph():
     # Standard edges
     workflow.add_edge(START, "Select Ontology")
     workflow.add_edge("Select Ontology", "Text to Triples")
+    workflow.add_edge("Update Existing Ontology", "Criticise KG")
     workflow.add_edge("Update KG", END)
-
-    # Conditional edges with clear routing functions
 
     workflow.add_conditional_edges(
         "Text to Triples",
         project_text_to_triples_route,
-        {"success": "Sublimate Ontology", "failure": END},
+        {Status.SUCCESS: "Sublimate Ontology", Status.FAILED: END},
+    )
+
+    workflow.add_conditional_edges(
+        "Criticise Ontology Update",
+        criticise_ontology_update_route,
+        {Status.SUCCESS: "Update Existing Ontology", Status.FAILED: "Text to Triples"},
     )
 
     workflow.add_conditional_edges(
         "Sublimate Ontology",
         sublimate_ontology_route,
-        {"success": "Update Existing Ontology", "failure": "Text to Triples"},
-    )
-
-    workflow.add_conditional_edges(
-        "Update Existing Ontology",
-        update_ontology_route,
-        {"success": "Criticise KG", "failure": "Text to Triples"},
+        {Status.SUCCESS: "Criticise Ontology Update", Status.FAILED: "Text to Triples"},
     )
 
     workflow.add_conditional_edges(
         "Criticise KG",
         criticise_kg_route,
-        {"success": "Update KG", "failure": "Text to Triples"},
+        {Status.SUCCESS: "Update KG", Status.FAILED: "Text to Triples"},
     )
 
     return workflow.compile()

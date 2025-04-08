@@ -48,11 +48,13 @@ graph = app.get_graph()
 mmd_data = graph.draw_mermaid(frontmatter_config=frontmatter_config)
 
 # Save the PNG data to a file
-with open("graph.mmd", "w") as f:
-    f.write(mmd_data)
+# with open("graph.mmd", "w") as f:
+#     f.write(mmd_data)
 
 update_mermaid_graph_in_markdown("README.md", mmd_data)
 
+
+# from langchain_core.runnables.graph import MermaidDrawMethod
 
 # png_data = graph.draw_mermaid_png(
 #     draw_method=MermaidDrawMethod.API,
@@ -60,6 +62,5 @@ update_mermaid_graph_in_markdown("README.md", mmd_data)
 #     padding=20,
 # )
 
-# # Save the PNG data to a file
 # with open(output_path, "wb") as f:
 #     f.write(png_data)

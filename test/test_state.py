@@ -1,8 +1,11 @@
-from src.onto import AgentState, RDFGraph
+from src.onto import AgentState, RDFGraph, Status
 from src.agent import (
     select_ontology,
     project_text_to_triples_with_ontology,
-    current_ns_uri,
+    _sublimate_ontology,
+    sublimate_ontology,
+    criticise_ontology_update,
+    update_ontology,
 )
 from rdflib import URIRef, Literal
 
@@ -68,55 +71,36 @@ def test_agent_text_to_triples(
 def test_agent_state_sublimate_ontology(
     agent_state_project_triples: AgentState,
 ):
-    query_ontology = f"""
-    PREFIX cd: <{current_ns_uri}>
-    
-    SELECT ?s ?p ?o
-    WHERE {{
-    ?s ?p ?o .
-    FILTER (
-        !(
-            STRSTARTS(STR(?s), STR(cd:)) ||
-            STRSTARTS(STR(?p), STR(cd:)) ||
-            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
-        )
-    )
-    }}
-    """
-    results = agent_state_project_triples.current_graph.query(query_ontology)
-
-    graph_onto_addendum = RDFGraph()
-
-    # Add filtered triples to the new graph
-    for s, p, o in results:
-        graph_onto_addendum.add((s, p, o))
-
-    # graph_onto_addendum_str = graph_onto_addendum.serialize(format="turtle")
-
-    query_facts = f"""
-        PREFIX cd: <{current_ns_uri}>
-
-        SELECT ?s ?p ?o
-        WHERE {{
-        ?s ?p ?o .
-        FILTER (
-            STRSTARTS(STR(?s), STR(cd:)) ||
-            STRSTARTS(STR(?p), STR(cd:)) ||
-            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
-        )
-        }}
-    """
-
-    graph_facts = RDFGraph()
-
-    results = agent_state_project_triples.current_graph.query(query_facts)
-
-    # Add filtered triples to the new graph
-    for s, p, o in results:
-        graph_facts.add((s, p, o))
-
-    # graph_facts_str = graph_facts.serialize(format="turtle")
-
+    graph_onto_addendum, graph_facts = _sublimate_ontology(agent_state_project_triples)
     assert len(agent_state_project_triples.current_graph) == len(graph_facts) + len(
         graph_onto_addendum
     )
+
+
+def test_agent_state_sublimate_ontology_aux(
+    agent_state_project_triples: AgentState,
+):
+    state = sublimate_ontology(agent_state_project_triples)
+    assert state.ontology_modified is not None
+    assert len(state.graph_facts) > 0
+    assert len(state.ontology_addendum) > 0
+    assert state.status == Status.SUCCESS
+    state.serialize("test/data/agent_state.sublimate_ontology.json")
+
+
+def test_agent_state_criticise_ontology_update(
+    agent_state_sublimate_ontology: AgentState,
+):
+    state = criticise_ontology_update(agent_state_sublimate_ontology)
+    if state.status == Status.SUCCESS:
+        state.serialize("test/data/agent_state.criticise_ontology_update.success.json")
+    else:
+        state.serialize("test/data/agent_state.criticise_ontology_update.failed.json")
+        assert state.failure_reason is not None
+
+
+def test_agent_state_update_ontology(
+    agent_state_criticise_ontology_update_success: AgentState,
+):
+    state = update_ontology(agent_state_criticise_ontology_update_success)
+    state.serialize("test/data/agent_state.update_ontology.json")

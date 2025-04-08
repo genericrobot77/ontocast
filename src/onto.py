@@ -11,8 +11,14 @@ from pydantic_core import core_schema
 
 from typing import Any
 
+from enum import StrEnum
 
 logger = logging.getLogger(__name__)
+
+
+class Status(StrEnum):
+    SUCCESS = "success"
+    FAILED = "failed"
 
 
 class RDFGraph(Graph):
@@ -89,6 +95,24 @@ class TriplesProjection(BaseModel):
     )
 
 
+class OntologyUpdateCritique(BaseModel):
+    ontology_update_success: bool = Field(
+        description="True if the ontology update was performed successfully, False otherwise"
+    )
+    ontology_update_critique_comment: Optional[str] = Field(
+        description="A consise explanation (3-4 sentences) of why the ontology update is not satisfactory"
+    )
+
+
+class KGUpdateCritique(BaseModel):
+    kg_update_success: bool = Field(
+        description="True if the knowledge graph update was performed successfully, False otherwise"
+    )
+    kg_update_critique_comment: Optional[str] = Field(
+        description="A consise explanation (3-4 sentences) of why the knowledge graph update is not satisfactory"
+    )
+
+
 class Ontology(BaseModel):
     """
     A Pydantic model representing an ontology with its RDF graph and description.
@@ -147,6 +171,14 @@ class AgentState(BaseModel):
     )
     ontology_modified: bool = False
     failure_reason: Optional[str] = None
+    ontology_addendum: Optional[RDFGraph] = Field(
+        default_factory=RDFGraph, description="RDF triples to add to the ontology"
+    )
+    graph_facts: Optional[RDFGraph] = Field(
+        default_factory=RDFGraph,
+        description="RDF triples representing the facts from the current document",
+    )
+    status: Status = Status.SUCCESS
 
     class Config:
         arbitrary_types_allowed = True

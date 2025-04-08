@@ -62,3 +62,27 @@ def agent_state_select_ontology():
 @pytest.fixture
 def agent_state_project_triples():
     return AgentState.load("test/data/agent_state.project_triples.json")
+
+
+@pytest.fixture
+def agent_state_sublimate_ontology():
+    return AgentState.load("test/data/agent_state.sublimate_ontology.json")
+
+
+@pytest.fixture
+def agent_state_criticise_ontology_update_success():
+    return AgentState.load(
+        "test/data/agent_state.criticise_ontology_update.success.json"
+    )
+
+
+@pytest.fixture
+def agent_state_criticise_ontology_update_failed():
+    return AgentState.load(
+        "test/data/agent_state.criticise_ontology_update.failed.json"
+    )
+
+
+@pytest.fixture
+def agent_state_update_ontology():
+    return AgentState.load("test/data/agent_state.update_ontology.json")
