@@ -21,27 +21,25 @@ config:
     primaryTextColor: '#372237'
 ---
 graph TD;
-	__start__([<p>__start__</p>]):::first
+	START([<p>START</p>]):::first
 	Select_Ontology(Select Ontology)
 	Text_to_Triples(Text to Triples)
 	Sublimate_Ontology(Sublimate Ontology)
 	Criticise_Ontology_Update(Criticise Ontology Update)
-	Update_Existing_Ontology(Update Existing Ontology)
 	Criticise_KG(Criticise KG)
 	Update_KG(Update KG)
-	__end__([<p>__end__</p>]):::last
+	END([<p>END</p>]):::last
 	Select_Ontology --> Text_to_Triples;
-	Update_Existing_Ontology --> Criticise_KG;
-	Update_KG --> __end__;
-	__start__ --> Select_Ontology;
+	Update_KG --> END;
+	START --> Select_Ontology;
 	Text_to_Triples -. &nbsp;success&nbsp; .-> Sublimate_Ontology;
-	Text_to_Triples -. &nbsp;failed&nbsp; .-> __end__;
-	Criticise_Ontology_Update -. &nbsp;success&nbsp; .-> Update_Existing_Ontology;
-	Criticise_Ontology_Update -. &nbsp;failed&nbsp; .-> Text_to_Triples;
 	Sublimate_Ontology -. &nbsp;success&nbsp; .-> Criticise_Ontology_Update;
 	Sublimate_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Triples;
+	Criticise_Ontology_Update -. &nbsp;success&nbsp; .-> Criticise_KG;
+	Criticise_Ontology_Update -. &nbsp;failed&nbsp; .-> Text_to_Triples;
 	Criticise_KG -. &nbsp;success&nbsp; .-> Update_KG;
 	Criticise_KG -. &nbsp;failed&nbsp; .-> Text_to_Triples;
+	Text_to_Triples -. &nbsp;failed&nbsp; .-> Text_to_Triples;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc

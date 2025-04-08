@@ -40,7 +40,6 @@ frontmatter_config = {
     }
 }
 
-
 # Get the graph and save it as PNG
 output_path = "graph.png"
 app = create_agent_graph()
@@ -50,7 +49,7 @@ mmd_data = graph.draw_mermaid(frontmatter_config=frontmatter_config)
 # Save the PNG data to a file
 # with open("graph.mmd", "w") as f:
 #     f.write(mmd_data)
-
+mmd_data = mmd_data.replace("__start__", "START").replace("__end__", "END")
 update_mermaid_graph_in_markdown("README.md", mmd_data)
 
 

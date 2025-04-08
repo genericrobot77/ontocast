@@ -58,7 +58,6 @@ class RDFGraph(Graph):
     def _to_turtle_str(g: Any) -> str:
         return g.serialize(format="turtle")
 
-    # Make sure default_factory works correctly
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         return instance
@@ -170,6 +169,7 @@ class AgentState(BaseModel):
         default_factory=RDFGraph, description="RDF knowledge graph"
     )
     ontology_modified: bool = False
+    failure_stage: Optional[str] = None
     failure_reason: Optional[str] = None
     ontology_addendum: Optional[RDFGraph] = Field(
         default_factory=RDFGraph, description="RDF triples to add to the ontology"
@@ -179,9 +179,33 @@ class AgentState(BaseModel):
         description="RDF triples representing the facts from the current document",
     )
     status: Status = Status.SUCCESS
+    node_visits: dict[str, int] = Field(
+        default_factory=dict, description="Number of visits per node"
+    )
+    max_visits: int = Field(
+        default=3, description="Maximum number of visits allowed per node"
+    )
 
     class Config:
         arbitrary_types_allowed = True
+
+    def set_failure(self, stage: str, reason: str) -> None:
+        """
+        Set failure state with stage and reason.
+
+        Args:
+            stage: The stage where the failure occurred
+            reason: The reason for the failure
+        """
+        self.failure_stage = stage
+        self.failure_reason = reason
+        self.status = Status.FAILED
+
+    def clear_failure(self) -> None:
+        """Clear failure state and set status to success."""
+        self.failure_stage = None
+        self.failure_reason = None
+        self.status = Status.SUCCESS
 
     def __init__(self, ontology_path: Optional[str] = None, **data):
         super().__init__(**data)

@@ -5,7 +5,6 @@ from src.agent import (
     _sublimate_ontology,
     sublimate_ontology,
     criticise_ontology_update,
-    update_ontology,
 )
 from rdflib import URIRef, Literal
 
@@ -99,8 +98,12 @@ def test_agent_state_criticise_ontology_update(
         assert state.failure_reason is not None
 
 
-def test_agent_state_update_ontology(
-    agent_state_criticise_ontology_update_success: AgentState,
+def test_agent_text_to_triples_failed_ontology(
+    agent_state_criticise_ontology_update_failed: AgentState,
 ):
-    state = update_ontology(agent_state_criticise_ontology_update_success)
-    state.serialize("test/data/agent_state.update_ontology.json")
+    agent_state = project_text_to_triples_with_ontology(
+        agent_state_criticise_ontology_update_failed
+    )
+    assert agent_state.status == Status.SUCCESS
+
+    agent_state.serialize("test/data/agent_state.project_triples.v2.json")

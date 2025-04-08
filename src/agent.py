@@ -102,52 +102,41 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
         ],
     )
 
-    max_retries = 3
-    last_error = None
-    for attempt in range(max_retries):
-        try:
-            if state.failure_reason is not None:
-                failure_instruction = f"""
-                The previous attempt to generate triples failed because of the following reason:
-                {state.failure_reason}
-
-                Please fix the errors and do your best to generate triples again.
-                """
-            else:
-                failure_instruction = ""
-            response = llm_tool.llm(
-                prompt.format_prompt(
-                    ontology_uri=ontology_uri,
-                    current_ns_uri=current_ns_uri,
-                    text=state.input_text,
-                    ontology_addendum=ontology_addendum,
-                    ontology_instruction=ontology_instruction,
-                    failure_instruction=failure_instruction,
-                    format_instructions=parser.get_format_instructions(),
+    try:
+        if state.failure_reason is not None:
+            failure_instruction = "The previous attempt to generate triples failed."
+            if state.failure_stage is not None:
+                failure_instruction += (
+                    f"\n\nIt failed at the stage: {state.failure_stage}."
                 )
+            failure_instruction += f"\n\n{state.failure_reason}"
+            failure_instruction += (
+                "\n\nPlease fix the errors and do your best to generate triples again."
             )
+        else:
+            failure_instruction = ""
 
-            proj = parser.parse(response.content)
-            state.current_graph = proj.semantic_graph
-            state.failure_reason = None
-            state.status = Status.SUCCESS
-            return state
+        response = llm_tool.llm(
+            prompt.format_prompt(
+                ontology_uri=ontology_uri,
+                current_ns_uri=current_ns_uri,
+                text=state.input_text,
+                ontology_addendum=ontology_addendum,
+                ontology_instruction=ontology_instruction,
+                failure_instruction=failure_instruction,
+                format_instructions=parser.get_format_instructions(),
+            )
+        )
 
-        except Exception as e:
-            logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
-            state.failure_reason = str(e)
-            last_error = e
-            if attempt == max_retries - 1:  # Last attempt
-                logger.error("All retry attempts failed")
-                state.current_graph = RDFGraph()
-                state.failure_reason = (
-                    f"All attempts failed. Last error: {str(last_error)}"
-                )
-                state.status = Status.FAILED
-                return state
-            continue
+        proj = parser.parse(response.content)
+        state.current_graph = proj.semantic_graph
+        state.clear_failure()  # Clear any failure state on success
+        return state
 
-    return state
+    except Exception as e:
+        logger.error(f"Failed to generate triples: {str(e)}")
+        state.set_failure("Text to Triples", str(e))
+        return state
 
 
 def select_ontology(state: AgentState) -> AgentState:
@@ -262,12 +251,14 @@ def sublimate_ontology(state: AgentState) -> AgentState:
         graph_facts.bind(
             ns_prefix_current_ontology[0], Namespace(state.current_ontology.uri)
         )
-        state.status = Status.SUCCESS
         state.ontology_addendum = graph_onto_addendum
         state.graph_facts = graph_facts
+        state.clear_failure()
     except Exception as e:
-        state.status = Status.FAILED
-        state.failure_reason = str(e)
+        state.set_failure(
+            "The produced semantic could not be validated or separated into ontology and facts (technical issue).",
+            str(e),
+        )
 
     return state
 
@@ -317,15 +308,12 @@ def criticise_ontology_update(state: AgentState) -> AgentState:
     critique: OntologyUpdateCritique = parser.parse(response.content)
 
     if critique.ontology_update_success:
-        state.status = Status.SUCCESS
+        state.clear_failure()
     else:
-        state.status = Status.FAILED
-        state.failure_reason = critique.ontology_update_critique_comment
-    return state
-
-
-def update_ontology(state: AgentState) -> AgentState:
-    """Update the ontology with the new types/classes/properties"""
+        state.set_failure(
+            stage="The produced ontology did not pass the critique stage(conceptual issue).",
+            reason=critique.ontology_update_critique_comment,
+        )
 
     state.current_ontology.graph += state.ontology_addendum
     state.ontology_modified = True
@@ -377,10 +365,12 @@ def criticise_kg(state: AgentState) -> AgentState:
     critique: KGUpdateCritique = parser.parse(response.content)
 
     if critique.kg_update_success:
-        state.status = Status.SUCCESS
+        state.clear_failure()
     else:
-        state.status = Status.FAILED
-        state.failure_reason = critique.kg_update_critique_comment
+        state.set_failure(
+            stage="The produced knowledge graph did not pass the critique stage(conceptual issue).",
+            reason=critique.kg_update_critique_comment,
+        )
     return state
 
 
@@ -391,36 +381,76 @@ def update_kg(state: AgentState) -> AgentState:
     return state
 
 
-def project_text_to_triples_route(state: AgentState) -> Status:
-    # Logic to decide route based on state
-    if state.status == Status.SUCCESS:
-        return Status.SUCCESS
-    else:
-        return Status.FAILED
+def handle_visits(state: AgentState, node_name: str) -> tuple[AgentState, str]:
+    """
+    Handle visit counting for a node.
+
+    Args:
+        state: The current agent state
+        node_name: The name of the node being visited
+
+    Returns:
+        tuple[AgentState, str]: Updated state and next node to execute
+    """
+    # Initialize visit count for this node if not exists
+    if node_name not in state.node_visits:
+        state.node_visits[node_name] = 0
+
+    # Increment visit count
+    state.node_visits[node_name] += 1
+    logger.info(
+        f"Visiting {node_name} (visit {state.node_visits[node_name]}/{state.max_visits})"
+    )
+
+    # Check if we've exceeded max visits
+    if state.node_visits[node_name] > state.max_visits:
+        logger.error(f"Maximum visits exceeded for {node_name}")
+        state.set_failure(node_name, "Maximum visits exceeded")
+        return state, END
+
+    return state, node_name
 
 
-def sublimate_ontology_route(state: AgentState) -> Status:
-    """Decide next step after sublimation"""
-    # Logic to decide route based on state
-    if state.knowledge_graph and len(state.knowledge_graph) > 0:
-        return Status.SUCCESS
-    else:
-        return Status.FAILED
+def create_visit_route(success_node: str, current_node: str):
+    """
+    Create a route function with visit counting.
+
+    Args:
+        success_node: Node to go to on success
+        current_node: Current node being visited
+
+    Returns:
+        A function that handles routing with visit counting
+    """
+
+    def route(state: AgentState) -> str:
+        if state.status == Status.SUCCESS:
+            state.clear_failure()  # Clear any previous failure state
+            return success_node
+        else:
+            return handle_visits(state, current_node)[1]
+
+    return route
 
 
-def criticise_ontology_update_route(state: AgentState) -> Status:
-    # Logic to decide route based on state
-    if state.status == Status.SUCCESS:
-        return Status.SUCCESS
-    else:
-        return Status.FAILED
+def project_text_to_triples_route(state: AgentState) -> str:
+    """Route function for text to triples node with visit counting."""
+    return create_visit_route("Sublimate Ontology", "Text to Triples")(state)
+
+
+def sublimate_ontology_route(state: AgentState) -> str:
+    """Route function for sublimate ontology node with visit counting."""
+    return create_visit_route("Criticise Ontology Update", "Sublimate Ontology")(state)
+
+
+def criticise_ontology_update_route(state: AgentState) -> str:
+    """Route function for criticise ontology update node with visit counting."""
+    return create_visit_route("Criticise KG", "Criticise Ontology Update")(state)
 
 
 def criticise_kg_route(state: AgentState) -> str:
-    """Decide next step after KG criticism"""
-    # Logic to decide route
-    # Placeholder for actual logic
-    return Status.SUCCESS
+    """Route function for criticise KG node with visit counting."""
+    return create_visit_route("Update KG", "Criticise KG")(state)
 
 
 # Define the workflow graph
@@ -431,38 +461,49 @@ def create_agent_graph():
     workflow.add_node("Text to Triples", project_text_to_triples_with_ontology)
     workflow.add_node("Sublimate Ontology", sublimate_ontology)
     workflow.add_node("Criticise Ontology Update", criticise_ontology_update)
-    workflow.add_node("Update Existing Ontology", update_ontology)
     workflow.add_node("Criticise KG", criticise_kg)
     workflow.add_node("Update KG", update_kg)
 
     # Standard edges
     workflow.add_edge(START, "Select Ontology")
     workflow.add_edge("Select Ontology", "Text to Triples")
-    workflow.add_edge("Update Existing Ontology", "Criticise KG")
     workflow.add_edge("Update KG", END)
 
+    # Add conditional edges with visit counting
     workflow.add_conditional_edges(
         "Text to Triples",
         project_text_to_triples_route,
-        {Status.SUCCESS: "Sublimate Ontology", Status.FAILED: END},
-    )
-
-    workflow.add_conditional_edges(
-        "Criticise Ontology Update",
-        criticise_ontology_update_route,
-        {Status.SUCCESS: "Update Existing Ontology", Status.FAILED: "Text to Triples"},
+        {
+            Status.SUCCESS: "Sublimate Ontology",
+            Status.FAILED: "Text to Triples",
+        },
     )
 
     workflow.add_conditional_edges(
         "Sublimate Ontology",
         sublimate_ontology_route,
-        {Status.SUCCESS: "Criticise Ontology Update", Status.FAILED: "Text to Triples"},
+        {
+            Status.SUCCESS: "Criticise Ontology Update",
+            Status.FAILED: "Text to Triples",
+        },
+    )
+
+    workflow.add_conditional_edges(
+        "Criticise Ontology Update",
+        criticise_ontology_update_route,
+        {
+            Status.SUCCESS: "Criticise KG",
+            Status.FAILED: "Text to Triples",
+        },
     )
 
     workflow.add_conditional_edges(
         "Criticise KG",
         criticise_kg_route,
-        {Status.SUCCESS: "Update KG", Status.FAILED: "Text to Triples"},
+        {
+            Status.SUCCESS: "Update KG",
+            Status.FAILED: "Text to Triples",
+        },
     )
 
     return workflow.compile()
