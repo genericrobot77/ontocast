@@ -45,7 +45,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
 
     ontology_instruction = (
         f"""
-        Be guided by the following ontology <{state.current_ontology.uri}>
+        Use the following ontology <{state.current_ontology.uri}>:
             
         ```ttl
         {ontology_str}
@@ -56,7 +56,7 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
     )
 
     ontology_addendum = (
-        "and the provided ontology {uri}, "
+        f"and the provided ontology <{state.current_ontology.uri}>, "
         if state.current_ontology_name is not None
         else ""
     )
@@ -68,22 +68,22 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
                 
         Follow the instructions:
         
-        - mark the block of extracted semantic triples as ```ttl ```.
-        - use commonly known ontologies (RDFS, OWL, schema etc) {ontology_addendum}to place encountered abstract entities/properties and facts within a broader ontology.
-        - entities representing facts must use the namespace `@prefix co: <{ontology_uri}> .` 
-        - entities representing abstract concepts must use the namespace `@prefix cd: <{current_ns_uri}> .` 
-        - all entities from `cd:` namespace must IMPERATIVELY linked to entities from basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
-        - all facts must form a connected graph with respect to namespace `cd`.
-        - all facts and entities representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
+        - mark the block of extracted semantic triples as ```ttl ```
+        - you can infer two types of entities from the document: entities that are concrete and specific to the document (otherwise called facts) that must use the namespace `@prefix cd: <{current_ns_uri}> .` and entities that are more abstract that must be either mapped to the domain ontology <{ontology_uri}> and more basic ontologies or added properly to the ontology <{ontology_uri}>.
+        - use commonly known ontologies (RDFS, OWL, schema etc) {ontology_addendum} to place (define) entities/classes/types and relationships between them that can be inferred from the document.
+        - all new abstract entities or properties added in <{ontology_uri}> namespace must be linked to entities from either domain ontology <{ontology_uri}> or basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc 
+        - all entities identified by <{current_ns_uri}> namespace (facts, less abstract entities) must be linked to entities from either domain ontology <{ontology_uri}> or basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc 
+        - all entities identified by <{current_ns_uri}> namespace must form a connected graph with respect to `cd:` namespace.
+        - all facts representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
         - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
         - make semantic representation of facts and entities as atomic (!!!) as possible.
         - data from tables should be represented as triples.
 
-        {failure_instruction}
-
         Here is the document:
+        ```
         {text}
-
+```
+        
         {failure_instruction}
 
         {format_instructions}

@@ -9,17 +9,10 @@ from src.agent import (
 from rdflib import URIRef, Literal
 
 
-def test_agent_state(agent_state_init: AgentState):
-    assert len(agent_state_init.ontologies) == 2
-
-    assert "court" in agent_state_init.ontologies[0].title.lower()
-    assert "legal" in agent_state_init.ontologies[0].description.lower()
-    agent_state_init.serialize("test/data/agent_state.init.json")
-
-
 def test_agent_state_json():
     state = AgentState()
-    state.knowledge_graph.add(
+    state.current_graph = RDFGraph()
+    state.current_graph.add(
         (
             URIRef("http://example.com/subject"),
             URIRef("http://example.com/predicate"),
@@ -31,7 +24,14 @@ def test_agent_state_json():
 
     loaded_state = AgentState.model_validate_json(state_json)
 
-    assert isinstance(loaded_state.knowledge_graph, RDFGraph)
+    assert isinstance(loaded_state.current_graph, RDFGraph)
+
+
+def test_agent_state(agent_state_init: AgentState):
+    assert len(agent_state_init.ontologies) == 2
+
+    assert "court" in agent_state_init.ontologies[0].title.lower()
+    assert "legal" in agent_state_init.ontologies[0].description.lower()
 
 
 def test_select_ontology(
@@ -63,6 +63,20 @@ def test_agent_text_to_triples(
     agent_state = project_text_to_triples_with_ontology(agent_state_select_ontology)
     assert "fsec#" in agent_state.current_ontology.uri
     assert len(agent_state.current_graph) > 0
+    assert agent_state.status == Status.SUCCESS
+
+    # Verify that triples use the current ontology's namespace
+    current_ns = agent_state.current_ontology.uri
+    has_ns = False
+    for s, p, o in agent_state.current_graph:
+        if (
+            str(s).startswith(current_ns)
+            or str(p).startswith(current_ns)
+            or str(o).startswith(current_ns)
+        ):
+            has_ns = True
+            break
+    assert has_ns, f"No triples found using namespace {current_ns}"
 
     agent_state.serialize("test/data/agent_state.project_triples.json")
 
