@@ -112,6 +112,7 @@ Follow the instructions:
     - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
     - do not add facts, or concrete entities from the document.
     - make sure newly introduced entites are well linked / described by their properties.
+    - assign where possible correct units to numeric literals.
     - make sure that the semantic representation is faithful to the document, feel to use your knowledge and commone sense to make the ontology more complete and accurate.
     - feel free to update/assign the version of the ontology using semantic versioning convention.
 
@@ -205,8 +206,8 @@ Follow the instructions:
     - all facts should form a connect graph with respect to <{current_namespace}> namespace.
     - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
     - all facts representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
-    - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
-    - make semantic representation of facts and entities as atomic (!!!) as possible.
+    - pay attention to correct formatting of literals, e.g. dates, currencies. Numeric literals should be formatted using double quotes, when they are typed with `^^`, for example `fsec:hasRevenue "13"^^xsd:decimal ;`
+    - make semantic representation of facts as atomic (!!!) as possible.
     - data from tables should be represented as triples.
 
 Here is the document:
@@ -257,7 +258,7 @@ Here is the document:
         )
 
         proj = parser.parse(response.content)
-        state.current_graph = proj.semantic_graph
+        state.graph_facts = proj.semantic_graph
         state.clear_failure()
         return state
 
@@ -283,7 +284,7 @@ def _sublimate_ontology(state: AgentState):
     )
     }}
     """
-    results = state.current_graph.query(query_ontology)
+    results = state.graph_facts.query(query_ontology)
 
     graph_onto_addendum = RDFGraph()
 
@@ -305,15 +306,15 @@ def _sublimate_ontology(state: AgentState):
         }}
     """
 
-    graph_facts = RDFGraph()
+    graph_facts_pure = RDFGraph()
 
-    results = state.current_graph.query(query_facts)
+    results = state.graph_facts.query(query_facts)
 
     # Add filtered triples to the new graph
     for s, p, o in results:
-        graph_facts.add((s, p, o))
+        graph_facts_pure.add((s, p, o))
 
-    return graph_onto_addendum, graph_facts
+    return graph_onto_addendum, graph_facts_pure
 
 
 def sublimate_ontology(state: AgentState) -> AgentState:
@@ -444,26 +445,25 @@ def criticise_facts(state: AgentState) -> AgentState:
     parser = llm_tool.get_parser(KGCritiqueReport)
 
     prompt = """
-        You are a helpful assistant that criticises the knowledge graph derived from the document with the help of a supporting ontology.
-        You need to decide whether the knowledge graph of facts was derived faithfully from the document.
-        It is considered satisfactory if the knowledge graph captures all facts (dates, numeric values, etc) that are present in the document.
-        Another criterion is that the knowledge graph is connected.
+You are a helpful assistant that criticises the knowledge graph of facts derived from a document using a supporting ontology.
+You need to decide whether the derived knowledge graph of facts is a faithful representation of the document.
+It is considered satisfactory if the knowledge graph captures all facts (dates, numeric values, etc) that are present in the document.
+Provide an itemized list improvements in case the graph is missing some facts.
 
-        Here is the supporting ontology:
-        ```ttl
-        {ontology}
-        ```
+Here is the supporting ontology:
+```ttl
+{ontology}
+```
 
-        Here is the document from which the ontology was update was derived:
-        {document}
+Here is the document from which the ontology was update was derived:
+{document}
 
-        Here's the knowledge graph of facts derived from the document:
-        ```ttl
-        {knowledge_graph}
-        ```
+Here's the knowledge graph of facts derived from the document:
+```ttl
+{knowledge_graph}
+```
 
-        {format_instructions}
-    """
+{format_instructions}"""
 
     prompt = PromptTemplate(
         template=prompt,
@@ -479,19 +479,19 @@ def criticise_facts(state: AgentState) -> AgentState:
         prompt.format_prompt(
             ontology=state.current_ontology.graph.serialize(format="turtle"),
             document=state.input_text,
-            knowledge_graph=state.current_graph.serialize(format="turtle"),
+            knowledge_graph=state.graph_facts.serialize(format="turtle"),
             format_instructions=parser.get_format_instructions(),
         )
     )
     critique: KGCritiqueReport = parser.parse(response.content)
 
     if critique.facts_graph_derivation_success:
-        state.current_graph = critique.kg_update_graph
         state.clear_failure()
     else:
         state.set_failure(
             stage=FailureStages.FAILED_AT_FACTS_CRITIQUE,
-            reason=critique.kg_update_critique_comment,
+            reason=critique.facts_graph_derivation_critique_comment,
+            success_score=critique.facts_graph_derivation_score,
         )
     return state
 

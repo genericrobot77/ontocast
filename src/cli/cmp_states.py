@@ -18,11 +18,10 @@ def compare_states(states: list[tuple[pathlib.Path, AgentState]]) -> None:
     """Compare states and print a table with graph lengths."""
     table = Table(title="AgentState Comparison")
     table.add_column("File", style="orange1")
-    table.add_column("Current Graph", justify="right")
+    table.add_column("Graph Facts", justify="right")
     table.add_column("Current Ontology", justify="right")
     table.add_column("Ontology Addendum", justify="right")
     table.add_column("Update Score", justify="right")
-    table.add_column("Graph Facts", justify="right")
     table.add_column("Total Ontologies", justify="right")
 
     # Sort rows by the last number in the filename
@@ -36,13 +35,12 @@ def compare_states(states: list[tuple[pathlib.Path, AgentState]]) -> None:
     for fp, state in sorted_rows:
         table.add_row(
             str(fp.stem),
-            str(len(state.current_graph)),
+            str(len(state.graph_facts)),
             str(len(state.current_ontology.graph))
             if state.current_ontology_name is not None
             else "",
             str(len(state.ontology_addendum.graph)),
             str(state.success_score),
-            str(len(state.graph_facts)),
             str(len(state.ontologies)),
         )
     console.print(table)

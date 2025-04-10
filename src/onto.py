@@ -118,6 +118,10 @@ class KGCritiqueReport(BaseModel):
     facts_graph_derivation_success: bool = Field(
         description="True if the facts graph derivation was performed successfully, False otherwise."
     )
+    facts_graph_derivation_score: float = Field(
+        description="Score 0-100 for how well the triples of facts represent the original document. 0 is the worst, 100 is the best."
+    )
+
     facts_graph_derivation_critique_comment: Optional[str] = Field(
         description="A very concrete explanation of why the semantic graph of facts derivation is not satisfactory. The explanation should be very specific and detailed."
     )
@@ -216,8 +220,9 @@ class AgentState(BaseModel):
     input_text: Optional[str] = None
     current_ontology_name: Optional[str] = None
     ontologies: list[Ontology] = []
-    current_graph: Optional[RDFGraph] = Field(
-        default_factory=RDFGraph, description="RDF knowledge graph"
+    graph_facts: Optional[RDFGraph] = Field(
+        default_factory=RDFGraph,
+        description="RDF triples representing the facts from the current document",
     )
     ontology_addendum: Optional[Ontology] = Field(
         default_factory=lambda: Ontology(
@@ -231,10 +236,6 @@ class AgentState(BaseModel):
     failure_stage: Optional[str] = None
     failure_reason: Optional[str] = None
     success_score: Optional[float] = None
-    graph_facts: Optional[RDFGraph] = Field(
-        default_factory=RDFGraph,
-        description="RDF triples representing the facts from the current document",
-    )
     status: Status = Status.SUCCESS
     node_visits: dict[str, int] = Field(
         default_factory=dict, description="Number of visits per node"

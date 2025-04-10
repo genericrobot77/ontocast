@@ -6,6 +6,7 @@ from src.agent import (
     render_facts_triples,
     _sublimate_ontology,
     sublimate_ontology,
+    criticise_facts,
 )
 from rdflib import URIRef, Literal
 from packaging.version import Version
@@ -14,8 +15,8 @@ import pytest
 
 def test_agent_state_json():
     state = AgentState()
-    state.current_graph = RDFGraph()
-    state.current_graph.add(
+    state.graph_facts = RDFGraph()
+    state.graph_facts.add(
         (
             URIRef("http://example.com/subject"),
             URIRef("http://example.com/predicate"),
@@ -27,7 +28,7 @@ def test_agent_state_json():
 
     loaded_state = AgentState.model_validate_json(state_json)
 
-    assert isinstance(loaded_state.current_graph, RDFGraph)
+    assert isinstance(loaded_state.graph_facts, RDFGraph)
 
 
 def test_agent_state(agent_state_init: AgentState):
@@ -81,7 +82,7 @@ def test_select_ontology(
 
 
 @pytest.mark.order(after="test_select_ontology")
-def test_agent_text_to_ontology_update_loop(
+def test_agent_text_to_ontology_critique_loop(
     agent_state_select_ontology: AgentState,
     apple_report: dict,
 ):
@@ -93,7 +94,7 @@ def test_agent_text_to_ontology_update_loop(
     max_iter = 8
     if k_init > 0:
         agent_state = AgentState.load(
-            f"test/data/agent_state.onto.update.loop.{k_init}.json"
+            f"test/data/agent_state.onto.critique.loop.{k_init}.json"
         )
 
     k = k_init
@@ -111,14 +112,12 @@ def test_agent_text_to_ontology_update_loop(
         print(f"current version: {Version(agent_state.ontology_addendum.version)}")
         print(f"success score: {agent_state.success_score}")
         print(agent_state.failure_reason)
-        if agent_state.status == Status.SUCCESS:
-            agent_state.serialize("test/data/agent_state.onto.update.success.json")
-        else:
-            agent_state.serialize(f"test/data/agent_state.onto.update.loop.{k}.json")
+        if agent_state.status != Status.SUCCESS:
+            agent_state.serialize(f"test/data/agent_state.onto.critique.loop.{k}.json")
         k += 1
     agent_state.status == Status.SUCCESS
     agent_state.clear_failure()
-    agent_state.serialize("test/data/agent_state.onto.update.success.json")
+    agent_state.serialize("test/data/agent_state.onto.critique.success.json")
 
 
 def test_agent_text_to_facts(
@@ -128,11 +127,11 @@ def test_agent_text_to_facts(
     agent_state_onto_critique_success.input_text = apple_report["text"]
     agent_state = render_facts_triples(agent_state_onto_critique_success)
 
-    assert len(agent_state.current_graph) > 0
+    assert len(agent_state.graph_facts) > 0
     # Verify that triples use the current ontology's namespace
     current_ns = agent_state.current_ontology.iri
     has_ns = False
-    for s, p, o in agent_state.current_graph:
+    for s, p, o in agent_state.graph_facts:
         if (
             str(s).startswith(current_ns)
             or str(p).startswith(current_ns)
@@ -147,14 +146,57 @@ def test_agent_text_to_facts(
 
 def test_agent_state_sublimate_ontology():
     agent_state = AgentState.load("test/data/agent_state.project_triples.json")
-    graph_onto_addendum, graph_facts = _sublimate_ontology(agent_state)
-    assert len(agent_state.current_graph) == len(graph_facts) + len(graph_onto_addendum)
+    graph_onto_addendum, graph_facts_pure = _sublimate_ontology(agent_state)
+    assert len(agent_state.graph_facts) == len(graph_facts_pure) + len(
+        graph_onto_addendum
+    )
 
 
 def test_agent_state_sublimate_ontology_full():
     agent_state = AgentState.load("test/data/agent_state.project_triples.json")
     agent_state = sublimate_ontology(agent_state)
     assert len(agent_state.graph_facts) > 0
+
+
+@pytest.mark.order(after="test_agent_text_to_ontology_critique_loop")
+def test_agent_text_to_facts_update_loop(
+    agent_state_onto_critique_success: AgentState,
+    apple_report: dict,
+):
+    agent_state = agent_state_onto_critique_success
+    agent_state.input_text = apple_report["text"]
+    agent_state.status = Status.FAILED
+
+    k_init = 0
+    max_iter = 3
+    if k_init > 0:
+        agent_state = AgentState.load(
+            f"test/data/agent_state.facts.critique.loop.{k_init}.json"
+        )
+
+    k = k_init
+    while agent_state.status == Status.FAILED and k < k_init + max_iter:
+        agent_state = render_facts_triples(agent_state)
+        assert len(agent_state.graph_facts) > 0
+        agent_state = sublimate_ontology(agent_state)
+        agent_state = criticise_facts(agent_state)
+
+        # agent_state = criticise_ontology_update(agent_state)
+        # print(
+        #     len(agent_state.current_ontology.graph),
+        #     len(agent_state.ontology_addendum.graph),
+        # )
+        # print(f"current version: {Version(agent_state.ontology_addendum.version)}")
+        # print(f"success score: {agent_state.success_score}")
+        # print(agent_state.failure_reason)
+        if agent_state.status == Status.SUCCESS:
+            agent_state.serialize("test/data/agent_state.facts.critique.success.json")
+        else:
+            agent_state.serialize(f"test/data/agent_state.facts.critique.loop.{k}.json")
+        k += 1
+    agent_state.status == Status.SUCCESS
+    agent_state.clear_failure()
+    agent_state.serialize("test/data/agent_state.facts.critique.success.json")
 
 
 # def test_agent_state_criticise_ontology_update(
