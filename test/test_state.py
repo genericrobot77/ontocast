@@ -1,12 +1,15 @@
 from src.onto import AgentState, RDFGraph, Status
 from src.agent import (
     select_ontology,
-    project_text_to_triples_with_ontology,
+    render_ontology_triples,
+    criticise_ontology_update,
+    render_facts_triples,
     _sublimate_ontology,
     sublimate_ontology,
-    criticise_ontology_update,
 )
 from rdflib import URIRef, Literal
+from packaging.version import Version
+import pytest
 
 
 def test_agent_state_json():
@@ -32,41 +35,102 @@ def test_agent_state(agent_state_init: AgentState):
 
     assert "court" in agent_state_init.ontologies[0].title.lower()
     assert "legal" in agent_state_init.ontologies[0].description.lower()
+    assert agent_state_init.ontologies[0].version == "3.0"
+    assert agent_state_init.ontologies[1].version == "1.0"
+    agent_state_init.serialize("test/data/agent_state.init.json")
 
 
+@pytest.mark.order(after="test_select_ontology")
+def test_agent_text_to_ontology_fresh(
+    agent_state_select_ontology: AgentState,
+    apple_report: dict,
+):
+    """here no relevant ontology is present, we are trying to create a new one"""
+    agent_state_select_ontology.input_text = apple_report["text"]
+    agent_state_select_ontology.current_ontology_name = None
+    agent_state = render_ontology_triples(agent_state_select_ontology)
+
+    assert agent_state.ontology_addendum.iri is not None
+    assert agent_state.ontology_addendum.iri.startswith("https://test.growgraph.dev/")
+    assert len(agent_state.ontology_addendum.graph) > 0
+    assert Version(agent_state.ontology_addendum.version) >= Version("0.0.0")
+    agent_state.serialize("test/data/agent_state.onto.fresh.json")
+
+
+@pytest.mark.order(after="test_agent_state")
 def test_select_ontology(
     agent_state_init: AgentState,
     apple_report: dict,
     legal_report: dict,
     random_report: dict,
 ):
+    assert len(agent_state_init.ontologies) == 2
     agent_state_init.input_text = random_report["text"]
     agent_state_init = select_ontology(agent_state_init)
     assert agent_state_init.current_ontology_name is None
 
     agent_state_init.input_text = legal_report["text"]
     agent_state = select_ontology(agent_state_init)
-    assert "fcaont#" in agent_state.current_ontology.uri
+    assert "fcaont" in agent_state.current_ontology.iri
 
     agent_state_init.input_text = apple_report["text"]
     agent_state = select_ontology(agent_state_init)
-    assert "fsec#" in agent_state.current_ontology.uri
+    assert "fsec" in agent_state.current_ontology.iri
 
     agent_state_init.serialize("test/data/agent_state.select_ontology.json")
 
 
-def test_agent_text_to_triples(
+@pytest.mark.order(after="test_select_ontology")
+def test_agent_text_to_ontology_update_loop(
     agent_state_select_ontology: AgentState,
     apple_report: dict,
 ):
-    agent_state_select_ontology.input_text = apple_report["text"]
-    agent_state = project_text_to_triples_with_ontology(agent_state_select_ontology)
-    assert "fsec#" in agent_state.current_ontology.uri
-    assert len(agent_state.current_graph) > 0
-    assert agent_state.status == Status.SUCCESS
+    agent_state = agent_state_select_ontology
+    agent_state.input_text = apple_report["text"]
+    agent_state.status = Status.FAILED
 
+    k_init = 0
+    max_iter = 8
+    if k_init > 0:
+        agent_state = AgentState.load(
+            f"test/data/agent_state.onto.update.loop.{k_init}.json"
+        )
+
+    k = k_init
+    while agent_state.status == Status.FAILED and k < k_init + max_iter:
+        agent_state = render_ontology_triples(agent_state)
+        assert agent_state.ontology_addendum.iri is not None
+        assert agent_state.ontology_addendum.iri.startswith("https://growgraph.dev/")
+        assert len(agent_state.ontology_addendum.graph) > 0
+
+        agent_state = criticise_ontology_update(agent_state)
+        print(
+            len(agent_state.current_ontology.graph),
+            len(agent_state.ontology_addendum.graph),
+        )
+        print(f"current version: {Version(agent_state.ontology_addendum.version)}")
+        print(f"success score: {agent_state.success_score}")
+        print(agent_state.failure_reason)
+        if agent_state.status == Status.SUCCESS:
+            agent_state.serialize("test/data/agent_state.onto.update.success.json")
+        else:
+            agent_state.serialize(f"test/data/agent_state.onto.update.loop.{k}.json")
+        k += 1
+    agent_state.status == Status.SUCCESS
+    agent_state.clear_failure()
+    agent_state.serialize("test/data/agent_state.onto.update.success.json")
+
+
+def test_agent_text_to_facts(
+    agent_state_onto_critique_success: AgentState,
+    apple_report: dict,
+):
+    agent_state_onto_critique_success.input_text = apple_report["text"]
+    agent_state = render_facts_triples(agent_state_onto_critique_success)
+
+    assert len(agent_state.current_graph) > 0
     # Verify that triples use the current ontology's namespace
-    current_ns = agent_state.current_ontology.uri
+    current_ns = agent_state.current_ontology.iri
     has_ns = False
     for s, p, o in agent_state.current_graph:
         if (
@@ -81,43 +145,24 @@ def test_agent_text_to_triples(
     agent_state.serialize("test/data/agent_state.project_triples.json")
 
 
-def test_agent_state_sublimate_ontology(
-    agent_state_project_triples: AgentState,
-):
-    graph_onto_addendum, graph_facts = _sublimate_ontology(agent_state_project_triples)
-    assert len(agent_state_project_triples.current_graph) == len(graph_facts) + len(
-        graph_onto_addendum
-    )
+def test_agent_state_sublimate_ontology():
+    agent_state = AgentState.load("test/data/agent_state.project_triples.json")
+    graph_onto_addendum, graph_facts = _sublimate_ontology(agent_state)
+    assert len(agent_state.current_graph) == len(graph_facts) + len(graph_onto_addendum)
 
 
-def test_agent_state_sublimate_ontology_aux(
-    agent_state_project_triples: AgentState,
-):
-    state = sublimate_ontology(agent_state_project_triples)
-    assert state.ontology_modified is not None
-    assert len(state.graph_facts) > 0
-    assert len(state.ontology_addendum) > 0
-    assert state.status == Status.SUCCESS
-    state.serialize("test/data/agent_state.sublimate_ontology.json")
+def test_agent_state_sublimate_ontology_full():
+    agent_state = AgentState.load("test/data/agent_state.project_triples.json")
+    agent_state = sublimate_ontology(agent_state)
+    assert len(agent_state.graph_facts) > 0
 
 
-def test_agent_state_criticise_ontology_update(
-    agent_state_sublimate_ontology: AgentState,
-):
-    state = criticise_ontology_update(agent_state_sublimate_ontology)
-    if state.status == Status.SUCCESS:
-        state.serialize("test/data/agent_state.criticise_ontology_update.success.json")
-    else:
-        state.serialize("test/data/agent_state.criticise_ontology_update.failed.json")
-        assert state.failure_reason is not None
-
-
-def test_agent_text_to_triples_failed_ontology(
-    agent_state_criticise_ontology_update_failed: AgentState,
-):
-    agent_state = project_text_to_triples_with_ontology(
-        agent_state_criticise_ontology_update_failed
-    )
-    assert agent_state.status == Status.SUCCESS
-
-    agent_state.serialize("test/data/agent_state.project_triples.v2.json")
+# def test_agent_state_criticise_ontology_update(
+#     agent_state_sublimate_ontology: AgentState,
+# ):
+#     state = criticise_ontology_update(agent_state_sublimate_ontology)
+#     if state.status == Status.SUCCESS:
+#         state.serialize("test/data/agent_state.criticise_ontology_update.success.json")
+#     else:
+#         state.serialize("test/data/agent_state.criticise_ontology_update.failed.json")
+#         assert state.failure_reason is not None

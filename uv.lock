@@ -894,7 +894,9 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-openai" },
     { name = "langgraph" },
+    { name = "owlready2" },
     { name = "rdflib" },
+    { name = "rich" },
     { name = "robyn" },
     { name = "suthing" },
 ]
@@ -903,8 +905,10 @@ dependencies = [
 dev = [
     { name = "langchain-core" },
     { name = "pre-commit" },
+    { name = "pygraphviz" },
     { name = "pytest" },
     { name = "pytest-dotenv" },
+    { name = "pytest-order" },
     { name = "requests" },
     { name = "ruff" },
 ]
@@ -915,7 +919,9 @@ requires-dist = [
     { name = "langchain", specifier = ">=0.3.22" },
     { name = "langchain-openai", specifier = ">=0.3.12" },
     { name = "langgraph", specifier = ">=0.3.21" },
+    { name = "owlready2", specifier = ">=0.47" },
     { name = "rdflib", specifier = ">=7.1.4" },
+    { name = "rich", specifier = ">=14.0.0" },
     { name = "robyn", specifier = ">=0.53.0" },
     { name = "suthing", specifier = ">=0.3.0" },
 ]
@@ -924,8 +930,10 @@ requires-dist = [
 dev = [
     { name = "langchain-core", specifier = ">=0.3.49" },
     { name = "pre-commit", specifier = ">=4.2.0" },
+    { name = "pygraphviz", specifier = ">=1.14" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-dotenv", specifier = ">=0.5.2" },
+    { name = "pytest-order", specifier = ">=1.3.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "ruff", specifier = ">=0.11.2" },
 ]
@@ -1276,6 +1284,12 @@ wheels = [
 ]
 
 [[package]]
+name = "owlready2"
+version = "0.47"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/8b/6f0534ff7285e8d97e36a3838f88ffc8deb7cd0bc7b34f9f97d8bfdaae90/owlready2-0.47.tar.gz", hash = "sha256:af7e1d2205c0b5886d2e34397ab8c10ca29ff68c3dc3702d43393966ac7f6eb0", size = 27271190 }
+
+[[package]]
 name = "packaging"
 version = "24.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1520,6 +1534,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pygraphviz"
+version = "1.14"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/66/ca/823d5c74a73d6b8b08e1f5aea12468ef334f0732c65cbb18df2a7f285c87/pygraphviz-1.14.tar.gz", hash = "sha256:c10df02377f4e39b00ae17c862f4ee7e5767317f1c6b2dfd04cea6acc7fc2bea", size = 106003 }
+
+[[package]]
 name = "pylatexenc"
 version = "2.10"
 source = { registry = "https://pypi.org/simple" }
@@ -1580,6 +1600,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/cd/b0/cafee9c627c1bae228eb07c9977f679b3a7cb111b488307ab9594ba9e4da/pytest-dotenv-0.5.2.tar.gz", hash = "sha256:2dc6c3ac6d8764c71c6d2804e902d0ff810fa19692e95fe138aefc9b1aa73732", size = 3782 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/da/9da67c67b3d0963160e3d2cbc7c38b6fae342670cc8e6d5936644b2cf944/pytest_dotenv-0.5.2-py3-none-any.whl", hash = "sha256:40a2cece120a213898afaa5407673f6bd924b1fa7eafce6bda0e8abffe2f710f", size = 3993 },
+]
+
+[[package]]
+name = "pytest-order"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/66/02ae17461b14a52ce5a29ae2900156b9110d1de34721ccc16ccd79419876/pytest_order-1.3.0.tar.gz", hash = "sha256:51608fec3d3ee9c0adaea94daa124a5c4c1d2bb99b00269f098f414307f23dde", size = 47544 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1b/73/59b038d1aafca89f8e9936eaa8ffa6bb6138d00459d13a32ce070be4f280/pytest_order-1.3.0-py3-none-any.whl", hash = "sha256:2cd562a21380345dd8d5774aa5fd38b7849b6ee7397ca5f6999bbe6e89f07f6e", size = 14609 },
 ]
 
 [[package]]

@@ -2,26 +2,27 @@ from rdflib import Namespace
 import logging
 
 from langgraph.graph import END, StateGraph, START
+from enum import StrEnum
+
 import re
 
 from src.onto import (
     AgentState,
-    OntologySelector,
-    TriplesProjection,
+    OntologySelectorReport,
+    Ontology,
     RDFGraph,
     Status,
-    OntologyUpdateCritique,
-    KGUpdateCritique,
+    OntologyUpdateCritiqueReport,
+    KGCritiqueReport,
+    SemanticTriplesFactsReport,
+    FailureStages,
 )
 from langchain.prompts import PromptTemplate
 
 from src.tools import LLMTool
+from src.config import CURRENT_NS_IRI, CURRENT_DOMAIN
 
 logger = logging.getLogger(__name__)
-
-current_ontology_uri = "https://example.com/current-ontology#"
-current_ns_uri = "https://example.com/current-document#"
-
 
 # Create a global instance of the LLM tool
 llm_tool = LLMTool()
@@ -34,68 +35,196 @@ def extract_struct(text, key):
     return match.group(1).strip() if match else None
 
 
-def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
-    parser = llm_tool.get_parser(TriplesProjection)
+def select_ontology(state: AgentState) -> AgentState:
+    parser = llm_tool.get_parser(OntologySelectorReport)
 
-    if state.current_ontology_name is None:
-        ontology_uri = current_ontology_uri
-    else:
-        ontology_uri = state.current_ontology.uri
-        ontology_str = state.current_ontology.graph.serialize(format="turtle")
+    ontologies_desc = "\n\n".join([o.describe() for o in state.ontologies])
+    excerpt = state.input_text[:1000] + "..."
 
-    ontology_instruction = (
-        f"""
-        Use the following ontology <{state.current_ontology.uri}>:
-            
-        ```ttl
-        {ontology_str}
-        ```
-    """
-        if state.current_ontology_name is not None
-        else ""
-    )
-
-    ontology_addendum = (
-        f"and the provided ontology <{state.current_ontology.uri}>, "
-        if state.current_ontology_name is not None
-        else ""
-    )
-
-    template_prompt = """
-        Generate semantic triples in turtle (ttl) format from the text below.
-
-        {ontology_instruction}
-                
-        Follow the instructions:
+    prompt = """
+        You are a helpful assistant that decides which ontology to use for a given document.
+        You are given a list of ontologies and a document.
+        You need to decide which ontology can be used for the document to create a semantic graph.
+        Here is the list of ontologies:
+        {ontologies_desc}
         
-        - mark the block of extracted semantic triples as ```ttl ```
-        - you can infer two types of entities from the document: entities that are concrete and specific to the document (otherwise called facts) that must use the namespace `@prefix cd: <{current_ns_uri}> .` and entities that are more abstract that must be either mapped to the domain ontology <{ontology_uri}> and more basic ontologies or added properly to the ontology <{ontology_uri}>.
-        - use commonly known ontologies (RDFS, OWL, schema etc) {ontology_addendum} to place (define) entities/classes/types and relationships between them that can be inferred from the document.
-        - all new abstract entities or properties added in <{ontology_uri}> namespace must be linked to entities from either domain ontology <{ontology_uri}> or basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc 
-        - all entities identified by <{current_ns_uri}> namespace (facts, less abstract entities) must be linked to entities from either domain ontology <{ontology_uri}> or basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc 
-        - all entities identified by <{current_ns_uri}> namespace must form a connected graph with respect to `cd:` namespace.
-        - all facts representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
-        - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
-        - make semantic representation of facts and entities as atomic (!!!) as possible.
-        - data from tables should be represented as triples.
-
-        Here is the document:
-        ```
-        {text}
-```
-        
-        {failure_instruction}
+        Here is an excerpt from the document:
+        {excerpt}
 
         {format_instructions}
     """
 
     prompt = PromptTemplate(
+        template=prompt,
+        input_variables=["excerpt", "ontologies_desc", "format_instructions"],
+    )
+
+    response = llm_tool.llm(
+        prompt.format_prompt(
+            excerpt=excerpt,
+            ontologies_desc=ontologies_desc,
+            format_instructions=parser.get_format_instructions(),
+        )
+    )
+    selector = parser.parse(response.content)
+
+    if selector.short_name in state.ontology_names:
+        state.current_ontology_name = selector.short_name
+    return state
+
+
+def render_ontology_triples(state: AgentState) -> AgentState:
+    parser = llm_tool.get_parser(Ontology)
+
+    if state.current_ontology_name is None:
+        ontology_instruction = """
+Develop a new domain ontology based on the document.
+        
+        """
+        specific_ontology_instruction = f"""
+    - all new abstract entities/classes/types or properties added to the new ontology must be linked to entities from basic ontologies (RDFS, OWL, schema etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
+    - propose a succint IRI for the domain ontology, linked to the domain {CURRENT_DOMAIN}.
+    - explicitly use prefix `co:` for entities/properties placed in the proposed ontology."""
+    else:
+        ontology_iri = state.current_ontology.iri
+        ontology_str = state.current_ontology.graph.serialize(format="turtle")
+
+        ontology_instruction = f"""
+Update/complement the domain ontology <{ontology_iri}> provided below with abstract entities and relations that can be inferred from the document.
+
+{state.current_ontology.describe()}
+Feel free to modify the description of the ontology to make it more accurate and complete, but to change neither the ontology IRI nor name.
+
+```ttl
+{ontology_str}
+```
+"""
+
+        specific_ontology_instruction = f"""
+    - all new abstract entities/classes/types or properties added to <{ontology_iri}> ontology must be linked to entities from either domain ontology <{ontology_iri}> or basic ontologies (RDFS, OWL, schema etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
+    - add new constraints and axioms if needed."""
+
+    instructions = f"""
+Follow the instructions:
+
+{specific_ontology_instruction}
+    - ontology must be provided in turtle (ttl) format as a single string.
+    - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
+    - do not add facts, or concrete entities from the document.
+    - make sure newly introduced entites are well linked / described by their properties.
+    - make sure that the semantic representation is faithful to the document, feel to use your knowledge and commone sense to make the ontology more complete and accurate.
+    - feel free to update/assign the version of the ontology using semantic versioning convention.
+
+    """
+
+    template_prompt = """
+{ontology_instruction}
+
+{instructions}
+
+Here is the document:
+```
+{text}
+```
+        
+{failure_instruction}
+
+{format_instructions}
+"""
+
+    prompt = PromptTemplate(
         template=template_prompt,
         input_variables=[
-            "ontology_uri",
-            "current_ns_uri",
             "text",
-            "ontology_addendum",
+            "instructions",
+            "ontology_instruction",
+            "failure_instruction",
+            "format_instructions",
+        ],
+    )
+
+    try:
+        if state.failure_reason is not None:
+            failure_instruction = "IMPORTANT: The previous attempt to generate ontology triples failed/was unsatisfactory."
+            if state.failure_stage is not None:
+                failure_instruction += (
+                    f"\n\nIt failed at the stage: {state.failure_stage}"
+                )
+            failure_instruction += f"\n\n{state.failure_reason}"
+            failure_instruction += "\n\nPlease address ALL the issues outlined in the critique. We will be penalized :( for each unaddressed issue."
+        else:
+            failure_instruction = ""
+
+        response = llm_tool.llm(
+            prompt.format_prompt(
+                text=state.input_text,
+                instructions=instructions,
+                ontology_instruction=ontology_instruction,
+                failure_instruction=failure_instruction,
+                format_instructions=parser.get_format_instructions(),
+            )
+        )
+
+        proj_ontology = parser.parse(response.content)
+        state.ontology_addendum = proj_ontology
+        state.clear_failure()
+        return state
+
+    except Exception as e:
+        logger.error(f"Failed to generate triples: {str(e)}")
+        state.set_failure(
+            FailureStages.FAILED_AT_PARSE_TEXT_TO_ONTOLOGY_TRIPLES, str(e)
+        )
+        return state
+
+
+def render_facts_triples(state: AgentState) -> AgentState:
+    parser = llm_tool.get_parser(SemanticTriplesFactsReport)
+
+    ontology_iri = state.current_ontology.iri
+    ontology_str = state.current_ontology.graph.serialize(format="turtle")
+
+    ontology_instruction = f"""
+Use the following ontology <{state.current_ontology.iri}>:
+    
+```ttl
+{ontology_str}
+```
+"""
+
+    template_prompt = """
+Generate semantic triples representing facts (not abstract entities) in turtle (ttl) format from the text below.
+
+{ontology_instruction}
+        
+Follow the instructions:
+
+    - use commonly known ontologies (RDFS, OWL, schema etc) and the provided ontology <{ontology_iri}> to place (define) entities/classes/types and relationships between them that can be inferred from the document.
+    - for facts from the document, use <{current_namespace}> namespace with prefix `cd:` as `@prefix cd: {current_namespace} .`
+    - all entities identified by <{current_namespace}> namespace (facts, less abstract entities) must be linked to entities from either domain ontology <{ontology_iri}> or basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc 
+    - all facts should form a connect graph with respect to <{current_namespace}> namespace.
+    - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
+    - all facts representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
+    - pay attention to constraints and axioms of the ontology. Feel free to add new constraints and axioms if needed.
+    - make semantic representation of facts and entities as atomic (!!!) as possible.
+    - data from tables should be represented as triples.
+
+Here is the document:
+```
+{text}
+```
+
+{failure_instruction}
+
+{format_instructions}
+"""
+
+    prompt = PromptTemplate(
+        template=template_prompt,
+        input_variables=[
+            "ontology_iri",
+            "current_namespace",
+            "text",
             "ontology_instruction",
             "failure_instruction",
             "format_instructions",
@@ -118,10 +247,9 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
 
         response = llm_tool.llm(
             prompt.format_prompt(
-                ontology_uri=ontology_uri,
-                current_ns_uri=current_ns_uri,
+                ontology_iri=ontology_iri,
+                current_namespace=CURRENT_NS_IRI,
                 text=state.input_text,
-                ontology_addendum=ontology_addendum,
                 ontology_instruction=ontology_instruction,
                 failure_instruction=failure_instruction,
                 format_instructions=parser.get_format_instructions(),
@@ -130,64 +258,18 @@ def project_text_to_triples_with_ontology(state: AgentState) -> AgentState:
 
         proj = parser.parse(response.content)
         state.current_graph = proj.semantic_graph
-        state.clear_failure()  # Clear any failure state on success
+        state.clear_failure()
         return state
 
     except Exception as e:
         logger.error(f"Failed to generate triples: {str(e)}")
-        state.set_failure("Text to Triples", str(e))
+        state.set_failure(FailureStages.FAILED_AT_PARSE_TEXT_TO_FACTS_TRIPLES, str(e))
         return state
-
-
-def select_ontology(state: AgentState) -> AgentState:
-    parser = llm_tool.get_parser(OntologySelector)
-
-    ontologies_desc = "\n\n".join(
-        [
-            f"Ontology name: {o.short_name}\n"
-            f"Description: {o.description}\n"
-            f"Ontology URI: {o.uri}\n"
-            for o in state.ontologies
-        ]
-    )
-    excerpt = state.input_text[:1000] + "..."
-
-    prompt = """
-        You are a helpful assistant that decides which ontology to use for a given document.
-        You are given a list of ontologies and a document.
-        You need to decide which ontology can be used for the document to create a semantic graph.
-        Here is the list of ontologies:
-        {ontologies_desc}
-        
-        Here is an excerpt from the document:
-        {excerpt}
-
-        {format_instructions}
-    """
-
-    # Create the prompt template with format instructions
-    prompt = PromptTemplate(
-        template=prompt,
-        input_variables=["excerpt", "ontologies_desc", "format_instructions"],
-    )
-
-    response = llm_tool.llm(
-        prompt.format_prompt(
-            excerpt=excerpt,
-            ontologies_desc=ontologies_desc,
-            format_instructions=parser.get_format_instructions(),
-        )
-    )
-    selector = parser.parse(response.content)
-
-    if selector.short_name in state.ontology_names:
-        state.current_ontology_name = selector.short_name
-    return state
 
 
 def _sublimate_ontology(state: AgentState):
     query_ontology = f"""
-    PREFIX cd: <{current_ns_uri}>
+    PREFIX cd: <{CURRENT_NS_IRI}>
     
     SELECT ?s ?p ?o
     WHERE {{
@@ -210,7 +292,7 @@ def _sublimate_ontology(state: AgentState):
         graph_onto_addendum.add((s, p, o))
 
     query_facts = f"""
-        PREFIX cd: <{current_ns_uri}>
+        PREFIX cd: <{CURRENT_NS_IRI}>
 
         SELECT ?s ?p ?o
         WHERE {{
@@ -242,21 +324,27 @@ def sublimate_ontology(state: AgentState) -> AgentState:
         ns_prefix_current_ontology = [
             p
             for p, ns in state.current_ontology.graph.namespaces()
-            if str(ns) == state.current_ontology.uri
+            if str(ns) == state.current_ontology.iri
         ]
 
         graph_onto_addendum.bind(
-            ns_prefix_current_ontology[0], Namespace(state.current_ontology.uri)
+            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
         )
         graph_facts.bind(
-            ns_prefix_current_ontology[0], Namespace(state.current_ontology.uri)
+            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
         )
-        state.ontology_addendum = graph_onto_addendum
+
+        current_idx = next(
+            i
+            for i, o in enumerate(state.ontologies)
+            if o.short_name == state.current_ontology_name
+        )
+        state.ontologies[current_idx] += graph_onto_addendum
         state.graph_facts = graph_facts
         state.clear_failure()
     except Exception as e:
         state.set_failure(
-            "The produced semantic could not be validated or separated into ontology and facts (technical issue).",
+            FailureStages.FAILED_AT_SUBLIMATE_ONTOLOGY,
             str(e),
         )
 
@@ -264,33 +352,56 @@ def sublimate_ontology(state: AgentState) -> AgentState:
 
 
 def criticise_ontology_update(state: AgentState) -> AgentState:
-    parser = llm_tool.get_parser(OntologyUpdateCritique)
+    parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
 
-    prompt = """
-        You are a helpful assistant that criticises the ontology update.
-        You need to decide whether the ontology update is satisfactory.
-        It is considered satisfactory if the ontology update captures all abstract classes and properties that present explicitly or implicitly in the document that are not already captured in the original ontology.
+    if state.current_ontology_name is None:
+        prompt = """        
+You are a helpful assistant that criticises a newly proposed ontology.
+You need to decide whether the updated ontology is sufficiently complete and comprehensive, also providing a score between 0 and 100.
+The ontology is considered complete and comprehensive if it captures the most important abstract classes and properties that are present explicitly or implicitly in the document.
+If is not not complete and comprehensive, provide a very concrete itemized explanation of why can be improved.
+As we are working on an ontology, ONLY abstract classes and properties are considered, concrete entities are not important.
 
-        Here is the original ontology:
-        ```ttl
-        {ontology_original}
-        ```
+Here is the document from which the ontology was update was derived:
+{document}
 
-        Here is the document from which the ontology was update was derived:
-        {document}
+Here is the proposed ontology:
+```ttl
+{ontology_update}
+```
 
-                Here is the ontology update:
-        ```ttl
-        {ontology_update}
-        ```
+{format_instructions}
+"""
 
-        {format_instructions}
-    """
+    else:
+        prompt = f"""
+
+You are a helpful assistant that criticises an ontology update.
+You need to decide whether the updated ontology is sufficiently complete and comprehensive, also providing a score between 0 and 100.
+The ontology is considered complete and comprehensive if it captures the most important abstract classes and properties that are present explicitly or implicitly in the document.
+If is not not complete and comprehensive, provide a very concrete itemized explanation of why can be improved.
+As we are working on an ontology, ONLY abstract classes and properties are considered, concrete entities are not important.
+
+
+Here is the original ontology:
+```ttl
+{state.current_ontology.graph.serialize(format="turtle")}
+```
+
+Here is the document from which the ontology was update was derived:
+{{document}}
+
+Here is the ontology update:
+```ttl
+{{ontology_update}}
+```
+
+{{format_instructions}}
+"""
 
     prompt = PromptTemplate(
         template=prompt,
         input_variables=[
-            "ontology_original",
             "ontology_update",
             "document",
             "format_instructions",
@@ -299,34 +410,44 @@ def criticise_ontology_update(state: AgentState) -> AgentState:
 
     response = llm_tool.llm(
         prompt.format_prompt(
-            ontology_original=state.current_ontology.graph.serialize(format="turtle"),
-            ontology_update=state.ontology_addendum.serialize(format="turtle"),
+            ontology_update=state.ontology_addendum.graph.serialize(format="turtle"),
             document=state.input_text,
             format_instructions=parser.get_format_instructions(),
         )
     )
-    critique: OntologyUpdateCritique = parser.parse(response.content)
+    critique: OntologyUpdateCritiqueReport = parser.parse(response.content)
+
+    if state.current_ontology_name is None:
+        state.ontologies.append(state.ontology_addendum)
+        state.current_ontology_name = state.ontology_addendum.short_name
+    else:
+        current_idx = next(
+            i
+            for i, o in enumerate(state.ontologies)
+            if o.short_name == state.current_ontology_name
+        )
+        state.ontologies[current_idx] += state.ontology_addendum
 
     if critique.ontology_update_success:
         state.clear_failure()
     else:
         state.set_failure(
-            stage="The produced ontology did not pass the critique stage(conceptual issue).",
+            stage=FailureStages.FAILED_AT_ONTOLOGY_CRITIQUE,
             reason=critique.ontology_update_critique_comment,
+            success_score=critique.ontology_update_score,
         )
 
-    state.current_ontology.graph += state.ontology_addendum
-    state.ontology_modified = True
     return state
 
 
-def criticise_kg(state: AgentState) -> AgentState:
-    parser = llm_tool.get_parser(KGUpdateCritique)
+def criticise_facts(state: AgentState) -> AgentState:
+    parser = llm_tool.get_parser(KGCritiqueReport)
 
     prompt = """
         You are a helpful assistant that criticises the knowledge graph derived from the document with the help of a supporting ontology.
-        You need to decide whether the knowledge graph derivation was faithful to the document.
-        It is considered satisfactory if the knowledge graph captures all facts.
+        You need to decide whether the knowledge graph of facts was derived faithfully from the document.
+        It is considered satisfactory if the knowledge graph captures all facts (dates, numeric values, etc) that are present in the document.
+        Another criterion is that the knowledge graph is connected.
 
         Here is the supporting ontology:
         ```ttl
@@ -362,22 +483,21 @@ def criticise_kg(state: AgentState) -> AgentState:
             format_instructions=parser.get_format_instructions(),
         )
     )
-    critique: KGUpdateCritique = parser.parse(response.content)
+    critique: KGCritiqueReport = parser.parse(response.content)
 
-    if critique.kg_update_success:
+    if critique.facts_graph_derivation_success:
+        state.current_graph = critique.kg_update_graph
         state.clear_failure()
     else:
         state.set_failure(
-            stage="The produced knowledge graph did not pass the critique stage(conceptual issue).",
+            stage=FailureStages.FAILED_AT_FACTS_CRITIQUE,
             reason=critique.kg_update_critique_comment,
         )
     return state
 
 
-def update_kg(state: AgentState) -> AgentState:
+def load_kg(state: AgentState) -> AgentState:
     """Update the knowledge graph with the new facts"""
-    # Actual implementation to modify state
-    # ...
     return state
 
 
@@ -453,56 +573,69 @@ def criticise_kg_route(state: AgentState) -> str:
     return create_visit_route("Update KG", "Criticise KG")(state)
 
 
+class WorkflowNode(StrEnum):
+    SELECT_ONTOLOGY = "Select Ontology"
+    TEXT_TO_ONTOLOGY = "Text to Ontology"
+    TEXT_TO_FACTS = "Text to Facts"
+    SUBLIMATE_ONTOLOGY = "Sublimate Ontology"
+    CRITICISE_ONTOLOGY = "Criticise Ontology"
+    CRITICISE_FACTS = "Criticise Facts"
+    LOAD_KG = "Load KG"
+
+
 # Define the workflow graph
 def create_agent_graph():
     """Create the agent workflow graph."""
     workflow = StateGraph(AgentState)
-    workflow.add_node("Select Ontology", select_ontology)
-    workflow.add_node("Text to Triples", project_text_to_triples_with_ontology)
-    workflow.add_node("Sublimate Ontology", sublimate_ontology)
-    workflow.add_node("Criticise Ontology Update", criticise_ontology_update)
-    workflow.add_node("Criticise KG", criticise_kg)
-    workflow.add_node("Update KG", update_kg)
+    workflow.add_node(WorkflowNode.SELECT_ONTOLOGY, select_ontology)
+    workflow.add_node(WorkflowNode.TEXT_TO_ONTOLOGY, render_ontology_triples)
+    workflow.add_node(WorkflowNode.TEXT_TO_FACTS, render_facts_triples)
+    workflow.add_node(WorkflowNode.SUBLIMATE_ONTOLOGY, sublimate_ontology)
+    workflow.add_node(WorkflowNode.CRITICISE_ONTOLOGY, criticise_ontology_update)
+    workflow.add_node(WorkflowNode.CRITICISE_FACTS, criticise_facts)
+    workflow.add_node(WorkflowNode.LOAD_KG, load_kg)
 
     # Standard edges
-    workflow.add_edge(START, "Select Ontology")
-    workflow.add_edge("Select Ontology", "Text to Triples")
-    workflow.add_edge("Update KG", END)
+    workflow.add_edge(START, WorkflowNode.SELECT_ONTOLOGY)
+    workflow.add_edge(WorkflowNode.SELECT_ONTOLOGY, WorkflowNode.TEXT_TO_ONTOLOGY)
+    workflow.add_edge(WorkflowNode.SUBLIMATE_ONTOLOGY, WorkflowNode.CRITICISE_FACTS)
+
+    workflow.add_edge(WorkflowNode.LOAD_KG, END)
 
     # Add conditional edges with visit counting
     workflow.add_conditional_edges(
-        "Text to Triples",
+        WorkflowNode.TEXT_TO_ONTOLOGY,
         project_text_to_triples_route,
         {
-            Status.SUCCESS: "Sublimate Ontology",
-            Status.FAILED: "Text to Triples",
+            Status.SUCCESS: WorkflowNode.CRITICISE_ONTOLOGY,
+            Status.FAILED: WorkflowNode.TEXT_TO_ONTOLOGY,
         },
     )
 
     workflow.add_conditional_edges(
-        "Sublimate Ontology",
+        WorkflowNode.CRITICISE_ONTOLOGY,
         sublimate_ontology_route,
         {
-            Status.SUCCESS: "Criticise Ontology Update",
-            Status.FAILED: "Text to Triples",
+            Status.SUCCESS: WorkflowNode.TEXT_TO_FACTS,
+            Status.FAILED: WorkflowNode.TEXT_TO_ONTOLOGY,
         },
     )
 
     workflow.add_conditional_edges(
-        "Criticise Ontology Update",
+        WorkflowNode.TEXT_TO_FACTS,
         criticise_ontology_update_route,
         {
-            Status.SUCCESS: "Criticise KG",
-            Status.FAILED: "Text to Triples",
+            Status.SUCCESS: WorkflowNode.SUBLIMATE_ONTOLOGY,
+            Status.FAILED: WorkflowNode.TEXT_TO_FACTS,
         },
     )
 
     workflow.add_conditional_edges(
-        "Criticise KG",
+        WorkflowNode.CRITICISE_FACTS,
         criticise_kg_route,
         {
-            Status.SUCCESS: "Update KG",
-            Status.FAILED: "Text to Triples",
+            Status.SUCCESS: WorkflowNode.LOAD_KG,
+            Status.FAILED: WorkflowNode.TEXT_TO_FACTS,
         },
     )
 

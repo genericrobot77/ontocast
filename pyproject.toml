@@ -6,7 +6,9 @@ requires = ["hatchling"]
 dev = [
   "langchain-core>=0.3.49",
   "pre-commit>=4.2.0",
+  "pygraphviz>=1.14",
   "pytest-dotenv>=0.5.2",
+  "pytest-order>=1.3.0",
   "pytest>=8.3.5",
   "requests>=2.32.3",
   "ruff>=0.11.2"
@@ -18,7 +20,9 @@ dependencies = [
   "langchain-openai>=0.3.12",
   "langchain>=0.3.22",
   "langgraph>=0.3.21",
+  "owlready2>=0.47",
   "rdflib>=7.1.4",
+  "rich>=14.0.0",
   "robyn>=0.53.0",
   "suthing>=0.3.0"
 ]
@@ -29,6 +33,7 @@ requires-python = ">=3.12"
 version = "0.1.0"
 
 [project.scripts]
+cmp-states = "src.cli.cmp_states:main"
 render-ontokg = "src.cli.serve:run"
 
 [tool.hatch.build.targets.wheel]

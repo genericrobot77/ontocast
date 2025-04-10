@@ -21,6 +21,22 @@ class Status(StrEnum):
     FAILED = "failed"
 
 
+class FailureStages(StrEnum):
+    FAILED_AT_ONTOLOGY_CRITIQUE = (
+        "The produced ontology did not pass the critique stage."
+    )
+    FAILED_AT_FACTS_CRITIQUE = (
+        "The produced graph of facts did not pass the critique stage."
+    )
+    FAILED_AT_PARSE_TEXT_TO_ONTOLOGY_TRIPLES = (
+        "Failed to parse the text into ontology triples."
+    )
+    FAILED_AT_PARSE_TEXT_TO_FACTS_TRIPLES = (
+        "Failed to parse the text into facts triples."
+    )
+    FAILED_AT_SUBLIMATE_ONTOLOGY = "The produced semantic could not be validated or separated into ontology and facts (technical issue)."
+
+
 class RDFGraph(Graph):
     """Subclass to attach schema support for Pydantic."""
 
@@ -63,16 +79,7 @@ class RDFGraph(Graph):
         return instance
 
 
-class OntologySummary(BaseModel):
-    short_name: str = Field(description="A short name (identifier) for the ontology")
-    title: str = Field(description="The name of the ontology")
-    uri: str = Field(description="URI of the current ontology")
-    description: str = Field(
-        description="A consise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)"
-    )
-
-
-class OntologySelector(BaseModel):
+class OntologySelectorReport(BaseModel):
     short_name: Optional[str] = Field(
         description="A short name (identifier) for the ontology that could be used to represent the domain of the document, None if no ontology is suitable"
     )
@@ -81,38 +88,58 @@ class OntologySelector(BaseModel):
     )
 
 
-class TriplesProjection(BaseModel):
+class SemanticTriplesFactsReport(BaseModel):
     semantic_graph: RDFGraph = Field(
         default_factory=RDFGraph,
-        description="Semantic triples representing the document in turtle (ttl) format.",
+        description="Semantic triples (facts) representing the document in turtle (ttl) format.",
     )
     ontology_relevance_score: Optional[float] = Field(
-        description="The perceived score of how relevant the provided ontology is to the document (between 0 and 1)? 0 if ontology is not relevant (or not provided), 1 if ontology is fully relevant."
+        description="Score 0-100 for how relevant the ontology is to the document. 0 is the worst, 100 is the best."
     )
     triples_generation_score: Optional[float] = Field(
-        description="The perceived score of how well the triples generation task was performed (between 0 and 1)? 0 if the triples generation failed, 1 if the triples generation was perfect."
+        description="Score 0-100 for how well the facts extraction / triples generation was performed. 0 is the worst, 100 is the best."
     )
 
 
-class OntologyUpdateCritique(BaseModel):
+class OntologyUpdateCritiqueReport(BaseModel):
     ontology_update_success: bool = Field(
-        description="True if the ontology update was performed successfully, False otherwise"
+        description="True if the ontology update was performed successfully, False otherwise."
     )
+    ontology_update_score: float = Field(
+        description="Score 0-100 for how well the update improves the original domain ontology of the document. 0 is the worst, 100 is the best."
+    )
+
     ontology_update_critique_comment: Optional[str] = Field(
-        description="A consise explanation (3-4 sentences) of why the ontology update is not satisfactory"
+        description="A very concrete explanation of why the ontology update is not satisfactory. The explanation should be very specific and detailed."
     )
 
 
-class KGUpdateCritique(BaseModel):
-    kg_update_success: bool = Field(
-        description="True if the knowledge graph update was performed successfully, False otherwise"
+class KGCritiqueReport(BaseModel):
+    facts_graph_derivation_success: bool = Field(
+        description="True if the facts graph derivation was performed successfully, False otherwise."
     )
-    kg_update_critique_comment: Optional[str] = Field(
-        description="A consise explanation (3-4 sentences) of why the knowledge graph update is not satisfactory"
+    facts_graph_derivation_critique_comment: Optional[str] = Field(
+        description="A very concrete explanation of why the semantic graph of facts derivation is not satisfactory. The explanation should be very specific and detailed."
     )
 
 
-class Ontology(BaseModel):
+class OntologyProperites(BaseModel):
+    short_name: str = Field(description="A short name (identifier) for the ontology")
+    title: str = Field(description="The name of the ontology")
+    description: str = Field(
+        description="A consise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)"
+    )
+    version: str = Field(
+        description="Version of the ontology",
+        default="0.0.0",
+    )
+    iri: Optional[str] = Field(
+        None,
+        description="Ontology IRI (Internationalized Resource Identifier), ends with either `#` or `/`",
+    )
+
+
+class Ontology(OntologyProperites):
     """
     A Pydantic model representing an ontology with its RDF graph and description.
 
@@ -123,19 +150,36 @@ class Ontology(BaseModel):
         version (Optional[str]): Optional version information
     """
 
-    graph: RDFGraph = Field(default_factory=RDFGraph)
-    description: str = Field(
-        ..., description="Human-readable description of the ontology"
+    graph: RDFGraph = Field(
+        default_factory=RDFGraph,
+        description="Semantic triples (abstract entities/relations) that define the ontology in turtle (ttl) format as a string.",
     )
-    title: str = Field(..., description="Name of the ontology")
-    short_name: str = Field(
-        ..., description="A short name (identifier) for the ontology"
-    )
-    version: Optional[str] = Field(None, description="Version of the ontology")
-    uri: Optional[str] = Field(None, description="URI of the ontology")
 
     class Config:
         arbitrary_types_allowed = True
+
+    def __iadd__(self, other: "Ontology") -> "Ontology":
+        """
+        In-place addition operator for Ontology instances.
+        Merges the RDF graphs and takes properties from the right-hand operand.
+
+        Args:
+            other (Ontology): The ontology to add to this one
+
+        Returns:
+            Ontology: self after modification
+        """
+
+        self.graph += other.graph
+
+        # Take properties from the right-hand operand
+        self.title = other.title
+        self.short_name = other.short_name
+        self.description = other.description
+        self.iri = other.iri
+        self.version = other.version
+
+        return self
 
     @classmethod
     def from_file(cls, file_path: pathlib.Path, format: str = "turtle", **kwargs):
@@ -158,6 +202,13 @@ class Ontology(BaseModel):
 
         return cls(graph=graph, **summary.model_dump(), **kwargs)
 
+    def describe(o) -> str:
+        return (
+            f"Ontology name: {o.short_name}\n"
+            f"Description: {o.description}\n"
+            f"Ontology IRI: {o.iri}\n"
+        )
+
 
 class AgentState(BaseModel):
     """State for the ontology-based knowledge graph agent."""
@@ -168,12 +219,18 @@ class AgentState(BaseModel):
     current_graph: Optional[RDFGraph] = Field(
         default_factory=RDFGraph, description="RDF knowledge graph"
     )
-    ontology_modified: bool = False
+    ontology_addendum: Optional[Ontology] = Field(
+        default_factory=lambda: Ontology(
+            short_name="default name",
+            title="default title",
+            description="default description",
+            graph=RDFGraph(),
+        ),
+        description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
+    )
     failure_stage: Optional[str] = None
     failure_reason: Optional[str] = None
-    ontology_addendum: Optional[RDFGraph] = Field(
-        default_factory=RDFGraph, description="RDF triples to add to the ontology"
-    )
+    success_score: Optional[float] = None
     graph_facts: Optional[RDFGraph] = Field(
         default_factory=RDFGraph,
         description="RDF triples representing the facts from the current document",
@@ -189,7 +246,7 @@ class AgentState(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    def set_failure(self, stage: str, reason: str) -> None:
+    def set_failure(self, stage: str, reason: str, success_score: float = 0.0) -> None:
         """
         Set failure state with stage and reason.
 
@@ -199,16 +256,18 @@ class AgentState(BaseModel):
         """
         self.failure_stage = stage
         self.failure_reason = reason
+        self.success_score = success_score
         self.status = Status.FAILED
 
     def clear_failure(self) -> None:
         """Clear failure state and set status to success."""
         self.failure_stage = None
         self.failure_reason = None
+        self.success_score = None
         self.status = Status.SUCCESS
 
-    def __init__(self, ontology_path: Optional[str] = None, **data):
-        super().__init__(**data)
+    def __init__(self, ontology_path: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
         if ontology_path is not None:
             for fname in pathlib.Path(ontology_path).glob("*.ttl"):
                 try:
@@ -258,18 +317,17 @@ class AgentState(BaseModel):
         return cls.model_validate_json(state_json)
 
 
-def get_ontology_summary(ontology_str: str) -> OntologySummary:
+def get_ontology_summary(ontology_str: str) -> OntologyProperites:
     llm = ChatOpenAI(model="gpt-4o-mini")
 
     # Define the output parser
-    parser = PydanticOutputParser(pydantic_object=OntologySummary)
+    parser = PydanticOutputParser(pydantic_object=OntologyProperites)
 
     # Create the prompt template with format instructions
     prompt = PromptTemplate(
         template=(
             "Below is an ontology in Turtle format:\n\n"
-            "{ontology_str}\n\n"
-            "Read it and generate a name and a short description (3-4 sentences max) of the ontology.\n"
+            "```ttl\n{ontology_str}\n```\n\n"
             "{format_instructions}"
         ),
         input_variables=["ontology_str"],

@@ -6,6 +6,9 @@
 @prefix schema: <https://schema.org/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
+<https://growgraph.dev/fsec#> a owl:Ontology ;
+    rdfs:label "Financial Securities Ontology" ;
+    owl:versionInfo "1.0" .
 
 fsec:Document rdf:type rdfs:Class ;
     rdfs:label "Document" ;

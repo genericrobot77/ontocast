@@ -17,25 +17,25 @@ config:
 graph TD;
 	__start__([<p>__start__</p>]):::first
 	Select_Ontology(Select Ontology)
-	Text_to_Triples(Text to Triples)
+	Text_to_Ontology(Text to Ontology)
+	Text_to_Facts(Text to Facts)
 	Sublimate_Ontology(Sublimate Ontology)
-	Criticise_Ontology_Update(Criticise Ontology Update)
-	Update_Existing_Ontology(Update Existing Ontology)
-	Criticise_KG(Criticise KG)
-	Update_KG(Update KG)
+	Criticise_Ontology(Criticise Ontology)
+	Criticise_Facts(Criticise Facts)
+	Load_KG(Load KG)
 	__end__([<p>__end__</p>]):::last
-	Select_Ontology --> Text_to_Triples;
-	Update_Existing_Ontology --> Criticise_KG;
-	Update_KG --> __end__;
+	Load_KG --> __end__;
+	Select_Ontology --> Text_to_Ontology;
+	Sublimate_Ontology --> Criticise_Facts;
 	__start__ --> Select_Ontology;
-	Text_to_Triples -. &nbsp;success&nbsp; .-> Sublimate_Ontology;
-	Criticise_Ontology_Update -. &nbsp;success&nbsp; .-> Update_Existing_Ontology;
-	Criticise_Ontology_Update -. &nbsp;failed&nbsp; .-> Text_to_Triples;
-	Sublimate_Ontology -. &nbsp;success&nbsp; .-> Criticise_Ontology_Update;
-	Sublimate_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Triples;
-	Criticise_KG -. &nbsp;success&nbsp; .-> Update_KG;
-	Criticise_KG -. &nbsp;failed&nbsp; .-> Text_to_Triples;
-	Text_to_Triples -. &nbsp;failed&nbsp; .-> Text_to_Triples;
+	Text_to_Ontology -. &nbsp;success&nbsp; .-> Criticise_Ontology;
+	Criticise_Ontology -. &nbsp;success&nbsp; .-> Text_to_Facts;
+	Criticise_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;
+	Text_to_Facts -. &nbsp;success&nbsp; .-> Sublimate_Ontology;
+	Criticise_Facts -. &nbsp;success&nbsp; .-> Load_KG;
+	Criticise_Facts -. &nbsp;failed&nbsp; .-> Text_to_Facts;
+	Text_to_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;
+	Text_to_Facts -. &nbsp;failed&nbsp; .-> Text_to_Facts;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc

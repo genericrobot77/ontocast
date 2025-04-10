@@ -1,7 +1,12 @@
 import pytest
+import os
+from pathlib import Path
 from src.onto import AgentState
-import pathlib
 from suthing import FileHandle
+
+# Set test environment variables
+os.environ["CURRENT_DOMAIN"] = "https://test.growgraph.dev"
+os.environ["CURRENT_NS_URI"] = "https://test.example.com/current-document#"
 
 
 @pytest.fixture
@@ -18,32 +23,20 @@ def test_ontology():
     """
 
 
-# @pytest.fixture
-# def criminal_ontology() -> Ontology:
-#     return Ontology.from_file(pathlib.Path("data/ontologies/criminal.ttl"))
-
-
-# @pytest.fixture
-# def security_ontology() -> Ontology:
-#     return Ontology.from_file(pathlib.Path("data/ontologies/fin-securities.ttl"))
-
-
 @pytest.fixture
 def apple_report():
-    r = FileHandle.load(pathlib.Path("data/json/fin.10Q.apple.json"))
+    r = FileHandle.load(Path("data/json/fin.10Q.apple.json"))
     return {"text": r["text"][:8870]}
 
 
 @pytest.fixture
 def random_report():
-    return FileHandle.load(pathlib.Path("data/json/random.json"))
+    return FileHandle.load(Path("data/json/random.json"))
 
 
 @pytest.fixture
 def legal_report():
-    return FileHandle.load(
-        pathlib.Path("data/json/legal.pourvoi_n°22-86.022_10_01_2023.json")
-    )
+    return FileHandle.load(Path("data/json/legal.pourvoi_n°22-86.022_10_01_2023.json"))
 
 
 @pytest.fixture
@@ -60,29 +53,44 @@ def agent_state_select_ontology():
 
 
 @pytest.fixture
-def agent_state_project_triples():
-    return AgentState.load("test/data/agent_state.project_triples.json")
+def agent_state_onto_fresh():
+    return AgentState.load("test/data/agent_state.onto.fresh.json")
 
 
 @pytest.fixture
-def agent_state_sublimate_ontology():
-    return AgentState.load("test/data/agent_state.sublimate_ontology.json")
+def agent_state_onto_critique():
+    return AgentState.load("test/data/agent_state.onto.critique.json")
 
 
 @pytest.fixture
-def agent_state_criticise_ontology_update_success():
-    return AgentState.load(
-        "test/data/agent_state.criticise_ontology_update.success.json"
-    )
+def agent_state_onto_critique_success():
+    return AgentState.load("test/data/agent_state.onto.critique.success.json")
 
 
-@pytest.fixture
-def agent_state_criticise_ontology_update_failed():
-    return AgentState.load(
-        "test/data/agent_state.criticise_ontology_update.failed.json"
-    )
+# @pytest.fixture
+# def agent_state_project_triples():
+#     return AgentState.load("test/data/agent_state.project_triples.json")
 
 
-@pytest.fixture
-def agent_state_update_ontology():
-    return AgentState.load("test/data/agent_state.update_ontology.json")
+# @pytest.fixture
+# def agent_state_sublimate_ontology():
+#     return AgentState.load("test/data/agent_state.sublimate_ontology.json")
+
+
+# @pytest.fixture
+# def agent_state_criticise_ontology_update_success():
+#     return AgentState.load(
+#         "test/data/agent_state.criticise_ontology_update.success.json"
+#     )
+
+
+# @pytest.fixture
+# def agent_state_criticise_ontology_update_failed():
+#     return AgentState.load(
+#         "test/data/agent_state.criticise_ontology_update.failed.json"
+#     )
+
+
+# @pytest.fixture
+# def agent_state_update_ontology():
+#     return AgentState.load("test/data/agent_state.update_ontology.json")
