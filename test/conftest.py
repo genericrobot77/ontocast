@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from src.onto import AgentState
 from suthing import FileHandle
+from src.tools.llm import LLMTool
+from src.tools.triple_manager import FilesystemTripleStoreManager
 
 # Set test environment variables
 os.environ["CURRENT_DOMAIN"] = "https://test.growgraph.dev"
@@ -67,30 +69,28 @@ def agent_state_onto_critique_success():
     return AgentState.load("test/data/agent_state.onto.critique.success.json")
 
 
-# @pytest.fixture
-# def agent_state_project_triples():
-#     return AgentState.load("test/data/agent_state.project_triples.json")
+@pytest.fixture
+def llm_tool():
+    model_name = "gpt-4o-mini"
+    temperature = 0.0
+    return LLMTool(model=model_name, temperature=temperature)
 
 
-# @pytest.fixture
-# def agent_state_sublimate_ontology():
-#     return AgentState.load("test/data/agent_state.sublimate_ontology.json")
+@pytest.fixture
+def tsm_tool():
+    ontology_path: Path = Path("data/ontologies")
+    working_directory = Path("test/tmp")
+    return FilesystemTripleStoreManager(
+        working_directory=working_directory, ontology_path=ontology_path
+    )
 
 
-# @pytest.fixture
-# def agent_state_criticise_ontology_update_success():
-#     return AgentState.load(
-#         "test/data/agent_state.criticise_ontology_update.success.json"
-#     )
+@pytest.fixture
+def tools(llm_tool, tsm_tool):
+    tools = {"llm": llm_tool, "tsm": tsm_tool}
+    return tools
 
 
-# @pytest.fixture
-# def agent_state_criticise_ontology_update_failed():
-#     return AgentState.load(
-#         "test/data/agent_state.criticise_ontology_update.failed.json"
-#     )
-
-
-# @pytest.fixture
-# def agent_state_update_ontology():
-#     return AgentState.load("test/data/agent_state.update_ontology.json")
+@pytest.fixture
+def max_iter():
+    return 2

@@ -17,9 +17,12 @@ dev = [
 [project]
 dependencies = [
   "docling>=0.1.0",
+  "langchain-community>=0.3.20",
+  "langchain-mcp-adapters>=0.0.7",
   "langchain-openai>=0.3.12",
   "langchain>=0.3.22",
   "langgraph>=0.3.21",
+  "mcp>=1.6.0",
   "owlready2>=0.47",
   "rdflib>=7.1.4",
   "rich>=14.0.0",

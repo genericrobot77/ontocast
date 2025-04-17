@@ -21,7 +21,7 @@ def compare_states(states: list[tuple[pathlib.Path, AgentState]]) -> None:
     table.add_column("Graph Facts", justify="right")
     table.add_column("Current Ontology", justify="right")
     table.add_column("Ontology Addendum", justify="right")
-    table.add_column("Update Score", justify="right")
+    table.add_column("Success Score", justify="right")
     table.add_column("Total Ontologies", justify="right")
 
     # Sort rows by the last number in the filename

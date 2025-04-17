@@ -5,41 +5,38 @@ from dotenv import load_dotenv
 import click
 import pathlib
 from src.agent import create_agent_graph, AgentState
+from src.tools.llm import LLMTool
+from src.tools.triple_manager import FilesystemTripleStoreManager
 
 app = Robyn(__file__)
+
+workflow = None
 
 
 @app.post("/process")
 async def process_document_endpoint(request):
     try:
-        # Get the uploaded file and ontology path
         data = await request.form()
         file = data.get("file")
-        ontology_path = data.get("ontology_path")
 
-        if not file or not ontology_path:
-            return {"error": "file and ontology_path are required"}, 400
+        if not file:
+            return {"error": "file is required"}, 400
 
-        # Create a temporary file to store the uploaded content
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            # Write the uploaded file content to the temporary file
             content = await file.read()
             temp_file.write(content)
             temp_file_path = temp_file.name
 
         try:
-            # Initialize the AgentState with the input text
-            state = AgentState(input_text=content.decode("utf-8"))
+            state = AgentState(
+                input_text=content.decode("utf-8"),
+            )
 
-            # Create and run the agent workflow
-            workflow = create_agent_graph()
+            output = await workflow.ainvoke(state)
             workflow.run(state)
 
-            # Return the result from the agent
-            result = state.knowledge_graph.serialize(format="turtle").decode("utf-8")
-            return result, 200
+            return output.dict(), 200
         finally:
-            # Clean up the temporary file
             os.unlink(temp_file_path)
 
     except Exception as e:
@@ -48,11 +45,35 @@ async def process_document_endpoint(request):
 
 @click.command()
 @click.option("--env-path", type=click.Path(path_type=pathlib.Path), required=True)
-def run(env_path: pathlib.Path):
+@click.option("--ontology-path", type=click.Path(path_type=pathlib.Path), required=True)
+@click.option(
+    "--working-directory", type=click.Path(path_type=pathlib.Path), required=True
+)
+@click.option("--model-name", type=str, default="gpt-4o-mini")
+@click.option("--temperature", type=float, default=0.0)
+def run(
+    env_path: pathlib.Path,
+    ontology_path: pathlib.Path,
+    working_directory: pathlib.Path,
+    model_name: str,
+    temperature: float,
+):
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
     if "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
+
+    llm_tool = LLMTool(model=model_name, temperature=temperature)
+    tsm_tool = FilesystemTripleStoreManager(
+        working_directory=working_directory, ontology_path=ontology_path
+    )
+
+    tools = {"llm": llm_tool, "tsm": tsm_tool}
+
+    working_directory.mkdir(parents=True, exist_ok=True)
+
+    global workflow
+    workflow = create_agent_graph(tools)
 
     port = int(os.getenv("PORT", "8000"))
     app.start(port=port)

@@ -1,13 +1,16 @@
 from src.onto import AgentState, RDFGraph, Status
 from src.agent import (
-    select_ontology,
-    render_ontology_triples,
-    criticise_ontology_update,
-    render_facts_triples,
     _sublimate_ontology,
     sublimate_ontology,
-    criticise_facts,
 )
+from src.nodes import (
+    create_ontology_selector,
+    create_onto_triples_renderer,
+    create_facts_renderer,
+    create_facts_critic,
+    create_ontology_critic,
+)
+
 from rdflib import URIRef, Literal
 from packaging.version import Version
 import pytest
@@ -43,12 +46,13 @@ def test_agent_state(agent_state_init: AgentState):
 
 @pytest.mark.order(after="test_select_ontology")
 def test_agent_text_to_ontology_fresh(
-    agent_state_select_ontology: AgentState,
-    apple_report: dict,
+    agent_state_select_ontology: AgentState, apple_report: dict, tools
 ):
     """here no relevant ontology is present, we are trying to create a new one"""
     agent_state_select_ontology.input_text = apple_report["text"]
     agent_state_select_ontology.current_ontology_name = None
+
+    render_ontology_triples = create_onto_triples_renderer(tools)
     agent_state = render_ontology_triples(agent_state_select_ontology)
 
     assert agent_state.ontology_addendum.iri is not None
@@ -64,7 +68,10 @@ def test_select_ontology(
     apple_report: dict,
     legal_report: dict,
     random_report: dict,
+    tools,
 ):
+    select_ontology = create_ontology_selector(tools)
+
     assert len(agent_state_init.ontologies) == 2
     agent_state_init.input_text = random_report["text"]
     agent_state_init = select_ontology(agent_state_init)
@@ -83,19 +90,20 @@ def test_select_ontology(
 
 @pytest.mark.order(after="test_select_ontology")
 def test_agent_text_to_ontology_critique_loop(
-    agent_state_select_ontology: AgentState,
-    apple_report: dict,
+    agent_state_select_ontology: AgentState, apple_report: dict, tools, max_iter
 ):
     agent_state = agent_state_select_ontology
     agent_state.input_text = apple_report["text"]
     agent_state.status = Status.FAILED
 
     k_init = 0
-    max_iter = 8
     if k_init > 0:
         agent_state = AgentState.load(
             f"test/data/agent_state.onto.critique.loop.{k_init}.json"
         )
+
+    criticise_ontology_update = create_ontology_critic(tools)
+    render_ontology_triples = create_onto_triples_renderer(tools)
 
     k = k_init
     while agent_state.status == Status.FAILED and k < k_init + max_iter:
@@ -121,9 +129,10 @@ def test_agent_text_to_ontology_critique_loop(
 
 
 def test_agent_text_to_facts(
-    agent_state_onto_critique_success: AgentState,
-    apple_report: dict,
+    agent_state_onto_critique_success: AgentState, apple_report: dict, tools
 ):
+    render_facts_triples = create_facts_renderer(tools)
+
     agent_state_onto_critique_success.input_text = apple_report["text"]
     agent_state = render_facts_triples(agent_state_onto_critique_success)
 
@@ -159,16 +168,17 @@ def test_agent_state_sublimate_ontology_full():
 
 
 @pytest.mark.order(after="test_agent_text_to_ontology_critique_loop")
-def test_agent_text_to_facts_update_loop(
-    agent_state_onto_critique_success: AgentState,
-    apple_report: dict,
+def test_agent_text_to_facts_critique_loop(
+    agent_state_onto_critique_success: AgentState, apple_report: dict, tools, max_iter
 ):
+    render_facts_triples = create_facts_renderer(tools)
+    criticise_facts = create_facts_critic(tools)
+
     agent_state = agent_state_onto_critique_success
     agent_state.input_text = apple_report["text"]
     agent_state.status = Status.FAILED
 
     k_init = 0
-    max_iter = 3
     if k_init > 0:
         agent_state = AgentState.load(
             f"test/data/agent_state.facts.critique.loop.{k_init}.json"
@@ -181,14 +191,8 @@ def test_agent_text_to_facts_update_loop(
         agent_state = sublimate_ontology(agent_state)
         agent_state = criticise_facts(agent_state)
 
-        # agent_state = criticise_ontology_update(agent_state)
-        # print(
-        #     len(agent_state.current_ontology.graph),
-        #     len(agent_state.ontology_addendum.graph),
-        # )
-        # print(f"current version: {Version(agent_state.ontology_addendum.version)}")
-        # print(f"success score: {agent_state.success_score}")
-        # print(agent_state.failure_reason)
+        assert agent_state.success_score > 0
+
         if agent_state.status == Status.SUCCESS:
             agent_state.serialize("test/data/agent_state.facts.critique.success.json")
         else:
@@ -197,14 +201,3 @@ def test_agent_text_to_facts_update_loop(
     agent_state.status == Status.SUCCESS
     agent_state.clear_failure()
     agent_state.serialize("test/data/agent_state.facts.critique.success.json")
-
-
-# def test_agent_state_criticise_ontology_update(
-#     agent_state_sublimate_ontology: AgentState,
-# ):
-#     state = criticise_ontology_update(agent_state_sublimate_ontology)
-#     if state.status == Status.SUCCESS:
-#         state.serialize("test/data/agent_state.criticise_ontology_update.success.json")
-#     else:
-#         state.serialize("test/data/agent_state.criticise_ontology_update.failed.json")
-#         assert state.failure_reason is not None

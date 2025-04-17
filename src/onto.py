@@ -338,3 +338,13 @@ def get_ontology_summary(ontology_str: str) -> OntologyProperites:
     response = llm(prompt.format_prompt(ontology_str=ontology_str))
 
     return parser.parse(response.content)
+
+
+class WorkflowNode(StrEnum):
+    SELECT_ONTOLOGY = "Select Ontology"
+    TEXT_TO_ONTOLOGY = "Text to Ontology"
+    TEXT_TO_FACTS = "Text to Facts"
+    SUBLIMATE_ONTOLOGY = "Sublimate Ontology"
+    CRITICISE_ONTOLOGY = "Criticise Ontology"
+    CRITICISE_FACTS = "Criticise Facts"
+    SAVE_KG = "Load KG"
