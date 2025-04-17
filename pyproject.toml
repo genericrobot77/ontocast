@@ -30,14 +30,15 @@ dependencies = [
   "suthing>=0.3.0"
 ]
 description = "Add your description here"
-name = "mcp-ontokg"
+name = "agentic-onto-triple-cast"
 readme = "README.md"
 requires-python = ">=3.12"
 version = "0.1.0"
 
 [project.scripts]
 cmp-states = "src.cli.cmp_states:main"
-render-ontokg = "src.cli.serve:run"
+plot-graph = "src.cli.plot_graph:main"
+serve-agentic = "src.cli.serve:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
