@@ -1,13 +1,17 @@
 from src.onto import AgentState, OntologySelectorReport
 from langchain.prompts import PromptTemplate
+from src.onto import ToolType
+from src.tools import OntologyManager
 
 
 def create_ontology_selector(tools):
     def _selector(state: AgentState) -> AgentState:
-        llm_tool = tools["llm"]
+        llm_tool = tools[ToolType.LLM]
+        om_tool: OntologyManager = tools[ToolType.ONTOLOGY_MANAGER]
+
         parser = llm_tool.get_parser(OntologySelectorReport)
 
-        ontologies_desc = "\n\n".join([o.describe() for o in state.ontologies])
+        ontologies_desc = "\n\n".join([o.describe() for o in om_tool.ontologies])
         excerpt = state.input_text[:1000] + "..."
 
         prompt = """
@@ -37,8 +41,7 @@ def create_ontology_selector(tools):
         )
         selector = parser.parse(response.content)
 
-        if selector.short_name in state.ontology_names:
-            state.current_ontology_name = selector.short_name
+        state.current_ontology = om_tool.get_ontology(selector.short_name)
         return state
 
     return _selector

@@ -1,18 +1,15 @@
-from rdflib import Namespace
 import logging
 
 from langgraph.graph import END, StateGraph, START
+from langgraph.graph.state import CompiledStateGraph
 
 
 from src.onto import (
     AgentState,
-    RDFGraph,
     Status,
-    FailureStages,
     WorkflowNode,
 )
 
-from src.config import CURRENT_NS_IRI
 from .nodes import (
     create_ontology_selector,
     create_onto_triples_renderer,
@@ -20,93 +17,10 @@ from .nodes import (
     create_facts_critic,
     create_ontology_critic,
     create_kg_saver,
+    create_ontology_sublimator,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _sublimate_ontology(state: AgentState):
-    query_ontology = f"""
-    PREFIX cd: <{CURRENT_NS_IRI}>
-    
-    SELECT ?s ?p ?o
-    WHERE {{
-    ?s ?p ?o .
-    FILTER (
-        !(
-            STRSTARTS(STR(?s), STR(cd:)) ||
-            STRSTARTS(STR(?p), STR(cd:)) ||
-            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
-        )
-    )
-    }}
-    """
-    results = state.graph_facts.query(query_ontology)
-
-    graph_onto_addendum = RDFGraph()
-
-    # Add filtered triples to the new graph
-    for s, p, o in results:
-        graph_onto_addendum.add((s, p, o))
-
-    query_facts = f"""
-        PREFIX cd: <{CURRENT_NS_IRI}>
-
-        SELECT ?s ?p ?o
-        WHERE {{
-        ?s ?p ?o .
-        FILTER (
-            STRSTARTS(STR(?s), STR(cd:)) ||
-            STRSTARTS(STR(?p), STR(cd:)) ||
-            (isIRI(?o) && STRSTARTS(STR(?o), STR(cd:)))
-        )
-        }}
-    """
-
-    graph_facts_pure = RDFGraph()
-
-    results = state.graph_facts.query(query_facts)
-
-    # Add filtered triples to the new graph
-    for s, p, o in results:
-        graph_facts_pure.add((s, p, o))
-
-    return graph_onto_addendum, graph_facts_pure
-
-
-def sublimate_ontology(state: AgentState) -> AgentState:
-    """Separate ontology from facts"""
-    try:
-        graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
-
-        ns_prefix_current_ontology = [
-            p
-            for p, ns in state.current_ontology.graph.namespaces()
-            if str(ns) == state.current_ontology.iri
-        ]
-
-        graph_onto_addendum.bind(
-            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
-        )
-        graph_facts.bind(
-            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
-        )
-
-        current_idx = next(
-            i
-            for i, o in enumerate(state.ontologies)
-            if o.short_name == state.current_ontology_name
-        )
-        state.ontologies[current_idx] += graph_onto_addendum
-        state.graph_facts = graph_facts
-        state.clear_failure()
-    except Exception as e:
-        state.set_failure(
-            FailureStages.FAILED_AT_SUBLIMATE_ONTOLOGY,
-            str(e),
-        )
-
-    return state
 
 
 def handle_visits(state: AgentState, node_name: str) -> tuple[AgentState, str]:
@@ -181,7 +95,7 @@ def criticise_kg_route(state: AgentState) -> str:
     return create_visit_route("Update KG", "Criticise KG")(state)
 
 
-def create_agent_graph(tools):
+def create_agent_graph(tools) -> CompiledStateGraph:
     """Create the agent workflow graph."""
     workflow = StateGraph(AgentState)
 
@@ -190,6 +104,7 @@ def create_agent_graph(tools):
     render_facts_triples = create_facts_renderer(tools)
     criticise_ontology_update = create_ontology_critic(tools)
     criticise_facts = create_facts_critic(tools)
+    sublimate_ontology = create_ontology_sublimator(tools)
     save_kg = create_kg_saver(tools)
 
     workflow.add_node(WorkflowNode.SELECT_ONTOLOGY, select_ontology_node)

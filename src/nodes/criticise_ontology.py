@@ -1,4 +1,6 @@
 from src.onto import AgentState, FailureStages, OntologyUpdateCritiqueReport
+from src.onto import ToolType
+from src.tools import OntologyManager, LLMTool
 
 
 from langchain.prompts import PromptTemplate
@@ -6,10 +8,11 @@ from langchain.prompts import PromptTemplate
 
 def create_ontology_critic(tools):
     def _critique(state: AgentState) -> AgentState:
-        llm_tool = tools["llm"]
+        llm_tool: LLMTool = tools[ToolType.LLM]
+        om_tool: OntologyManager = tools[ToolType.ONTOLOGY_MANAGER]
         parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
 
-        if state.current_ontology_name is None:
+        if state.current_ontology is None:
             prompt = """        
     You are a helpful assistant that criticises a newly proposed ontology.
     You need to decide whether the updated ontology is sufficiently complete and comprehensive, also providing a score between 0 and 100.
@@ -74,16 +77,13 @@ def create_ontology_critic(tools):
         )
         critique: OntologyUpdateCritiqueReport = parser.parse(response.content)
 
-        if state.current_ontology_name is None:
-            state.ontologies.append(state.ontology_addendum)
-            state.current_ontology_name = state.ontology_addendum.short_name
+        if state.current_ontology is None:
+            om_tool.ontologies.append(state.ontology_addendum)
+            state.current_ontology = state.ontology_addendum
         else:
-            current_idx = next(
-                i
-                for i, o in enumerate(state.ontologies)
-                if o.short_name == state.current_ontology_name
+            om_tool.update_ontology(
+                state.current_ontology.short_name, state.ontology_addendum
             )
-            state.ontologies[current_idx] += state.ontology_addendum
 
         if critique.ontology_update_success:
             state.clear_failure()

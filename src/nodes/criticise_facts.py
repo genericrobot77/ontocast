@@ -1,12 +1,12 @@
 from src.onto import AgentState, FailureStages, KGCritiqueReport
 
-
+from src.onto import ToolType
 from langchain.prompts import PromptTemplate
 
 
-def create_facts_critic(tools) -> AgentState:
+def create_facts_critic(tools):
     def _renderer(state: AgentState) -> AgentState:
-        llm_tool = tools["llm"]
+        llm_tool = tools[ToolType.LLM]
         parser = llm_tool.get_parser(KGCritiqueReport)
 
         prompt = """

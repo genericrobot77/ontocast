@@ -3,33 +3,49 @@ from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
 from typing import Type, TypeVar, Any
 from pydantic import BaseModel
+import asyncio
+from typing import Optional
+from .onto import Tool
 # from langchain.tools import Tool
 
 T = TypeVar("T", bound=BaseModel)
 
 
-# class LLMTool(Tool):
-class LLMTool:
+class LLMTool(Tool):
     def __init__(
         self,
         model: str = "gpt-4o-mini",
-        api_key: str = None,
-        base_url: str = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
         temperature: float = 0.1,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.model = model
-        self.api_key = api_key
-        self.base_url = base_url
+        self.api_key: Optional[str] = api_key
+        self.base_url: Optional[str] = base_url
         self.temperature = temperature
         self._llm = None
+
+    @classmethod
+    def create(cls, **kwargs):
+        return asyncio.run(cls.acreate(**kwargs))
+
+    @classmethod
+    async def acreate(cls, **kwargs):
+        self = cls.__new__(cls)
+        self.__init__(**kwargs)
+        await self.setup()
+        return self
 
     async def setup(self):
         self._llm = ChatOpenAI(
             model=self.model,
             temperature=self.temperature,
         )
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        return self.llm(*args, **kwds)
 
     @property
     def llm(self) -> BaseChatModel:
@@ -56,5 +72,4 @@ class LLMTool:
         full_prompt = f"{prompt}\n\n{format_instructions}"
         response = await self.llm.ainvoke(full_prompt)
 
-        # Parse the response into the Pydantic model
         return parser.parse(response.content)

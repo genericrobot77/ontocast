@@ -3,15 +3,13 @@ from rdflib import Graph
 from typing import Optional
 import logging
 import pathlib
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 
 from typing import Any
-
+import re
 from enum import StrEnum
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +17,15 @@ logger = logging.getLogger(__name__)
 class Status(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
+
+
+class ToolType(StrEnum):
+    LLM = "llm"
+    TRIPLE_STORE = "tsm"
+    ONTOLOGY_MANAGER = "om"
+
+
+ONTOLOGY_VOID_ID = "__void_ontology_name"
 
 
 class FailureStages(StrEnum):
@@ -35,6 +42,20 @@ class FailureStages(StrEnum):
         "Failed to parse the text into facts triples."
     )
     FAILED_AT_SUBLIMATE_ONTOLOGY = "The produced semantic could not be validated or separated into ontology and facts (technical issue)."
+
+
+COMMON_PREFIXES = {
+    "xsd": "<http://www.w3.org/2001/XMLSchema#>",
+    "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
+    "rdfs": "<http://www.w3.org/2000/01/rdf-schema#>",
+    "owl": "<http://www.w3.org/2002/07/owl#>",
+    "skos": "<http://www.w3.org/2004/02/skos/core#>",
+    "foaf": "<http://xmlns.com/foaf/0.1/>",
+    "schema": "<http://schema.org/>",
+    "ex": "<http://example.org/>",
+}
+
+PREFIX_PATTERN = re.compile(r"@prefix\s+(\w+):\s+<[^>]+>\s+\.")
 
 
 class RDFGraph(Graph):
@@ -63,11 +84,34 @@ class RDFGraph(Graph):
             ),
         )
 
+    @staticmethod
+    def _ensure_prefixes(turtle_str: str) -> str:
+        declared_prefixes = set(
+            match.group(1) for match in PREFIX_PATTERN.finditer(turtle_str)
+        )
+
+        missing = {
+            prefix: uri
+            for prefix, uri in COMMON_PREFIXES.items()
+            if prefix not in declared_prefixes
+        }
+
+        if not missing:
+            return turtle_str
+
+        prefix_block = (
+            "\n".join(f"@prefix {prefix}: {uri} ." for prefix, uri in missing.items())
+            + "\n\n"
+        )
+
+        return prefix_block + turtle_str
+
     @classmethod
     def _from_turtle_str(cls, turtle_str: str) -> "RDFGraph":
         turtle_str = bytes(turtle_str, "utf-8").decode("unicode_escape")
+        patched_turtle = cls._ensure_prefixes(turtle_str)
         g = cls()
-        g.parse(data=turtle_str, format="turtle")
+        g.parse(data=patched_turtle, format="turtle")
         return g
 
     @staticmethod
@@ -128,17 +172,23 @@ class KGCritiqueReport(BaseModel):
 
 
 class OntologyProperites(BaseModel):
-    short_name: str = Field(description="A short name (identifier) for the ontology")
-    title: str = Field(description="The name of the ontology")
-    description: str = Field(
-        description="A consise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)"
+    short_name: Optional[str] = Field(
+        default=None,
+        description="A short name (identifier) for the ontology. It should be an abbreviation. Must be provided.",
     )
-    version: str = Field(
+    title: Optional[str] = Field(
+        default=None, description="Ontology title. Must be provided."
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="A consise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)",
+    )
+    version: Optional[str] = Field(
         description="Version of the ontology",
         default="0.0.0",
     )
     iri: Optional[str] = Field(
-        None,
+        default=None,
         description="Ontology IRI (Internationalized Resource Identifier), ends with either `#` or `/`",
     )
 
@@ -201,16 +251,16 @@ class Ontology(OntologyProperites):
         """
         graph: RDFGraph = RDFGraph()
         graph.parse(file_path, format=format)
-        ontology_str = graph.serialize(format=format)
-        summary = get_ontology_summary(ontology_str)
+        return cls(graph=graph, **kwargs)
 
-        return cls(graph=graph, **summary.model_dump(), **kwargs)
+    def set_properties(self, **kwargs):
+        self.__dict__.update(**kwargs)
 
-    def describe(o) -> str:
+    def describe(self) -> str:
         return (
-            f"Ontology name: {o.short_name}\n"
-            f"Description: {o.description}\n"
-            f"Ontology IRI: {o.iri}\n"
+            f"Ontology name: {self.short_name}\n"
+            f"Description: {self.description}\n"
+            f"Ontology IRI: {self.iri}\n"
         )
 
 
@@ -218,24 +268,34 @@ class AgentState(BaseModel):
     """State for the ontology-based knowledge graph agent."""
 
     input_text: Optional[str] = None
-    current_ontology_name: Optional[str] = None
-    ontologies: list[Ontology] = []
-    graph_facts: Optional[RDFGraph] = Field(
+    current_ontology: Ontology = Field(
+        default_factory=lambda: Ontology(
+            short_name=ONTOLOGY_VOID_ID,
+            title="null title",
+            description="null description",
+            graph=RDFGraph(),
+            iri="NULL",
+        ),
+        description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
+    )
+
+    graph_facts: RDFGraph = Field(
         default_factory=RDFGraph,
         description="RDF triples representing the facts from the current document",
     )
-    ontology_addendum: Optional[Ontology] = Field(
+    ontology_addendum: Ontology = Field(
         default_factory=lambda: Ontology(
-            short_name="default name",
-            title="default title",
-            description="default description",
+            short_name=ONTOLOGY_VOID_ID,
+            title="null title",
+            description="null description",
             graph=RDFGraph(),
+            iri="NULL",
         ),
         description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
     )
     failure_stage: Optional[str] = None
     failure_reason: Optional[str] = None
-    success_score: Optional[float] = None
+    success_score: Optional[float] = 0.0
     status: Status = Status.SUCCESS
     node_visits: dict[str, int] = Field(
         default_factory=dict, description="Number of visits per node"
@@ -264,30 +324,11 @@ class AgentState(BaseModel):
         """Clear failure state and set status to success."""
         self.failure_stage = None
         self.failure_reason = None
-        self.success_score = None
+        self.success_score = 0.0
         self.status = Status.SUCCESS
 
     def __init__(self, ontology_path: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
-        if ontology_path is not None:
-            for fname in pathlib.Path(ontology_path).glob("*.ttl"):
-                try:
-                    ontology = Ontology.from_file(fname)
-                    self.ontologies.append(ontology)
-                except Exception as e:
-                    logging.error(f"Failed to load ontology {fname}: {str(e)}")
-
-    @property
-    def current_ontology(self) -> Ontology:
-        if self.current_ontology_name is None:
-            raise ValueError("No ontology selected")
-        return next(
-            o for o in self.ontologies if o.short_name == self.current_ontology_name
-        )
-
-    @property
-    def ontology_names(self) -> list[str]:
-        return [o.short_name for o in self.ontologies]
 
     def serialize(self, file_path: str | pathlib.Path) -> None:
         """
@@ -316,28 +357,6 @@ class AgentState(BaseModel):
             file_path = pathlib.Path(file_path)
         state_json = file_path.read_text()
         return cls.model_validate_json(state_json)
-
-
-def get_ontology_summary(ontology_str: str) -> OntologyProperites:
-    llm = ChatOpenAI(model="gpt-4o-mini")
-
-    # Define the output parser
-    parser = PydanticOutputParser(pydantic_object=OntologyProperites)
-
-    # Create the prompt template with format instructions
-    prompt = PromptTemplate(
-        template=(
-            "Below is an ontology in Turtle format:\n\n"
-            "```ttl\n{ontology_str}\n```\n\n"
-            "{format_instructions}"
-        ),
-        input_variables=["ontology_str"],
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
-
-    response = llm(prompt.format_prompt(ontology_str=ontology_str))
-
-    return parser.parse(response.content)
 
 
 class WorkflowNode(StrEnum):

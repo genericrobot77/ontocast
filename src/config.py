@@ -5,5 +5,5 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Domain configuration
-CURRENT_DOMAIN = os.getenv("CURRENT_DOMAIN", "https://growgraph.dev")
+CURRENT_DOMAIN = os.getenv("CURRENT_DOMAIN", "https://example.com")
 CURRENT_NS_IRI = os.getenv("CURRENT_NS_IRI", "https://example.com/current-document#")

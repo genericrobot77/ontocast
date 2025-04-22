@@ -5,13 +5,14 @@ from src.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
 from src.util import get_document_hash
 from src.config import CURRENT_DOMAIN
+from src.onto import ToolType
 
 logger = logging.getLogger(__name__)
 
 
 def create_facts_renderer(tools):
     def _renderer(state: AgentState) -> AgentState:
-        llm_tool = tools["llm"]
+        llm_tool = tools[ToolType.LLM]
 
         parser = llm_tool.get_parser(SemanticTriplesFactsReport)
 

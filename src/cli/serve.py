@@ -5,12 +5,14 @@ from dotenv import load_dotenv
 import click
 import pathlib
 from src.agent import create_agent_graph, AgentState
-from src.tools.llm import LLMTool
-from src.tools.triple_manager import FilesystemTripleStoreManager
+from src.tools import FilesystemTripleStoreManager, OntologyManager, LLMTool, Tool
+from src.onto import ToolType
+from langgraph.graph.state import CompiledStateGraph
+from src.tools.setup import setup_tools
 
 app = Robyn(__file__)
 
-workflow = None
+workflow: CompiledStateGraph
 
 
 @app.post("/process")
@@ -32,6 +34,7 @@ async def process_document_endpoint(request):
                 input_text=content.decode("utf-8"),
             )
 
+            state = AgentState(ontology_path="data/ontologies")
             output = await workflow.ainvoke(state)
             workflow.run(state)
 
@@ -51,31 +54,41 @@ async def process_document_endpoint(request):
 )
 @click.option("--model-name", type=str, default="gpt-4o-mini")
 @click.option("--temperature", type=float, default=0.0)
+@click.option("--port", type=int, default=8999)
 def run(
     env_path: pathlib.Path,
     ontology_path: pathlib.Path,
     working_directory: pathlib.Path,
     model_name: str,
     temperature: float,
+    port: int,
 ):
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
     if "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-    llm_tool = LLMTool(model=model_name, temperature=temperature)
-    tsm_tool = FilesystemTripleStoreManager(
+    llm_tool: LLMTool = LLMTool(model=model_name, temperature=temperature)
+    tsm_tool: FilesystemTripleStoreManager = FilesystemTripleStoreManager(
+        working_directory=working_directory, ontology_path=ontology_path
+    )
+    om_tool: OntologyManager = FilesystemTripleStoreManager(
         working_directory=working_directory, ontology_path=ontology_path
     )
 
-    tools = {"llm": llm_tool, "tsm": tsm_tool}
+    tools: dict[ToolType, Tool] = {
+        ToolType.LLM: llm_tool,
+        ToolType.TRIPLE_STORE: tsm_tool,
+        ToolType.ONTOLOGY_MANAGER: om_tool,
+    }
+
+    setup_tools(tools)
 
     working_directory.mkdir(parents=True, exist_ok=True)
 
     global workflow
     workflow = create_agent_graph(tools)
 
-    port = int(os.getenv("PORT", "8000"))
     app.start(port=port)
 
 

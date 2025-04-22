@@ -20,7 +20,7 @@ repos:
         -   -i
         -   "2"
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.1
+    rev: v0.11.6
     hooks:
     -   id: ruff
         args: [--fix, --ignore, E722]
@@ -42,7 +42,11 @@ repos:
     -   id: pretty-format-toml
         args: [--autofix]
 -   repo: https://github.com/pappasam/toml-sort
-    rev: v0.23.1
+    rev: v0.24.2
     hooks:
     -   id: toml-sort
         args: [-ia]
+# -   repo: https://github.com/RobertCraigie/pyright-python
+#     rev: v1.1.399
+#     hooks:
+#     -   id: pyright

@@ -1,14 +1,13 @@
+from src.nodes.sublimate_ontology import _sublimate_ontology
 from src.onto import AgentState, RDFGraph, Status
-from src.agent import (
-    _sublimate_ontology,
-    sublimate_ontology,
-)
+
 from src.nodes import (
     create_ontology_selector,
     create_onto_triples_renderer,
     create_facts_renderer,
     create_facts_critic,
     create_ontology_critic,
+    create_ontology_sublimator,
 )
 
 from rdflib import URIRef, Literal
@@ -34,28 +33,20 @@ def test_agent_state_json():
     assert isinstance(loaded_state.graph_facts, RDFGraph)
 
 
-def test_agent_state(agent_state_init: AgentState):
-    assert len(agent_state_init.ontologies) == 2
-
-    assert "court" in agent_state_init.ontologies[0].title.lower()
-    assert "legal" in agent_state_init.ontologies[0].description.lower()
-    assert agent_state_init.ontologies[0].version == "3.0"
-    assert agent_state_init.ontologies[1].version == "1.0"
-    agent_state_init.serialize("test/data/agent_state.init.json")
-
-
 @pytest.mark.order(after="test_select_ontology")
 def test_agent_text_to_ontology_fresh(
     agent_state_select_ontology: AgentState, apple_report: dict, tools
 ):
     """here no relevant ontology is present, we are trying to create a new one"""
     agent_state_select_ontology.input_text = apple_report["text"]
-    agent_state_select_ontology.current_ontology_name = None
 
     render_ontology_triples = create_onto_triples_renderer(tools)
     agent_state = render_ontology_triples(agent_state_select_ontology)
 
     assert agent_state.ontology_addendum.iri is not None
+    assert agent_state.ontology_addendum.title is not None
+    assert agent_state.ontology_addendum.short_name is not None
+    assert agent_state.ontology_addendum.description is not None
     assert agent_state.ontology_addendum.iri.startswith("https://test.growgraph.dev/")
     assert len(agent_state.ontology_addendum.graph) > 0
     assert Version(agent_state.ontology_addendum.version) >= Version("0.0.0")
@@ -72,10 +63,8 @@ def test_select_ontology(
 ):
     select_ontology = create_ontology_selector(tools)
 
-    assert len(agent_state_init.ontologies) == 2
     agent_state_init.input_text = random_report["text"]
     agent_state_init = select_ontology(agent_state_init)
-    assert agent_state_init.current_ontology_name is None
 
     agent_state_init.input_text = legal_report["text"]
     agent_state = select_ontology(agent_state_init)
@@ -161,8 +150,9 @@ def test_agent_state_sublimate_ontology():
     )
 
 
-def test_agent_state_sublimate_ontology_full():
+def test_agent_state_sublimate_ontology_full(tools):
     agent_state = AgentState.load("test/data/agent_state.project_triples.json")
+    sublimate_ontology = create_ontology_sublimator(tools)
     agent_state = sublimate_ontology(agent_state)
     assert len(agent_state.graph_facts) > 0
 
@@ -173,6 +163,7 @@ def test_agent_text_to_facts_critique_loop(
 ):
     render_facts_triples = create_facts_renderer(tools)
     criticise_facts = create_facts_critic(tools)
+    sublimate_ontology = create_ontology_sublimator(tools)
 
     agent_state = agent_state_onto_critique_success
     agent_state.input_text = apple_report["text"]

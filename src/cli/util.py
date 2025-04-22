@@ -6,7 +6,9 @@ import logging.config
 logger = logging.getLogger(__name__)
 
 
-def crawl_directories(input_path: pathlib.Path, suffixes=(".pdf", ".json")):
+def crawl_directories(
+    input_path: pathlib.Path, suffixes=(".pdf", ".json"), prefix=None
+):
     file_paths: list[pathlib.Path] = []
 
     if not input_path.is_dir():
@@ -14,7 +16,11 @@ def crawl_directories(input_path: pathlib.Path, suffixes=(".pdf", ".json")):
         return file_paths
 
     for file in input_path.rglob("*"):
-        if file.is_file() and file.suffix in suffixes:
+        if (
+            file.is_file()
+            and file.suffix in suffixes
+            and (file.stem.startswith(prefix) if prefix is not None else True)
+        ):
             file_paths.append(file)
     return file_paths
 
