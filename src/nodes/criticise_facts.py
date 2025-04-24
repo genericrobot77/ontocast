@@ -40,7 +40,7 @@ def create_facts_critic(tools):
             ],
         )
 
-        response = llm_tool.llm(
+        response = llm_tool(
             prompt.format_prompt(
                 ontology=state.current_ontology.graph.serialize(format="turtle"),
                 document=state.input_text,

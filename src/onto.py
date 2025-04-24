@@ -14,6 +14,13 @@ from enum import StrEnum
 logger = logging.getLogger(__name__)
 
 
+ONTOLOGY_VOID_ID = "__void_ontology_name"
+ONTOLOGY_VOID_IRI = "NULL"
+
+DEFAULT_DOMAIN = "https://example.com"
+DEFAULT_NAMESPACE = "https://example.com/current-document#"
+
+
 class Status(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
@@ -23,9 +30,6 @@ class ToolType(StrEnum):
     LLM = "llm"
     TRIPLE_STORE = "tsm"
     ONTOLOGY_MANAGER = "om"
-
-
-ONTOLOGY_VOID_ID = "__void_ontology_name"
 
 
 class FailureStages(StrEnum):
@@ -56,6 +60,39 @@ COMMON_PREFIXES = {
 }
 
 PREFIX_PATTERN = re.compile(r"@prefix\s+(\w+):\s+<[^>]+>\s+\.")
+
+
+class BasePydanticModel(BaseModel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def serialize(self, file_path: str | pathlib.Path) -> None:
+        """
+        Serialize the state to a JSON file.
+
+        Args:
+            file_path (Union[str, pathlib.Path]): Path to save the JSON file
+        """
+        state_json = self.model_dump_json(indent=4)
+        if isinstance(file_path, str):
+            file_path = pathlib.Path(file_path)
+        file_path.write_text(state_json)
+
+    @classmethod
+    def load(cls, file_path: str | pathlib.Path):
+        """
+        Load state from a JSON file.
+
+        Args:
+            file_path (Union[str, pathlib.Path]): Path to the JSON file
+
+        Returns:
+            AgentState: The loaded state
+        """
+        if isinstance(file_path, str):
+            file_path = pathlib.Path(file_path)
+        state_json = file_path.read_text()
+        return cls.model_validate_json(state_json)
 
 
 class RDFGraph(Graph):
@@ -264,7 +301,7 @@ class Ontology(OntologyProperites):
         )
 
 
-class AgentState(BaseModel):
+class AgentState(BasePydanticModel):
     """State for the ontology-based knowledge graph agent."""
 
     input_text: Optional[str] = None
@@ -274,9 +311,13 @@ class AgentState(BaseModel):
             title="null title",
             description="null description",
             graph=RDFGraph(),
-            iri="NULL",
+            iri=ONTOLOGY_VOID_IRI,
         ),
         description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
+    )
+
+    current_namespace: str = Field(
+        default=DEFAULT_NAMESPACE, description="The namespace of the current document"
     )
 
     graph_facts: RDFGraph = Field(
@@ -289,7 +330,7 @@ class AgentState(BaseModel):
             title="null title",
             description="null description",
             graph=RDFGraph(),
-            iri="NULL",
+            iri=ONTOLOGY_VOID_IRI,
         ),
         description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
     )
@@ -327,36 +368,8 @@ class AgentState(BaseModel):
         self.success_score = 0.0
         self.status = Status.SUCCESS
 
-    def __init__(self, ontology_path: Optional[str] = None, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-    def serialize(self, file_path: str | pathlib.Path) -> None:
-        """
-        Serialize the state to a JSON file.
-
-        Args:
-            file_path (Union[str, pathlib.Path]): Path to save the JSON file
-        """
-        state_json = self.model_dump_json(indent=4)
-        if isinstance(file_path, str):
-            file_path = pathlib.Path(file_path)
-        file_path.write_text(state_json)
-
-    @classmethod
-    def load(cls, file_path: str | pathlib.Path) -> "AgentState":
-        """
-        Load state from a JSON file.
-
-        Args:
-            file_path (Union[str, pathlib.Path]): Path to the JSON file
-
-        Returns:
-            AgentState: The loaded state
-        """
-        if isinstance(file_path, str):
-            file_path = pathlib.Path(file_path)
-        state_json = file_path.read_text()
-        return cls.model_validate_json(state_json)
 
 
 class WorkflowNode(StrEnum):

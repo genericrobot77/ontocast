@@ -1,11 +1,16 @@
 import logging
 from src.onto import ToolType
 
-
-from src.onto import AgentState, Ontology, FailureStages, ONTOLOGY_VOID_ID
+import os
+from src.onto import (
+    AgentState,
+    Ontology,
+    FailureStages,
+    ONTOLOGY_VOID_ID,
+    DEFAULT_DOMAIN,
+)
 from langchain.prompts import PromptTemplate
 
-from src.config import CURRENT_DOMAIN
 from src.prompts.render_ontology import (
     template_prompt,
     ontology_instruction_update,
@@ -25,10 +30,12 @@ def create_onto_triples_renderer(tools):
 
         parser = llm_tool.get_parser(Ontology)
 
+        current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+
         if state.current_ontology.short_name == ONTOLOGY_VOID_ID:
             ontology_instruction = ontology_instruction_fresh
             specific_ontology_instruction = specific_ontology_instruction_fresh.format(
-                CURRENT_DOMAIN=CURRENT_DOMAIN
+                current_domain=current_domain
             )
         else:
             ontology_iri = state.current_ontology.iri
@@ -67,7 +74,7 @@ def create_onto_triples_renderer(tools):
             _failure_instruction = ""
 
         try:
-            response = llm_tool.llm(
+            response = llm_tool(
                 prompt.format_prompt(
                     text=state.input_text,
                     instructions=_instructions,

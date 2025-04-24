@@ -1,11 +1,11 @@
 import logging
-
+import os
 
 from src.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
 from src.util import get_document_hash
-from src.config import CURRENT_DOMAIN
-from src.onto import ToolType
+from src.onto import ToolType, DEFAULT_DOMAIN
+from src.prompts.render_facts import ontology_instruction, template_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -27,46 +27,18 @@ def create_facts_renderer(tools):
         # Generate document hash
         doc_hash = get_document_hash(state.input_text)
 
+        current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+
         # Construct namespace with domain, ontology extension and hash
-        current_namespace = f"{CURRENT_DOMAIN}/{ontology_ext}/{doc_hash}/"
+        state.current_namespace = f"{current_domain}/{ontology_ext}/{doc_hash}/"
 
-        ontology_instruction = f"""
-    Use the following ontology <{state.current_ontology.iri}>:
-        
-    ```ttl
-    {ontology_str}
-    ```
-    """
-
-        template_prompt = """
-    Generate semantic triples representing facts (not abstract entities) in turtle (ttl) format from the text below.
-
-    {ontology_instruction}
-            
-    Follow the instructions:
-
-        - use commonly known ontologies (RDFS, OWL, schema etc) and the provided ontology <{ontology_iri}> to place (define) entities/classes/types and relationships between them that can be inferred from the document.
-        - for facts from the document, use <{current_namespace}> namespace with prefix `cd:` as `@prefix cd: {current_namespace} .`
-        - all entities identified by <{current_namespace}> namespace (facts, less abstract entities) must be linked to entities from either domain ontology <{ontology_iri}> or basic ontologies (RDFS, OWL etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc 
-        - all facts should form a connect graph with respect to <{current_namespace}> namespace.
-        - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
-        - all facts representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations.
-        - pay attention to correct formatting of literals, e.g. dates, currencies. Numeric literals should be formatted using double quotes, when they are typed with `^^`, for example `fsec:hasRevenue "13"^^xsd:decimal ;`
-        - make semantic representation of facts as atomic (!!!) as possible.
-        - data from tables should be represented as triples.
-
-    Here is the document:
-    ```
-    {text}
-    ```
-
-    {failure_instruction}
-
-    {format_instructions}
-    """
+        ontology_instruction_str = ontology_instruction.format(
+            ontology_iri=ontology_iri, ontology_str=ontology_str
+        )
+        template_prompt_str = template_prompt
 
         prompt = PromptTemplate(
-            template=template_prompt,
+            template=template_prompt_str,
             input_variables=[
                 "ontology_iri",
                 "current_namespace",
@@ -89,22 +61,19 @@ def create_facts_renderer(tools):
             else:
                 failure_instruction = ""
 
-            response = llm_tool.llm(
+            response = llm_tool(
                 prompt.format_prompt(
                     ontology_iri=ontology_iri,
-                    current_namespace=current_namespace,
+                    current_namespace=state.current_namespace,
                     text=state.input_text,
-                    ontology_instruction=ontology_instruction,
+                    ontology_instruction=ontology_instruction_str,
                     failure_instruction=failure_instruction,
                     format_instructions=parser.get_format_instructions(),
                 )
             )
 
             proj = parser.parse(response.content)
-            if state.graph_facts is None:
-                state.graph_facts = proj.semantic_graph
-            else:
-                state.graph_facts += proj.semantic_graph
+            state.graph_facts += proj.semantic_graph
             state.clear_failure()
             return state
 

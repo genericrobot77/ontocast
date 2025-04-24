@@ -1,3 +1,6 @@
-class Tool:
+from src.onto import BasePydanticModel
+
+
+class Tool(BasePydanticModel):
     def __init__(self, **kwargs):
-        pass
+        super().__init__(**kwargs)

@@ -1,11 +1,12 @@
 from rdflib import Namespace
-from src.config import CURRENT_NS_IRI
 from src.onto import AgentState, FailureStages, RDFGraph, ToolType
 
 
 def _sublimate_ontology(state: AgentState):
+    current_namespace = state.current_namespace
+
     query_ontology = f"""
-    PREFIX cd: <{CURRENT_NS_IRI}>
+    PREFIX cd: <{current_namespace}>
     
     SELECT ?s ?p ?o
     WHERE {{
@@ -28,7 +29,7 @@ def _sublimate_ontology(state: AgentState):
         graph_onto_addendum.add((s, p, o))
 
     query_facts = f"""
-        PREFIX cd: <{CURRENT_NS_IRI}>
+        PREFIX cd: <{current_namespace}>
 
         SELECT ?s ?p ?o
         WHERE {{

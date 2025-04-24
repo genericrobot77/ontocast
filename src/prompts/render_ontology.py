@@ -4,7 +4,7 @@ You task is to propose/develop a new domain ontology based on the document. When
 
 specific_ontology_instruction_fresh = """
 - all new abstract entities/classes/types or properties added to the new ontology must be linked to entities from basic ontologies (RDFS, OWL, schema etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
-- propose (!) and use a domain specific (and succint) IRI for the new ontology, derive it from domain {CURRENT_DOMAIN}. The ontology specifier should be an abbreviation, consistent with the Ontology property `short_name`, for example (it's only an example!) it could be <{CURRENT_DOMAIN}/abcont#> for a some imaginary A... B... of C... Ontology.
+- propose (!) and use a domain specific (and succint) IRI for the new ontology, derive it from domain {current_domain}. The ontology specifier should be an abbreviation, consistent with the Ontology property `short_name`, for example (it's only an example!) it could be <{current_domain}/abcont#> for a some imaginary A... B... of C... Ontology.
 - explicitly use prefix `co:` for entities/properties placed in the proposed ontology."""
 
 

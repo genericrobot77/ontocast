@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class TripleStoreManager(Tool):
     def __init__(self, **kwargs):
-        pass
+        super().__init__(**kwargs)
 
     @abc.abstractmethod
     def fetch_ontologies(self) -> list[Ontology]:
@@ -22,13 +22,11 @@ class TripleStoreManager(Tool):
 
 
 class FilesystemTripleStoreManager(TripleStoreManager):
-    def __init__(
-        self, working_directory: pathlib.Path, ontology_path: pathlib.Path, **kwargs
-    ):
-        super().__init__(**kwargs)
+    working_directory: pathlib.Path
+    ontology_path: pathlib.Path
 
-        self.working_directory = working_directory
-        self.ontology_path = ontology_path
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def fetch_ontologies(self) -> list[Ontology]:
         ontologies = []

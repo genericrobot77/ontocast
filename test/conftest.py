@@ -1,14 +1,15 @@
 import pytest
 import os
 from pathlib import Path
-from src.onto import AgentState, RDFGraph, ToolType
+from src.onto import AgentState, RDFGraph, ToolType, DEFAULT_DOMAIN
 from suthing import FileHandle
 from src.tools import LLMTool, FilesystemTripleStoreManager, OntologyManager
+from src.tools.setup import setup_tools
 
 
-# Set test environment variables
-os.environ["CURRENT_DOMAIN"] = "https://test.growgraph.dev"
-os.environ["CURRENT_NS_URI"] = "https://test.example.com/current-document#"
+@pytest.fixture(scope="session", autouse=True)
+def set_env_vars():
+    os.environ["CURRENT_DOMAIN"] = DEFAULT_DOMAIN
 
 
 @pytest.fixture
@@ -43,17 +44,38 @@ def tsm_tool():
 
 
 @pytest.fixture
-def om_tool():
-    return OntologyManager()
+def om_tool_fname():
+    return "test/data/om_tool.json"
 
 
 @pytest.fixture
-def tools(llm_tool, tsm_tool, om_tool):
+def state_onto_selected_fname():
+    return "test/data/agent_state.select_ontology.json"
+
+
+@pytest.fixture
+def state_onto_null_fname():
+    return "test/data/agent_state.select_ontology.null.json"
+
+
+@pytest.fixture
+def om_tool(om_tool_fname):
+    try:
+        return OntologyManager.load(om_tool_fname)
+    except (FileNotFoundError, Exception):
+        return OntologyManager()
+
+
+@pytest.fixture
+def tools(llm_tool, tsm_tool, om_tool, om_tool_fname):
     tools = {
         ToolType.LLM: llm_tool,
         ToolType.TRIPLE_STORE: tsm_tool,
         ToolType.ONTOLOGY_MANAGER: om_tool,
     }
+    if not om_tool.ontologies:
+        setup_tools(tools)
+        om_tool.serialize(om_tool_fname)
     return tools
 
 
@@ -79,17 +101,19 @@ def legal_report():
 
 
 @pytest.fixture
-def agent_state_init(tools):
-    try:
-        return AgentState.load("test/data/agent_state.init.json")
-    except (FileNotFoundError, Exception):
-        state = AgentState(ontology_path="data/ontologies")
-        return state
+def agent_state_init():
+    state = AgentState()
+    return state
 
 
 @pytest.fixture
-def agent_state_select_ontology():
-    return AgentState.load("test/data/agent_state.select_ontology.json")
+def agent_state_select_ontology(state_onto_selected_fname):
+    return AgentState.load(state_onto_selected_fname)
+
+
+@pytest.fixture
+def agent_state_select_ontology_null(state_onto_null_fname):
+    return AgentState.load(state_onto_null_fname)
 
 
 @pytest.fixture

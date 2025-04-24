@@ -2,7 +2,7 @@ from langchain.output_parsers import PydanticOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models import BaseChatModel
 from typing import Type, TypeVar, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import asyncio
 from typing import Optional
 from .onto import Tool
@@ -12,19 +12,16 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class LLMTool(Tool):
+    model: str = Field(default="gpt-4o-mini")
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    temperature: float = 0.1
+
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        temperature: float = 0.1,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.model = model
-        self.api_key: Optional[str] = api_key
-        self.base_url: Optional[str] = base_url
-        self.temperature = temperature
         self._llm = None
 
     @classmethod
@@ -45,7 +42,7 @@ class LLMTool(Tool):
         )
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.llm(*args, **kwds)
+        return self.llm.invoke(*args, **kwds)
 
     @property
     def llm(self) -> BaseChatModel:
