@@ -1,4 +1,11 @@
-from src.onto import AgentState, RDFGraph, Status, ONTOLOGY_VOID_ID, DEFAULT_DOMAIN, ToolType
+from src.onto import (
+    AgentState,
+    RDFGraph,
+    Status,
+    ONTOLOGY_VOID_ID,
+    DEFAULT_DOMAIN,
+    ToolType,
+)
 
 from src.nodes import (
     create_ontology_selector,
@@ -163,7 +170,7 @@ def test_agent_text_to_ontology_null_critique_loop(
     state.serialize("test/data/agent_state.onto.null.critique.success.json")
 
 
-@pytest.mark.order(after="test_agent_text_to_ontology_critique_loop")
+@pytest.mark.order(after="test_agent_text_to_ontology_null_critique_loop")
 def test_agent_text_to_facts_critique_loop(
     agent_state_onto_critique_success: AgentState, apple_report: dict, tools, max_iter
 ):

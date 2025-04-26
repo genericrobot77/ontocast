@@ -128,4 +128,4 @@ def agent_state_onto_critique():
 
 @pytest.fixture
 def agent_state_onto_critique_success():
-    return AgentState.load("test/data/agent_state.onto.critique.success.json")
+    return AgentState.load("test/data/agent_state.onto.null.critique.success.json")

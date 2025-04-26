@@ -48,7 +48,9 @@ async def process_document_endpoint(request):
 
 @click.command()
 @click.option("--env-path", type=click.Path(path_type=pathlib.Path), required=True)
-@click.option("--ontology-path", type=click.Path(path_type=pathlib.Path), required=True)
+@click.option(
+    "--ontology-directory", type=click.Path(path_type=pathlib.Path), required=True
+)
 @click.option(
     "--working-directory", type=click.Path(path_type=pathlib.Path), required=True
 )
@@ -57,7 +59,7 @@ async def process_document_endpoint(request):
 @click.option("--port", type=int, default=8999)
 def run(
     env_path: pathlib.Path,
-    ontology_path: pathlib.Path,
+    ontology_directory: pathlib.Path,
     working_directory: pathlib.Path,
     model_name: str,
     temperature: float,
@@ -68,13 +70,12 @@ def run(
     if "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-    llm_tool: LLMTool = LLMTool(model=model_name, temperature=temperature)
+    llm_tool: LLMTool = LLMTool.create(model=model_name, temperature=temperature)
+
     tsm_tool: FilesystemTripleStoreManager = FilesystemTripleStoreManager(
-        working_directory=working_directory, ontology_path=ontology_path
+        working_directory=working_directory, ontology_path=ontology_directory
     )
-    om_tool: OntologyManager = FilesystemTripleStoreManager(
-        working_directory=working_directory, ontology_path=ontology_path
-    )
+    om_tool: OntologyManager = OntologyManager()
 
     tools: dict[ToolType, Tool] = {
         ToolType.LLM: llm_tool,

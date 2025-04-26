@@ -2,6 +2,7 @@ from src.onto import AgentState, FailureStages, KGCritiqueReport
 
 from src.onto import ToolType
 from langchain.prompts import PromptTemplate
+from src.prompts.criticise_facts import prompt as criticise_facts_prompt
 
 
 def create_facts_critic(tools):
@@ -9,29 +10,8 @@ def create_facts_critic(tools):
         llm_tool = tools[ToolType.LLM]
         parser = llm_tool.get_parser(KGCritiqueReport)
 
-        prompt = """
-    You are a helpful assistant that criticises the knowledge graph of facts derived from a document using a supporting ontology.
-    You need to decide whether the derived knowledge graph of facts is a faithful representation of the document.
-    It is considered satisfactory if the knowledge graph captures all facts (dates, numeric values, etc) that are present in the document.
-    Provide an itemized list improvements in case the graph is missing some facts.
-
-    Here is the supporting ontology:
-    ```ttl
-    {ontology}
-    ```
-
-    Here is the document from which the ontology was update was derived:
-    {document}
-
-    Here's the knowledge graph of facts derived from the document:
-    ```ttl
-    {knowledge_graph}
-    ```
-
-    {format_instructions}"""
-
         prompt = PromptTemplate(
-            template=prompt,
+            template=criticise_facts_prompt,
             input_variables=[
                 "ontology",
                 "document",

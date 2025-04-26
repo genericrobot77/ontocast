@@ -30,7 +30,8 @@ class FilesystemTripleStoreManager(TripleStoreManager):
 
     def fetch_ontologies(self) -> list[Ontology]:
         ontologies = []
-        for fname in self.ontology_path.glob("*.ttl"):
+        sorted_files = sorted(self.ontology_path.glob("*.ttl"))
+        for fname in sorted_files:
             try:
                 ontology = Ontology.from_file(fname)
                 ontologies.append(ontology)
