@@ -3,6 +3,9 @@
 Agentic ontology assisted framework for semantic triple extraction from text/pdfs.
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg) 
+[![pre-commit](https://github.com/growgraph/agentic-onto-triplecast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/agentic-onto-triplecast/actions/workflows/pre-commit.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+<!-- [![DOI](https://zenodo.org/badge/259046250.svg)](https://zenodo.org/badge/latestdoi/259046250) -->
 
 ## Features
 
