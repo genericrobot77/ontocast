@@ -1,18 +1,24 @@
+import logging
 from src.onto import AgentState, OntologySelectorReport
 from langchain.prompts import PromptTemplate
 from src.onto import ToolType
 from src.tools import OntologyManager
 from src.prompts.select_ontology import template_prompt
 
+logger = logging.getLogger(__name__)
+
 
 def create_ontology_selector(tools):
     def _selector(state: AgentState) -> AgentState:
+        logger.debug("Starting ontology selection process")
         llm_tool = tools[ToolType.LLM]
         om_tool: OntologyManager = tools[ToolType.ONTOLOGY_MANAGER]
 
         parser = llm_tool.get_parser(OntologySelectorReport)
 
         ontologies_desc = "\n\n".join([o.describe() for o in om_tool.ontologies])
+        logger.debug(f"Retrieved descriptions for {len(om_tool.ontologies)} ontologies")
+
         excerpt = state.input_text[:1000] + "..."
 
         prompt = PromptTemplate(
@@ -28,8 +34,12 @@ def create_ontology_selector(tools):
             )
         )
         selector = parser.parse(response.content)
+        logger.debug(
+            f"Parsed selector report - Selected ontology: {selector.short_name}"
+        )
 
         state.current_ontology = om_tool.get_ontology(selector.short_name)
+        logger.debug(f"Set current ontology to: {selector.short_name}")
         return state
 
     return _selector

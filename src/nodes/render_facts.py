@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 def create_facts_renderer(tools):
     def _renderer(state: AgentState) -> AgentState:
+        logger.debug("Starting facts rendering process")
         llm_tool = tools[ToolType.LLM]
 
         parser = llm_tool.get_parser(SemanticTriplesFactsReport)
@@ -23,14 +24,18 @@ def create_facts_renderer(tools):
         ontology_ext = ontology_iri.split("/")[-1].split("#")[0]
         if not ontology_ext:
             ontology_ext = "default"
+        logger.debug(f"Extracted ontology extension: {ontology_ext}")
 
         # Generate document hash
         doc_hash = get_document_hash(state.input_text)
+        logger.debug(f"Generated document hash: {doc_hash}")
 
         current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+        logger.debug(f"Using domain: {current_domain}")
 
         # Construct namespace with domain, ontology extension and hash
         state.current_namespace = f"{current_domain}/{ontology_ext}/{doc_hash}/"
+        logger.debug(f"Set current namespace to: {state.current_namespace}")
 
         ontology_instruction_str = ontology_instruction.format(
             ontology_iri=ontology_iri, ontology_str=ontology_str

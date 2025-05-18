@@ -1,9 +1,14 @@
+import logging
 from rdflib import Namespace
 from src.onto import AgentState, FailureStages, RDFGraph, ToolType
 
+logger = logging.getLogger(__name__)
+
 
 def _sublimate_ontology(state: AgentState):
+    logger.debug("Starting ontology sublimation process")
     current_namespace = state.current_namespace
+    logger.debug(f"Using namespace: {current_namespace}")
 
     query_ontology = f"""
     PREFIX cd: <{current_namespace}>
@@ -21,6 +26,7 @@ def _sublimate_ontology(state: AgentState):
     }}
     """
     results = state.graph_facts.query(query_ontology)
+    logger.debug(f"Found {len(results)} ontology triples")
 
     graph_onto_addendum = RDFGraph()
 
@@ -42,9 +48,10 @@ def _sublimate_ontology(state: AgentState):
         }}
     """
 
-    graph_facts_pure = RDFGraph()
-
     results = state.graph_facts.query(query_facts)
+    logger.debug(f"Found {len(results)} facts triples")
+
+    graph_facts_pure = RDFGraph()
 
     # Add filtered triples to the new graph
     for s, p, o in results:

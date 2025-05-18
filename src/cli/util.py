@@ -1,6 +1,6 @@
 import pathlib
 from docling.document_converter import DocumentConverter
-
+from typing import Optional
 import logging.config
 
 logger = logging.getLogger(__name__)
@@ -25,9 +25,12 @@ def crawl_directories(
     return file_paths
 
 
-def pdf2markdown(file_path: pathlib.Path):
+def pdf2markdown(
+    file_path: pathlib.Path, converter: Optional[DocumentConverter] = None
+):
     if file_path.suffix == ".pdf":
-        converter = DocumentConverter()
+        if converter is None:
+            converter = DocumentConverter()
         result = converter.convert(file_path)
         doc = result.document.export_to_markdown()
         return {"text": doc}

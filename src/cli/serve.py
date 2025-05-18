@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from robyn import Robyn
@@ -9,45 +10,65 @@ from src.tools import FilesystemTripleStoreManager, OntologyManager, LLMTool, To
 from src.onto import ToolType
 from langgraph.graph.state import CompiledStateGraph
 from src.tools.setup import setup_tools
+from src.cli.util import pdf2markdown
+from docling.document_converter import DocumentConverter
+
 
 app = Robyn(__file__)
 
 workflow: CompiledStateGraph
+converter: DocumentConverter
+
+logger = logging.getLogger(__name__)
 
 
 @app.post("/process")
 async def process_document_endpoint(request):
     try:
-        data = await request.form()
-        file = data.get("file")
+        if request.headers.get("content-type", "").startswith("application/json"):
+            data = await request.json()
+            input_text = data.get("text")
+            if not input_text:
+                return {"error": "'text' field is required in JSON"}, 400
+        else:
+            data = await request.form()
+            file = data.get("file")
 
-        if not file:
-            return {"error": "file is required"}, 400
+            if not file:
+                return {"error": "file is required"}, 400
 
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file_path = temp_file.name
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                content = await file.read()
+                temp_file.write(content)
+                temp_file_path = temp_file.name
 
-        try:
-            state = AgentState(
-                input_text=content.decode("utf-8"),
-            )
+            try:
+                if file.filename.endswith(".pdf"):
+                    json_data = pdf2markdown(temp_file_path, converter=converter)
+                    input_text = json_data["text"]
+                else:
+                    input_text = content.decode("utf-8")
+            finally:
+                os.unlink(temp_file_path)
 
-            state = AgentState(ontology_path="data/ontologies")
-            output = await workflow.ainvoke(state)
-            workflow.run(state)
+        state = AgentState(input_text=input_text)
+        output_state = await workflow.ainvoke(state)
+        response = {
+            "ontology": output_state.current_ontology.serialize(),
+            "facts": output_state.graph_facts.serialize(format="turtle"),
+        }
 
-            return output.dict(), 200
-        finally:
-            os.unlink(temp_file_path)
+        return response, 200
 
     except Exception as e:
+        logger.error(f"Error processing document: {str(e)}")
         return {"error": str(e)}, 500
 
 
 @click.command()
-@click.option("--env-path", type=click.Path(path_type=pathlib.Path), required=True)
+@click.option(
+    "--env-path", type=click.Path(path_type=pathlib.Path), required=True, default=".env"
+)
 @click.option(
     "--ontology-directory", type=click.Path(path_type=pathlib.Path), required=True
 )
@@ -57,6 +78,7 @@ async def process_document_endpoint(request):
 @click.option("--model-name", type=str, default="gpt-4o-mini")
 @click.option("--temperature", type=float, default=0.0)
 @click.option("--port", type=int, default=8999)
+@click.option("--debug", is_flag=True, default=False)
 def run(
     env_path: pathlib.Path,
     ontology_directory: pathlib.Path,
@@ -64,7 +86,13 @@ def run(
     model_name: str,
     temperature: float,
     port: int,
+    debug: bool,
 ):
+    if debug:
+        logger_conf = "logging.debug.conf"
+        logging.config.fileConfig(logger_conf, disable_existing_loggers=False)
+        logger.debug("debug is on")
+
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
     if "OPENAI_API_KEY" not in os.environ:
@@ -89,6 +117,9 @@ def run(
 
     global workflow
     workflow = create_agent_graph(tools)
+
+    global converter
+    converter = DocumentConverter()
 
     app.start(port=port)
 

@@ -160,7 +160,7 @@ class RDFGraph(Graph):
         return instance
 
 
-class OntologySelectorReport(BaseModel):
+class OntologySelectorReport(BasePydanticModel):
     short_name: Optional[str] = Field(
         description="A short name (identifier) for the ontology that could be used to represent the domain of the document, None if no ontology is suitable"
     )

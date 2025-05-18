@@ -26,13 +26,16 @@ logger = logging.getLogger(__name__)
 
 def create_onto_triples_renderer(tools):
     def _renderer(state: AgentState) -> AgentState:
+        logger.debug("Starting ontology triples rendering process")
         llm_tool = tools[ToolType.LLM]
 
         parser = llm_tool.get_parser(Ontology)
 
         current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+        logger.debug(f"Using domain: {current_domain}")
 
         if state.current_ontology.short_name == ONTOLOGY_VOID_ID:
+            logger.debug("Creating fresh ontology")
             ontology_instruction = ontology_instruction_fresh
             specific_ontology_instruction = specific_ontology_instruction_fresh.format(
                 current_domain=current_domain

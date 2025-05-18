@@ -30,7 +30,7 @@ dependencies = [
   "robyn>=0.53.0",
   "suthing>=0.3.0"
 ]
-description = "Add your description here"
+description = "Agentic ontology assisted KG generation"
 name = "agentic-onto-triple-cast"
 readme = "README.md"
 requires-python = ">=3.12"
