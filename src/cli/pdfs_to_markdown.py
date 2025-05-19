@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def process_batch(output_path, f: pathlib.Path):
+def process(output_path, f: pathlib.Path):
     fn_json = (output_path / f.name).with_suffix(".json")
     jdata = pdf2markdown(f)
     with open(fn_json, "w", encoding="utf-8") as f:
@@ -27,12 +27,12 @@ def main(input_path, output_path, prefix):
     files = sorted(
         crawl_directories(input_path.expanduser(), suffixes=(".pdf",), prefix=prefix)
     )
-    files = files
 
     for f in files:
-        process_batch(output_path, f)
+        logger.debug(f"processing {f}")
+        process(output_path, f)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
     main()
