@@ -1,68 +1,90 @@
-import logging
+import logging.config
 import os
-import tempfile
+from typing import Optional
 from robyn import Robyn
 from dotenv import load_dotenv
 import click
 import pathlib
-from src.agent import create_agent_graph, AgentState
-from src.tools import FilesystemTripleStoreManager, OntologyManager, LLMTool, Tool
+from io import BytesIO
+from src.agent import create_agent_graph
+from src.tools import (
+    FilesystemTripleStoreManager,
+    OntologyManager,
+    LLMTool,
+    Converter,
+    ChunkerTool,
+)
 from src.onto import ToolType
 from langgraph.graph.state import CompiledStateGraph
 from src.tools.setup import setup_tools
-from src.cli.util import pdf2markdown
-from docling.document_converter import DocumentConverter
-
+from robyn import Request, Response, Headers
+import logging
 
 app = Robyn(__file__)
 
 workflow: CompiledStateGraph
-converter: DocumentConverter
 
 logger = logging.getLogger(__name__)
 
 
 @app.post("/process")
-async def process_document_endpoint(request):
+async def process_document_endpoint(request: Request):
     try:
-        if request.headers.get("content-type", "").startswith("application/json"):
+        content_type = request.headers["content-type"]
+        logger.debug(f"{content_type}")
+        if content_type.startswith("application/json"):
             data = await request.json()
             input_text = data.get("text")
             if not input_text:
-                return {"error": "'text' field is required in JSON"}, 400
-        else:
-            data = await request.form()
-            file = data.get("file")
+                return Response(
+                    status_code=400, description="'text' field is required in JSON"
+                )
+        elif content_type.startswith("multipart/form-data"):
+            files = request.files
+            if not files:
+                return Response(status_code=400, description="No file uploaded")
 
-            if not file:
-                return {"error": "file is required"}, 400
+            logger.debug(f"{files.keys()}")
+            for filename, file_content in files.items():
+                file_extension = pathlib.Path(filename).suffix.lower()
 
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                content = await file.read()
-                temp_file.write(content)
-                temp_file_path = temp_file.name
-
-            try:
-                if file.filename.endswith(".pdf"):
-                    json_data = pdf2markdown(temp_file_path, converter=converter)
-                    input_text = json_data["text"]
+                if file_extension in tools[ToolType.CONVERTER].supported_extensions:
+                    supported_file = BytesIO(file_content)
+                    result = tools[ToolType.CONVERTER](supported_file)
+                    input_text = result["text"]
                 else:
-                    input_text = content.decode("utf-8")
-            finally:
-                os.unlink(temp_file_path)
+                    try:
+                        input_text = file_content.decode("utf-8")
+                    except UnicodeDecodeError:
+                        return Response(
+                            status_code=400,
+                            description="Unsupported file type: {file_extension}",
+                        )
 
-        state = AgentState(input_text=input_text)
-        output_state = await workflow.ainvoke(state)
-        response = {
-            "ontology": output_state.current_ontology.serialize(),
-            "facts": output_state.graph_facts.serialize(format="turtle"),
-        }
+        logger.debug(f"{filename} : {input_text[:200]}")
 
-        return response, 200
+        chunker = tools[ToolType.CHUNKER]
+
+        docs = chunker(input_text)
+
+        logger.debug(f"len docs : {len(docs)}")
+        logger.debug(f"docs: {docs}")
+        # docs_txt = [x.page_content for x in docs]
+        sizes = [len(x.page_content) for x in docs]
+        logger.debug(f"Chunk size: {sizes}")
+
+        # state = AgentState(input_text=input_text)
+        # output_state = await workflow.ainvoke(state)
+        # response = {
+        #     "ontology": output_state.current_ontology.serialize(),
+        #     "facts": output_state.graph_facts.serialize(format="turtle"),
+        # }
+
+        return Response(status_code=200, headers=Headers({}), description="clean")
 
     except Exception as e:
         logger.error(f"Error processing document: {str(e)}")
-        return {"error": str(e)}, 500
+        return {"error": str(e)}, 500, {}
 
 
 @click.command()
@@ -70,7 +92,7 @@ async def process_document_endpoint(request):
     "--env-path", type=click.Path(path_type=pathlib.Path), required=True, default=".env"
 )
 @click.option(
-    "--ontology-directory", type=click.Path(path_type=pathlib.Path), required=True
+    "--ontology-directory", type=click.Path(path_type=pathlib.Path), default=None
 )
 @click.option(
     "--working-directory", type=click.Path(path_type=pathlib.Path), required=True
@@ -81,7 +103,7 @@ async def process_document_endpoint(request):
 @click.option("--debug", is_flag=True, default=False)
 def run(
     env_path: pathlib.Path,
-    ontology_directory: pathlib.Path,
+    ontology_directory: Optional[pathlib.Path],
     working_directory: pathlib.Path,
     model_name: str,
     temperature: float,
@@ -104,11 +126,16 @@ def run(
         working_directory=working_directory, ontology_path=ontology_directory
     )
     om_tool: OntologyManager = OntologyManager()
+    converter_tool: Converter = Converter()
+    chunker_tool: ChunkerTool = ChunkerTool()
 
-    tools: dict[ToolType, Tool] = {
+    global tools
+    tools = {
         ToolType.LLM: llm_tool,
         ToolType.TRIPLE_STORE: tsm_tool,
         ToolType.ONTOLOGY_MANAGER: om_tool,
+        ToolType.CONVERTER: converter_tool,
+        ToolType.CHUNKER: chunker_tool,
     }
 
     setup_tools(tools)
@@ -117,9 +144,6 @@ def run(
 
     global workflow
     workflow = create_agent_graph(tools)
-
-    global converter
-    converter = DocumentConverter()
 
     app.start(port=port)
 

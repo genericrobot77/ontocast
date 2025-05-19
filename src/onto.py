@@ -30,6 +30,8 @@ class ToolType(StrEnum):
     LLM = "llm"
     TRIPLE_STORE = "tsm"
     ONTOLOGY_MANAGER = "om"
+    CONVERTER = "converter"
+    CHUNKER = "chunker"
 
 
 class FailureStages(StrEnum):

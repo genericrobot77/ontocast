@@ -2,7 +2,7 @@ import sys
 import pathlib
 import click
 from src.cli.util import crawl_directories
-from src.chunk import split
+from src.tools.chunker import ChunkerTool
 from suthing import FileHandle
 import json
 
@@ -11,9 +11,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def process(fn_json: pathlib.Path, save=False):
+def process(fn_json: pathlib.Path, chunker: ChunkerTool, save=False):
     jdata = FileHandle.load(fn_json)
-    docs = split(jdata["text"])
+    docs = chunker(jdata["text"])
     docs_txt = [x.page_content for x in docs]
 
     sizes = [len(x.page_content) for x in docs]
@@ -35,12 +35,14 @@ def main(input_path, output_path, prefix):
     input_path = input_path.expanduser()
     output_path = output_path.expanduser()
 
+    chunker = ChunkerTool()
+
     files = sorted(
         crawl_directories(input_path.expanduser(), suffixes=(".json",), prefix=prefix)
     )
 
     for f in files:
-        process(f)
+        process(f, chunker)
 
 
 if __name__ == "__main__":
