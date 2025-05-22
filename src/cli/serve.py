@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import click
 import pathlib
 from io import BytesIO
-from src.agent import create_agent_graph
+from src.agent import create_agent_graph, AgentState
 from src.tools import (
     FilesystemTripleStoreManager,
     OntologyManager,
@@ -14,77 +14,95 @@ from src.tools import (
     Converter,
     ChunkerTool,
 )
-from src.onto import ToolType
+from src.onto import ToolType, RDFGraph
 from langgraph.graph.state import CompiledStateGraph
 from src.tools.setup import setup_tools
 from robyn import Request, Response, Headers
 import logging
 
-app = Robyn(__file__)
-
-workflow: CompiledStateGraph
-
 logger = logging.getLogger(__name__)
 
 
-@app.post("/process")
-async def process_document_endpoint(request: Request):
-    try:
-        content_type = request.headers["content-type"]
-        logger.debug(f"{content_type}")
-        if content_type.startswith("application/json"):
-            data = await request.json()
-            input_text = data.get("text")
-            if not input_text:
-                return Response(
-                    status_code=400, description="'text' field is required in JSON"
-                )
-        elif content_type.startswith("multipart/form-data"):
-            files = request.files
-            if not files:
-                return Response(status_code=400, description="No file uploaded")
+def create_app(**kwargs):
+    app = Robyn(__file__)
 
-            logger.debug(f"{files.keys()}")
-            for filename, file_content in files.items():
-                file_extension = pathlib.Path(filename).suffix.lower()
+    workflow: CompiledStateGraph = create_agent_graph(tools)
 
-                if file_extension in tools[ToolType.CONVERTER].supported_extensions:
-                    supported_file = BytesIO(file_content)
-                    result = tools[ToolType.CONVERTER](supported_file)
-                    input_text = result["text"]
-                else:
-                    try:
-                        input_text = file_content.decode("utf-8")
-                    except UnicodeDecodeError:
-                        return Response(
-                            status_code=400,
-                            description="Unsupported file type: {file_extension}",
-                        )
+    @app.post("/process")
+    async def process_document_endpoint(request: Request):
+        head_chunks = kwargs.pop("head_chunks")
+        logger.debug(f"head: {head_chunks}")
 
-        logger.debug(f"{filename} : {input_text[:200]}")
+        try:
+            content_type = request.headers["content-type"]
+            logger.debug(f"{content_type}")
+            if content_type.startswith("application/json"):
+                data = await request.json()
+                input_text = data.get("text")
+                if not input_text:
+                    return Response(
+                        status_code=400, description="'text' field is required in JSON"
+                    )
+            elif content_type.startswith("multipart/form-data"):
+                files = request.files
+                if not files:
+                    return Response(status_code=400, description="No file uploaded")
 
-        chunker = tools[ToolType.CHUNKER]
+                logger.debug(f"{files.keys()}")
+                for filename, file_content in files.items():
+                    file_extension = pathlib.Path(filename).suffix.lower()
 
-        docs = chunker(input_text)
+                    if file_extension in tools[ToolType.CONVERTER].supported_extensions:
+                        supported_file = BytesIO(file_content)
+                        result = tools[ToolType.CONVERTER](supported_file)
+                        input_text = result["text"]
+                    else:
+                        try:
+                            input_text = file_content.decode("utf-8")
+                        except UnicodeDecodeError:
+                            return Response(
+                                status_code=400,
+                                description="Unsupported file type: {file_extension}",
+                            )
 
-        logger.debug(f"len docs : {len(docs)}")
-        logger.debug(f"docs: {docs}")
-        # docs_txt = [x.page_content for x in docs]
-        sizes = [len(x.page_content) for x in docs]
-        logger.debug(f"Chunk size: {sizes}")
+            logger.debug(f"{filename} : {input_text[:200]}")
 
-        # state = AgentState(input_text=input_text)
-        # output_state = await workflow.ainvoke(state)
-        # response = {
-        #     "ontology": output_state.current_ontology.serialize(),
-        #     "facts": output_state.graph_facts.serialize(format="turtle"),
-        # }
+            chunker = tools[ToolType.CHUNKER]
 
-        return Response(status_code=200, headers=Headers({}), description="clean")
+            docs = chunker(input_text)
 
-    except Exception as e:
-        logger.error(f"Error processing document: {str(e)}")
-        return {"error": str(e)}, 500, {}
+            logger.debug(f"len docs : {len(docs)}")
+            logger.debug(f"docs: {docs}")
+
+            docs_txt = [x.page_content for x in docs]
+            sizes = [len(x.page_content) for x in docs]
+            logger.debug(f"Chunk size: {sizes}")
+            facts = RDFGraph()
+            if head_chunks is not None:
+                docs_txt = docs_txt[:head_chunks]
+
+            for doc_txt in docs_txt:
+                state = AgentState(input_text=doc_txt)
+                output_state = await workflow.ainvoke(state)
+                facts += output_state.graph_facts
+
+            response_body = {
+                "ontology": output_state.current_ontology.serialize(),
+                "facts": facts(format="turtle"),
+            }
+
+            return Response(
+                status_code=200,
+                headers=Headers({}),
+                response_type="json",
+                description=response_body,
+            )
+
+        except Exception as e:
+            logger.error(f"Error processing document: {str(e)}")
+            return {"error": str(e)}, 500, {}
+
+    return app
 
 
 @click.command()
@@ -99,6 +117,7 @@ async def process_document_endpoint(request: Request):
 )
 @click.option("--model-name", type=str, default="gpt-4o-mini")
 @click.option("--temperature", type=float, default=0.0)
+@click.option("--head-chunks", type=int, default=None)
 @click.option("--port", type=int, default=8999)
 @click.option("--debug", is_flag=True, default=False)
 def run(
@@ -108,6 +127,7 @@ def run(
     model_name: str,
     temperature: float,
     port: int,
+    head_chunks: Optional[int],
     debug: bool,
 ):
     if debug:
@@ -142,8 +162,7 @@ def run(
 
     working_directory.mkdir(parents=True, exist_ok=True)
 
-    global workflow
-    workflow = create_agent_graph(tools)
+    app = create_app(head_chunks=head_chunks)
 
     app.start(port=port)
 
