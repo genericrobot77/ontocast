@@ -1,5 +1,4 @@
 import logging
-from src.onto import ToolType
 
 import os
 from src.onto import (
@@ -10,6 +9,7 @@ from src.onto import (
     DEFAULT_DOMAIN,
 )
 from langchain.prompts import PromptTemplate
+from src.tools import ToolBox
 
 from src.prompts.render_ontology import (
     template_prompt,
@@ -24,10 +24,10 @@ from src.prompts.render_ontology import (
 logger = logging.getLogger(__name__)
 
 
-def create_onto_triples_renderer(tools):
+def create_onto_triples_renderer(tools: ToolBox):
     def _renderer(state: AgentState) -> AgentState:
         logger.debug("Starting ontology triples rendering process")
-        llm_tool = tools[ToolType.LLM]
+        llm_tool = tools.llm_tool
 
         parser = llm_tool.get_parser(Ontology)
 

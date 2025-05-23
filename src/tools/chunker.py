@@ -38,7 +38,6 @@ class ChunkerTool(Tool):
             breakpoint_threshold_amount=self.breakpoint_threshold_amount,
             embeddings=self._model,
             min_chunk_size=self.min_chunk_size,
-            # sentence_split_regex= r"(?:(?:\n{2,}(?=#+))|(?<=[a-z][.?!])\s+(?=\b[A-Z]\w{7,}\b)|\n{2,}|(?<!#)(?=#+))"
             sentence_split_regex=r"(?:(?:\n{2,}(?=#+))|(?:\n{2,}(?=- ))|(?<=[a-z][.?!])\s+(?=\b[A-Z]\w{8,}\b)|(?<!#)(?=#+))",
         )
 

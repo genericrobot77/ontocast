@@ -4,16 +4,17 @@ import os
 from src.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
 from src.util import get_document_hash
-from src.onto import ToolType, DEFAULT_DOMAIN
+from src.onto import DEFAULT_DOMAIN
 from src.prompts.render_facts import ontology_instruction, template_prompt
+from src.tools import ToolBox
 
 logger = logging.getLogger(__name__)
 
 
-def create_facts_renderer(tools):
+def create_facts_renderer(tools: ToolBox):
     def _renderer(state: AgentState) -> AgentState:
         logger.debug("Starting facts rendering process")
-        llm_tool = tools[ToolType.LLM]
+        llm_tool = tools.llm_tool
 
         parser = llm_tool.get_parser(SemanticTriplesFactsReport)
 

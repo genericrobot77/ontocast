@@ -4,6 +4,7 @@ from .onto import Tool
 from .triple_manager import TripleStoreManager, FilesystemTripleStoreManager
 from .converter import Converter
 from .chunker import ChunkerTool
+from .toolbox import ToolBox
 
 __all__ = [
     "LLMTool",
@@ -13,4 +14,5 @@ __all__ = [
     "Converter",
     "ChunkerTool",
     "Tool",
+    "ToolBox",
 ]

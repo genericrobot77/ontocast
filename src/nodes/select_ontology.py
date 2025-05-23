@@ -1,18 +1,17 @@
 import logging
 from src.onto import AgentState, OntologySelectorReport
 from langchain.prompts import PromptTemplate
-from src.onto import ToolType
-from src.tools import OntologyManager
+from src.tools import OntologyManager, ToolBox
 from src.prompts.select_ontology import template_prompt
 
 logger = logging.getLogger(__name__)
 
 
-def create_ontology_selector(tools):
+def create_ontology_selector(tools: ToolBox):
     def _selector(state: AgentState) -> AgentState:
         logger.debug("Starting ontology selection process")
-        llm_tool = tools[ToolType.LLM]
-        om_tool: OntologyManager = tools[ToolType.ONTOLOGY_MANAGER]
+        llm_tool = tools.llm_tool
+        om_tool: OntologyManager = tools.om_tool
 
         parser = llm_tool.get_parser(OntologySelectorReport)
 

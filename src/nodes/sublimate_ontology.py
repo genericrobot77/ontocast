@@ -1,6 +1,7 @@
 import logging
 from rdflib import Namespace
-from src.onto import AgentState, FailureStages, RDFGraph, ToolType
+from src.onto import AgentState, FailureStages, RDFGraph
+from src.tools import ToolBox
 
 logger = logging.getLogger(__name__)
 
@@ -60,11 +61,11 @@ def _sublimate_ontology(state: AgentState):
     return graph_onto_addendum, graph_facts_pure
 
 
-def create_ontology_sublimator(tools):
-    def _sublimator(state: AgentState) -> AgentState:
-        """Separate ontology from facts"""
+def create_ontology_sublimator(tools: ToolBox):
+    """Create a node that sublimates ontology from the input text."""
 
-        om_tool = tools[ToolType.ONTOLOGY_MANAGER]
+    def sublimate_ontology(state: AgentState) -> AgentState:
+        om_tool = tools.om_tool
         try:
             graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
 
@@ -94,4 +95,4 @@ def create_ontology_sublimator(tools):
 
         return state
 
-    return _sublimator
+    return sublimate_ontology

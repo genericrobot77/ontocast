@@ -1,7 +1,7 @@
 import logging
 from src.onto import AgentState, FailureStages, OntologyUpdateCritiqueReport
-from src.onto import ToolType, ONTOLOGY_VOID_IRI
-from src.tools import OntologyManager, LLMTool
+from src.onto import ONTOLOGY_VOID_IRI
+from src.tools import ToolBox, LLMTool, OntologyManager
 from src.prompts.criticise_ontology import prompt_fresh, prompt_update
 
 from langchain.prompts import PromptTemplate
@@ -9,11 +9,11 @@ from langchain.prompts import PromptTemplate
 logger = logging.getLogger(__name__)
 
 
-def create_ontology_critic(tools):
+def create_ontology_critic(tools: ToolBox):
     def _critique(state: AgentState) -> AgentState:
         logger.debug("Starting ontology critique process")
-        llm_tool: LLMTool = tools[ToolType.LLM]
-        om_tool: OntologyManager = tools[ToolType.ONTOLOGY_MANAGER]
+        llm_tool: LLMTool = tools.llm_tool
+        om_tool: OntologyManager = tools.om_tool
         parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
 
         if state.current_ontology.iri == ONTOLOGY_VOID_IRI:

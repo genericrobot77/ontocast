@@ -7,17 +7,10 @@ from dotenv import load_dotenv
 import click
 import pathlib
 from io import BytesIO
-from src.agent import create_agent_graph, AgentState
-from src.tools import (
-    FilesystemTripleStoreManager,
-    OntologyManager,
-    LLMTool,
-    Converter,
-    ChunkerTool,
-)
-from src.onto import ToolType, RDFGraph
+from src.agent import create_agent_graph, AgentState, init_toolbox
+from src.tools import ToolBox
+from src.onto import RDFGraph
 from langgraph.graph.state import CompiledStateGraph
-from src.tools.setup import setup_tools
 from robyn import Request, Response, Headers
 import logging
 from src.cli.util import crawl_directories
@@ -26,10 +19,10 @@ import json
 logger = logging.getLogger(__name__)
 
 
-async def process_text_to_facts(
+async def process_text(
     input_text: str,
     workflow: CompiledStateGraph,
-    tools: Dict[ToolType, Any],
+    tools: ToolBox,
     head_chunks: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
@@ -38,41 +31,39 @@ async def process_text_to_facts(
     Args:
         input_text: The input text to process
         workflow: The compiled agent workflow
-        tools: Dictionary of tools to use
+        tools: ToolBox containing all tools
         head_chunks: Optional number of chunks to process
 
     Returns:
         Dictionary containing ontology and facts
     """
-    chunker = tools[ToolType.CHUNKER]
-    docs = chunker(input_text)
+    docs = tools.chunker_tool(input_text)
 
     logger.debug(f"len docs : {len(docs)}")
     logger.debug(f"docs: {docs}")
 
-    docs_txt = [x.page_content for x in docs]
-    sizes = [len(x.page_content) for x in docs]
-    logger.debug(f"Chunk size: {sizes}")
+    sizes = [len(x) for x in docs]
+    logger.debug(f"chunk sizes: {sizes}")
 
     facts = RDFGraph()
     if head_chunks is not None:
-        docs_txt = docs_txt[:head_chunks]
+        docs = docs[:head_chunks]
 
-    for doc_txt in docs_txt:
-        state = AgentState(input_text=doc_txt)
-        output_state = await workflow.ainvoke(state)
+    for doc in docs:
+        state = AgentState(input_text=doc)
+        output_state: AgentState = await workflow.ainvoke(state)
         facts += output_state.graph_facts
 
     return {
-        "ontology": output_state.current_ontology.serialize(),
-        "facts": facts(format="turtle"),
+        "ontology": output_state.current_ontology.graph.serialize(format="turtle"),
+        "facts": facts.serialize(format="turtle"),
     }
 
 
 async def process_file(
     file_path: pathlib.Path,
     workflow: CompiledStateGraph,
-    tools: Dict[ToolType, Any],
+    tools: ToolBox,
     head_chunks: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
@@ -81,7 +72,7 @@ async def process_file(
     Args:
         file_path: Path to the file to process
         workflow: The compiled agent workflow
-        tools: Dictionary of tools to use
+        tools: ToolBox containing all tools
         head_chunks: Optional number of chunks to process
 
     Returns:
@@ -89,23 +80,23 @@ async def process_file(
     """
     file_extension = file_path.suffix.lower()
 
-    if file_extension in tools[ToolType.CONVERTER].supported_extensions:
+    if file_extension in tools.converter_tool.supported_extensions:
         with open(file_path, "rb") as f:
-            result = tools[ToolType.CONVERTER](BytesIO(f.read()))
+            result = tools.converter_tool(BytesIO(f.read()))
             input_text = result["text"]
     else:
         with open(file_path, "r", encoding="utf-8") as f:
             input_text = f.read()
 
-    return await process_text_to_facts(input_text, workflow, tools, head_chunks)
+    return await process_text(input_text, workflow, tools, head_chunks)
 
 
-def create_app(tools: Dict[ToolType, Any], head_chunks: Optional[int] = None):
+def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
     app = Robyn(__file__)
     workflow: CompiledStateGraph = create_agent_graph(tools)
 
     @app.post("/process")
-    async def process_document_endpoint(request: Request):
+    async def process(request: Request):
         try:
             content_type = request.headers["content-type"]
             logger.debug(f"{content_type}")
@@ -117,22 +108,19 @@ def create_app(tools: Dict[ToolType, Any], head_chunks: Optional[int] = None):
                     return Response(
                         status_code=400, description="'text' field is required in JSON"
                     )
-                result = await process_text_to_facts(
-                    input_text, workflow, tools, head_chunks
-                )
 
             elif content_type.startswith("multipart/form-data"):
                 files = request.files
                 if not files:
-                    return Response(status_code=400, description="No file uploaded")
+                    return Response(status_code=400, description="No file provided")
 
                 logger.debug(f"{files.keys()}")
                 for filename, file_content in files.items():
                     file_extension = pathlib.Path(filename).suffix.lower()
 
-                    if file_extension in tools[ToolType.CONVERTER].supported_extensions:
+                    if file_extension in tools.converter_tool.supported_extensions:
                         supported_file = BytesIO(file_content)
-                        result = tools[ToolType.CONVERTER](supported_file)
+                        result = tools.converter_tool(supported_file)
                         input_text = result["text"]
                     else:
                         try:
@@ -142,11 +130,10 @@ def create_app(tools: Dict[ToolType, Any], head_chunks: Optional[int] = None):
                                 status_code=400,
                                 description=f"Unsupported file type: {file_extension}",
                             )
+                    # process only one file
+                    break
 
-                    result = await process_text_to_facts(
-                        input_text, workflow, tools, head_chunks
-                    )
-                    break  # Process only the first file
+            result = await process_text(input_text, workflow, tools, head_chunks)
 
             return Response(
                 status_code=200,
@@ -160,34 +147,6 @@ def create_app(tools: Dict[ToolType, Any], head_chunks: Optional[int] = None):
             return {"error": str(e)}, 500, {}
 
     return app
-
-
-async def create_tools(
-    working_directory: pathlib.Path,
-    ontology_directory: Optional[pathlib.Path],
-    model_name: str,
-    temperature: float,
-) -> Dict[ToolType, Any]:
-    """Create and setup tools for processing."""
-    llm_tool: LLMTool = await LLMTool.acreate(model=model_name, temperature=temperature)
-
-    tsm_tool: FilesystemTripleStoreManager = FilesystemTripleStoreManager(
-        working_directory=working_directory, ontology_path=ontology_directory
-    )
-    om_tool: OntologyManager = OntologyManager()
-    converter_tool: Converter = Converter()
-    chunker_tool: ChunkerTool = ChunkerTool()
-
-    tools = {
-        ToolType.LLM: llm_tool,
-        ToolType.TRIPLE_STORE: tsm_tool,
-        ToolType.ONTOLOGY_MANAGER: om_tool,
-        ToolType.CONVERTER: converter_tool,
-        ToolType.CHUNKER: chunker_tool,
-    }
-
-    setup_tools(tools)
-    return tools
 
 
 @click.command()
@@ -231,10 +190,14 @@ def run(
 
     working_directory.mkdir(parents=True, exist_ok=True)
 
-    # Create tools and workflow
-    tools = asyncio.run(
-        create_tools(working_directory, ontology_directory, model_name, temperature)
+    tools: ToolBox = ToolBox(
+        working_directory=working_directory,
+        ontology_directory=ontology_directory,
+        model_name=model_name,
+        temperature=temperature,
     )
+    init_toolbox(tools)
+
     workflow: CompiledStateGraph = create_agent_graph(tools)
 
     if input_path and output_path:
@@ -245,7 +208,9 @@ def run(
 
         files = sorted(
             crawl_directories(
-                input_path, suffixes=(".txt", ".md", ".json", ".pdf", ".docx")
+                input_path,
+                suffixes=(".txt", ".md", ".json", ".pdf"),
+                # suffixes=(".txt", ".md", ".json", ".pdf", ".docx")
             )
         )
 

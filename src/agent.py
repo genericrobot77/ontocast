@@ -9,6 +9,7 @@ from src.onto import (
     Status,
     WorkflowNode,
 )
+from src.tools import ToolBox
 
 from .nodes import (
     create_ontology_selector,
@@ -19,8 +20,14 @@ from .nodes import (
     create_kg_saver,
     create_ontology_sublimator,
 )
+from src.nodes.update_ontology_properties import update_ontology_manager
 
 logger = logging.getLogger(__name__)
+
+
+def init_toolbox(toolbox: ToolBox):
+    toolbox.om_tool.ontologies = toolbox.tsm_tool.fetch_ontologies()
+    update_ontology_manager(om=toolbox.om_tool, llm_tool=toolbox.llm_tool)
 
 
 def handle_visits(state: AgentState, node_name: str) -> tuple[AgentState, str]:
@@ -95,7 +102,7 @@ def criticise_kg_route(state: AgentState) -> str:
     return create_visit_route("Update KG", "Criticise KG")(state)
 
 
-def create_agent_graph(tools) -> CompiledStateGraph:
+def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     """Create the agent workflow graph."""
     workflow = StateGraph(AgentState)
 
