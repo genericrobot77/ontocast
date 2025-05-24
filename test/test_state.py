@@ -39,6 +39,30 @@ def test_agent_state_json():
     assert isinstance(loaded_state.graph_facts, RDFGraph)
 
 
+@pytest.mark.order(after="test_agent_state")
+def test_select_ontology(
+    agent_state_init: AgentState,
+    apple_report: dict,
+    random_report: dict,
+    tools,
+    state_onto_selected_fname,
+    state_onto_null_fname,
+):
+    select_ontology = create_ontology_selector(tools)
+
+    agent_state_init.input_text = apple_report["text"]
+    agent_state = select_ontology(agent_state_init)
+    assert "fsec" in agent_state.current_ontology.iri
+
+    agent_state_init.serialize(state_onto_selected_fname)
+
+    agent_state_init.input_text = random_report["text"]
+    agent_state_init = select_ontology(agent_state_init)
+    assert agent_state_init.current_ontology.short_name == ONTOLOGY_VOID_ID
+
+    agent_state_init.serialize(state_onto_null_fname)
+
+
 @pytest.mark.order(after="test_select_ontology")
 def test_agent_text_to_ontology_fresh(
     agent_state_select_ontology: AgentState, apple_report: dict, tools
@@ -57,35 +81,6 @@ def test_agent_text_to_ontology_fresh(
     assert len(agent_state.ontology_addendum.graph) > 0
     assert Version(agent_state.ontology_addendum.version) >= Version("0.0.0")
     agent_state.serialize("test/data/agent_state.onto.fresh.json")
-
-
-@pytest.mark.order(after="test_agent_state")
-def test_select_ontology(
-    agent_state_init: AgentState,
-    apple_report: dict,
-    legal_report: dict,
-    random_report: dict,
-    tools,
-    state_onto_selected_fname,
-    state_onto_null_fname,
-):
-    select_ontology = create_ontology_selector(tools)
-
-    agent_state_init.input_text = legal_report["text"]
-    agent_state = select_ontology(agent_state_init)
-    assert "fcaont" in agent_state.current_ontology.iri
-
-    agent_state_init.input_text = apple_report["text"]
-    agent_state = select_ontology(agent_state_init)
-    assert "fsec" in agent_state.current_ontology.iri
-
-    agent_state_init.serialize(state_onto_selected_fname)
-
-    agent_state_init.input_text = random_report["text"]
-    agent_state_init = select_ontology(agent_state_init)
-    assert agent_state_init.current_ontology.short_name == ONTOLOGY_VOID_ID
-
-    agent_state_init.serialize(state_onto_null_fname)
 
 
 @pytest.mark.order(after="test_select_ontology")

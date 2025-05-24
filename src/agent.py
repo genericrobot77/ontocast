@@ -26,8 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 def init_toolbox(toolbox: ToolBox):
-    toolbox.om_tool.ontologies = toolbox.tsm_tool.fetch_ontologies()
-    update_ontology_manager(om=toolbox.om_tool, llm_tool=toolbox.llm_tool)
+    toolbox.ontology_manager.ontologies = (
+        toolbox.triple_store_manager.fetch_ontologies()
+    )
+    update_ontology_manager(om=toolbox.ontology_manager, llm_tool=toolbox.llm)
 
 
 def handle_visits(state: AgentState, node_name: str) -> tuple[AgentState, str]:
@@ -60,7 +62,7 @@ def handle_visits(state: AgentState, node_name: str) -> tuple[AgentState, str]:
     return state, node_name
 
 
-def create_visit_route(success_node: str, current_node: str):
+def create_visit_route(success_node: WorkflowNode, current_node: WorkflowNode):
     """
     Create a route function with visit counting.
 
@@ -82,24 +84,30 @@ def create_visit_route(success_node: str, current_node: str):
     return route
 
 
-def project_text_to_triples_route(state: AgentState) -> str:
+def project_text_to_ontology_route(state: AgentState) -> str:
     """Route function for text to triples node with visit counting."""
-    return create_visit_route("Sublimate Ontology", "Text to Triples")(state)
+    return create_visit_route(
+        WorkflowNode.CRITICISE_ONTOLOGY, WorkflowNode.TEXT_TO_ONTOLOGY
+    )(state)
 
 
-def sublimate_ontology_route(state: AgentState) -> str:
+def criticise_ontology_route(state: AgentState) -> str:
     """Route function for sublimate ontology node with visit counting."""
-    return create_visit_route("Criticise Ontology Update", "Sublimate Ontology")(state)
+    return create_visit_route(
+        WorkflowNode.TEXT_TO_FACTS, WorkflowNode.TEXT_TO_ONTOLOGY
+    )(state)
 
 
-def criticise_ontology_update_route(state: AgentState) -> str:
+def project_text_facts_route(state: AgentState) -> str:
     """Route function for criticise ontology update node with visit counting."""
-    return create_visit_route("Criticise KG", "Criticise Ontology Update")(state)
+    return create_visit_route(
+        WorkflowNode.SUBLIMATE_ONTOLOGY, WorkflowNode.TEXT_TO_FACTS
+    )(state)
 
 
-def criticise_kg_route(state: AgentState) -> str:
+def criticise_facts_route(state: AgentState) -> str:
     """Route function for criticise KG node with visit counting."""
-    return create_visit_route("Update KG", "Criticise KG")(state)
+    return create_visit_route(WorkflowNode.SAVE_KG, WorkflowNode.TEXT_TO_FACTS)(state)
 
 
 def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
@@ -132,7 +140,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
 
     workflow.add_conditional_edges(
         WorkflowNode.TEXT_TO_ONTOLOGY,
-        project_text_to_triples_route,
+        project_text_to_ontology_route,
         {
             Status.SUCCESS: WorkflowNode.CRITICISE_ONTOLOGY,
             Status.FAILED: WorkflowNode.TEXT_TO_ONTOLOGY,
@@ -141,7 +149,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
 
     workflow.add_conditional_edges(
         WorkflowNode.CRITICISE_ONTOLOGY,
-        sublimate_ontology_route,
+        criticise_ontology_route,
         {
             Status.SUCCESS: WorkflowNode.TEXT_TO_FACTS,
             Status.FAILED: WorkflowNode.TEXT_TO_ONTOLOGY,
@@ -150,7 +158,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
 
     workflow.add_conditional_edges(
         WorkflowNode.TEXT_TO_FACTS,
-        criticise_ontology_update_route,
+        project_text_facts_route,
         {
             Status.SUCCESS: WorkflowNode.SUBLIMATE_ONTOLOGY,
             Status.FAILED: WorkflowNode.TEXT_TO_FACTS,
@@ -159,7 +167,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
 
     workflow.add_conditional_edges(
         WorkflowNode.CRITICISE_FACTS,
-        criticise_kg_route,
+        criticise_facts_route,
         {
             Status.SUCCESS: WorkflowNode.SAVE_KG,
             Status.FAILED: WorkflowNode.TEXT_TO_FACTS,

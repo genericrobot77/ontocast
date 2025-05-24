@@ -11,11 +11,11 @@ from src.tools import (
 
 
 class ToolBox(BaseModel):
-    llm_tool: Optional[LLMTool] = None
-    tsm_tool: Optional[FilesystemTripleStoreManager] = None
-    om_tool: Optional[OntologyManager] = None
-    converter_tool: Optional[Converter] = None
-    chunker_tool: Optional[ChunkerTool] = None
+    llm: Optional[LLMTool] = None
+    triple_store_manager: Optional[FilesystemTripleStoreManager] = None
+    ontology_manager: Optional[OntologyManager] = None
+    converter: Optional[Converter] = None
+    chunker: Optional[ChunkerTool] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -24,10 +24,10 @@ class ToolBox(BaseModel):
         model_name: str = kwargs.pop("model_name")
         temperature: float = kwargs.pop("temperature")
 
-        self.llm_tool = LLMTool.create(model=model_name, temperature=temperature)
-        self.tsm_tool = FilesystemTripleStoreManager(
+        self.llm = LLMTool.create(model=model_name, temperature=temperature)
+        self.triple_store_manager = FilesystemTripleStoreManager(
             working_directory=working_directory, ontology_path=ontology_directory
         )
-        self.om_tool = OntologyManager()
-        self.converter_tool = Converter()
-        self.chunker_tool = ChunkerTool()
+        self.ontology_manager = OntologyManager()
+        self.converter = Converter()
+        self.chunker = ChunkerTool()

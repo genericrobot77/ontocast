@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def create_facts_renderer(tools: ToolBox):
     def _renderer(state: AgentState) -> AgentState:
         logger.debug("Starting facts rendering process")
-        llm_tool = tools.llm_tool
+        llm_tool = tools.llm
 
         parser = llm_tool.get_parser(SemanticTriplesFactsReport)
 

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 def create_facts_critic(tools: ToolBox):
     def _renderer(state: AgentState) -> AgentState:
         logger.debug("Starting facts critique process")
-        llm_tool = tools.llm_tool
+        llm_tool = tools.llm
         parser = llm_tool.get_parser(KGCritiqueReport)
 
         prompt = PromptTemplate(

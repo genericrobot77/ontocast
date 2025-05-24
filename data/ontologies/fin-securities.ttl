@@ -2,11 +2,11 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix fsec: <https://growgraph.dev/fsec#> .
+@prefix fsec: <https://example.com/fsec#> .
 @prefix schema: <https://schema.org/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<https://growgraph.dev/fsec#> a owl:Ontology ;
+<https://example.com/fsec#> a owl:Ontology ;
     rdfs:label "Financial Securities Ontology" ;
     owl:versionInfo "1.0" .
 

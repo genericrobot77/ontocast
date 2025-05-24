@@ -95,8 +95,8 @@ def main():
         else:
             viz.draw(fname + ".png", format="png", prog="dot", args="-Gdpi=300")
 
-    tweak_draw("static/img/graph", "svg")
-    tweak_draw("static/img/graph", "png")
+    tweak_draw("docs/assets/graph", "svg")
+    tweak_draw("docs/assets/graph", "png")
 
     # from langchain_core.runnables.graph import MermaidDrawMethod
 

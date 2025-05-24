@@ -65,7 +65,7 @@ def create_ontology_sublimator(tools: ToolBox):
     """Create a node that sublimates ontology from the input text."""
 
     def sublimate_ontology(state: AgentState) -> AgentState:
-        om_tool = tools.om_tool
+        om_tool = tools.ontology_manager
         try:
             graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
 

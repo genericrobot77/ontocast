@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 def create_ontology_selector(tools: ToolBox):
     def _selector(state: AgentState) -> AgentState:
         logger.debug("Starting ontology selection process")
-        llm_tool = tools.llm_tool
-        om_tool: OntologyManager = tools.om_tool
+        llm_tool = tools.llm
+        om_tool: OntologyManager = tools.ontology_manager
 
         parser = llm_tool.get_parser(OntologySelectorReport)
 

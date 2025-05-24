@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 def create_onto_triples_renderer(tools: ToolBox):
     def _renderer(state: AgentState) -> AgentState:
         logger.debug("Starting ontology triples rendering process")
-        llm_tool = tools.llm_tool
+        llm_tool = tools.llm
 
         parser = llm_tool.get_parser(Ontology)
 
@@ -88,6 +88,7 @@ def create_onto_triples_renderer(tools: ToolBox):
             )
 
             proj_ontology = parser.parse(response.content)
+            # check that the returned ontology name aligns with the candidate ontology name
             state.ontology_addendum = proj_ontology
             state.clear_failure()
             return state

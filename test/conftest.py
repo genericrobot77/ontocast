@@ -1,10 +1,10 @@
 import pytest
 import os
+from src.agent import init_toolbox
 from pathlib import Path
-from src.onto import AgentState, RDFGraph, ToolType, DEFAULT_DOMAIN
+from src.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
 from suthing import FileHandle
-from src.tools import LLMTool, FilesystemTripleStoreManager, OntologyManager
-from src.tools.setup import setup_tools
+from src.tools import LLMTool, FilesystemTripleStoreManager, OntologyManager, ToolBox
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -27,17 +27,33 @@ def test_ontology():
 
 
 @pytest.fixture
-def llm_tool():
-    model_name = "gpt-4o-mini"
-    temperature = 0.0
+def ontology_path():
+    return Path("data/ontologies")
+
+
+@pytest.fixture
+def working_directory():
+    return Path("test/tmp")
+
+
+@pytest.fixture
+def model_name():
+    return "gpt-4o-mini"
+
+
+@pytest.fixture
+def temperature():
+    return 0.0
+
+
+@pytest.fixture
+def llm_tool(model_name, temperature):
     llm_tool = LLMTool.create(model=model_name, temperature=temperature)
     return llm_tool
 
 
 @pytest.fixture
-def tsm_tool():
-    ontology_path: Path = Path("data/ontologies")
-    working_directory = Path("test/tmp")
+def tsm_tool(ontology_path, working_directory):
     return FilesystemTripleStoreManager(
         working_directory=working_directory, ontology_path=ontology_path
     )
@@ -67,15 +83,14 @@ def om_tool(om_tool_fname):
 
 
 @pytest.fixture
-def tools(llm_tool, tsm_tool, om_tool, om_tool_fname):
-    tools = {
-        ToolType.LLM: llm_tool,
-        ToolType.TRIPLE_STORE: tsm_tool,
-        ToolType.ONTOLOGY_MANAGER: om_tool,
-    }
-    if not om_tool.ontologies:
-        setup_tools(tools)
-        om_tool.serialize(om_tool_fname)
+def tools(ontology_path, working_directory, model_name, temperature) -> ToolBox:
+    tools: ToolBox = ToolBox(
+        working_directory=working_directory,
+        ontology_directory=ontology_path,
+        model_name=model_name,
+        temperature=temperature,
+    )
+    init_toolbox(tools)
     return tools
 
 
@@ -93,11 +108,6 @@ def apple_report():
 @pytest.fixture
 def random_report():
     return FileHandle.load(Path("data/json/random.json"))
-
-
-@pytest.fixture
-def legal_report():
-    return FileHandle.load(Path("data/json/legal.pourvoi_n°22-86.022_10_01_2023.json"))
 
 
 @pytest.fixture

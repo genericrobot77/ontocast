@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 def create_ontology_critic(tools: ToolBox):
     def _critique(state: AgentState) -> AgentState:
         logger.debug("Starting ontology critique process")
-        llm_tool: LLMTool = tools.llm_tool
-        om_tool: OntologyManager = tools.om_tool
+        llm_tool: LLMTool = tools.llm
+        om_tool: OntologyManager = tools.ontology_manager
         parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
 
         if state.current_ontology.iri == ONTOLOGY_VOID_IRI:

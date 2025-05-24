@@ -14,15 +14,16 @@ from langgraph.graph.state import CompiledStateGraph
 from robyn import Request, Response, Headers
 import logging
 from src.cli.util import crawl_directories
-import json
+from suthing import FileHandle
 
 logger = logging.getLogger(__name__)
 
 
 async def process_text(
-    input_text: str,
     workflow: CompiledStateGraph,
     tools: ToolBox,
+    input_text: Optional[str] = None,
+    chunks: Optional[list[str]] = None,
     head_chunks: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
@@ -37,17 +38,23 @@ async def process_text(
     Returns:
         Dictionary containing ontology and facts
     """
-    docs = tools.chunker_tool(input_text)
+    if input_text is not None:
+        docs = tools.chunker(input_text)
+    elif chunks is not None:
+        docs = chunks
+    else:
+        raise ValueError("either input_text or chunks should be provided")
 
-    logger.debug(f"len docs : {len(docs)}")
+    logger.debug(f"len docs: {len(docs)}")
     logger.debug(f"docs: {docs}")
 
     sizes = [len(x) for x in docs]
     logger.debug(f"chunk sizes: {sizes}")
 
-    facts = RDFGraph()
     if head_chunks is not None:
         docs = docs[:head_chunks]
+
+    facts = RDFGraph()
 
     for doc in docs:
         state = AgentState(input_text=doc)
@@ -55,8 +62,8 @@ async def process_text(
         facts += output_state.graph_facts
 
     return {
-        "ontology": output_state.current_ontology.graph.serialize(format="turtle"),
-        "facts": facts.serialize(format="turtle"),
+        "ontology": output_state.current_ontology,
+        "facts": facts,
     }
 
 
@@ -80,15 +87,19 @@ async def process_file(
     """
     file_extension = file_path.suffix.lower()
 
-    if file_extension in tools.converter_tool.supported_extensions:
+    if file_extension in tools.converter.supported_extensions:
         with open(file_path, "rb") as f:
-            result = tools.converter_tool(BytesIO(f.read()))
+            result = tools.converter(BytesIO(f.read()))
             input_text = result["text"]
-    else:
-        with open(file_path, "r", encoding="utf-8") as f:
-            input_text = f.read()
+            chunks = None
+    elif file_extension == ".json":
+        jdata = FileHandle.load(file_path, encoding="utf-8")
+        input_text = jdata.pop("text", None)
+        chunks = jdata.pop("chunks", None)
 
-    return await process_text(input_text, workflow, tools, head_chunks)
+    return await process_text(
+        workflow, tools, head_chunks=head_chunks, input_text=input_text, chunks=chunks
+    )
 
 
 def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
@@ -118,9 +129,9 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
                 for filename, file_content in files.items():
                     file_extension = pathlib.Path(filename).suffix.lower()
 
-                    if file_extension in tools.converter_tool.supported_extensions:
+                    if file_extension in tools.converter.supported_extensions:
                         supported_file = BytesIO(file_content)
-                        result = tools.converter_tool(supported_file)
+                        result = tools.converter(supported_file)
                         input_text = result["text"]
                     else:
                         try:
@@ -133,7 +144,9 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
                     # process only one file
                     break
 
-            result = await process_text(input_text, workflow, tools, head_chunks)
+            result = await process_text(
+                workflow, tools, input_text=input_text, head_chunks=head_chunks
+            )
 
             return Response(
                 status_code=200,
@@ -201,7 +214,6 @@ def run(
     workflow: CompiledStateGraph = create_agent_graph(tools)
 
     if input_path and output_path:
-        # Process files in directory
         input_path = input_path.expanduser()
         output_path = output_path.expanduser()
         output_path.mkdir(parents=True, exist_ok=True)
@@ -209,8 +221,7 @@ def run(
         files = sorted(
             crawl_directories(
                 input_path,
-                suffixes=(".txt", ".md", ".json", ".pdf"),
-                # suffixes=(".txt", ".md", ".json", ".pdf", ".docx")
+                suffixes=tuple([".json"] + list(tools.converter.supported_extensions)),
             )
         )
 
@@ -218,18 +229,20 @@ def run(
             for file_path in files:
                 try:
                     result = await process_file(file_path, workflow, tools, head_chunks)
-                    output_file = output_path / f"{file_path.stem}_facts.json"
+                    ontology = result["ontology"]
+                    facts = result["facts"]
 
-                    with open(output_file, "w", encoding="utf-8") as f:
-                        json.dump(result, f, ensure_ascii=False, indent=4)
+                    onto_file = output_path / f"{file_path.stem}.ontology.ttl"
+                    facts_file = output_path / f"{file_path.stem}.facts.ttl"
 
-                    logger.info(f"Processed {file_path} -> {output_file}")
+                    ontology.graph.serialize(destination=onto_file)
+                    facts.graph.serialize(destination=facts_file)
+
                 except Exception as e:
                     logger.error(f"Error processing {file_path}: {str(e)}")
 
         asyncio.run(process_files())
     else:
-        # Run as server
         app = create_app(tools, head_chunks)
         logger.info(f"Starting server on port {port}")
         app.start(port=port)

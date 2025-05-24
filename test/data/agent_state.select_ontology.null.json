@@ -8,6 +8,7 @@
         "iri": "NULL",
         "graph": "\n"
     },
+    "current_namespace": "https://example.com/current-document#",
     "graph_facts": "\n",
     "ontology_addendum": {
         "short_name": "__void_ontology_name",

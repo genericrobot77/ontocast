@@ -10,7 +10,7 @@ def create_kg_saver(tools: ToolBox):
         state: AgentState,
     ) -> AgentState:
         """Update the knowledge graph with the new facts"""
-        tsm_tool = tools.tsm_tool
+        tsm_tool = tools.triple_store_manager
         if state.graph_facts is not None:
             # Generate document hash
             doc_hash = get_document_hash(state.input_text)
