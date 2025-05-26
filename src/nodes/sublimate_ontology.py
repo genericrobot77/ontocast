@@ -61,38 +61,31 @@ def _sublimate_ontology(state: AgentState):
     return graph_onto_addendum, graph_facts_pure
 
 
-def create_ontology_sublimator(tools: ToolBox):
-    """Create a node that sublimates ontology from the input text."""
+def create_ontology_sublimator(state: AgentState, tools: ToolBox):
+    om_tool = tools.ontology_manager
+    try:
+        graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
 
-    def sublimate_ontology(state: AgentState) -> AgentState:
-        om_tool = tools.ontology_manager
-        try:
-            graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
+        ns_prefix_current_ontology = [
+            p
+            for p, ns in state.current_ontology.graph.namespaces()
+            if str(ns) == state.current_ontology.iri
+        ]
 
-            ns_prefix_current_ontology = [
-                p
-                for p, ns in state.current_ontology.graph.namespaces()
-                if str(ns) == state.current_ontology.iri
-            ]
+        graph_onto_addendum.bind(
+            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
+        )
+        graph_facts.bind(
+            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
+        )
 
-            graph_onto_addendum.bind(
-                ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
-            )
-            graph_facts.bind(
-                ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
-            )
+        om_tool.update_ontology(state.current_ontology.short_name, graph_onto_addendum)
+        state.graph_facts = graph_facts
+        state.clear_failure()
+    except Exception as e:
+        state.set_failure(
+            FailureStages.FAILED_AT_SUBLIMATE_ONTOLOGY,
+            str(e),
+        )
 
-            om_tool.update_ontology(
-                state.current_ontology.short_name, graph_onto_addendum
-            )
-            state.graph_facts = graph_facts
-            state.clear_failure()
-        except Exception as e:
-            state.set_failure(
-                FailureStages.FAILED_AT_SUBLIMATE_ONTOLOGY,
-                str(e),
-            )
-
-        return state
-
-    return sublimate_ontology
+    return state

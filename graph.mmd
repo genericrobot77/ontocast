@@ -22,9 +22,9 @@ graph TD;
 	Sublimate_Ontology(Sublimate Ontology)
 	Criticise_Ontology(Criticise Ontology)
 	Criticise_Facts(Criticise Facts)
-	Load_KG(Load KG)
+	Save_KG(Save KG)
 	__end__([<p>__end__</p>]):::last
-	Load_KG --> __end__;
+	Save_KG --> __end__;
 	Select_Ontology --> Text_to_Ontology;
 	Sublimate_Ontology --> Criticise_Facts;
 	__start__ --> Select_Ontology;
@@ -32,7 +32,7 @@ graph TD;
 	Criticise_Ontology -. &nbsp;success&nbsp; .-> Text_to_Facts;
 	Criticise_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;
 	Text_to_Facts -. &nbsp;success&nbsp; .-> Sublimate_Ontology;
-	Criticise_Facts -. &nbsp;success&nbsp; .-> Load_KG;
+	Criticise_Facts -. &nbsp;success&nbsp; .-> Save_KG;
 	Criticise_Facts -. &nbsp;failed&nbsp; .-> Text_to_Facts;
 	Text_to_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;
 	Text_to_Facts -. &nbsp;failed&nbsp; .-> Text_to_Facts;

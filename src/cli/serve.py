@@ -195,6 +195,10 @@ def run(
         logger_conf = "logging.debug.conf"
         logging.config.fileConfig(logger_conf, disable_existing_loggers=False)
         logger.debug("debug is on")
+    else:
+        logger_conf = "logging.info.conf"
+        logging.config.fileConfig(logger_conf, disable_existing_loggers=False)
+        logger.debug("info logging level is on")
 
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 

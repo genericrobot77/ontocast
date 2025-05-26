@@ -5,6 +5,7 @@ import logging
 import pathlib
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
+from collections import defaultdict
 
 from typing import Any
 import re
@@ -24,14 +25,15 @@ DEFAULT_NAMESPACE = "https://example.com/current-document#"
 class Status(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
+    COUNTS_EXCEEDED = "counts exceeded"
 
 
 class ToolType(StrEnum):
     LLM = "llm"
-    TRIPLE_STORE = "tsm"
-    ONTOLOGY_MANAGER = "om"
-    CONVERTER = "converter"
-    CHUNKER = "chunker"
+    TRIPLE_STORE = "triple store manager"
+    ONTOLOGY_MANAGER = "ontology manager"
+    CONVERTER = "document converter"
+    CHUNKER = "document chunker"
 
 
 class FailureStages(StrEnum):
@@ -303,6 +305,16 @@ class Ontology(OntologyProperites):
         )
 
 
+class WorkflowNode(StrEnum):
+    SELECT_ONTOLOGY = "Select Ontology"
+    TEXT_TO_ONTOLOGY = "Text to Ontology"
+    TEXT_TO_FACTS = "Text to Facts"
+    SUBLIMATE_ONTOLOGY = "Sublimate Ontology"
+    CRITICISE_ONTOLOGY = "Criticise Ontology"
+    CRITICISE_FACTS = "Criticise Facts"
+    SAVE_KG = "Save KG"
+
+
 class AgentState(BasePydanticModel):
     """State for the ontology-based knowledge graph agent."""
 
@@ -340,15 +352,16 @@ class AgentState(BasePydanticModel):
     failure_reason: Optional[str] = None
     success_score: Optional[float] = 0.0
     status: Status = Status.SUCCESS
-    node_visits: dict[str, int] = Field(
-        default_factory=dict, description="Number of visits per node"
+    node_visits: defaultdict[WorkflowNode, int] = Field(
+        default_factory=lambda: defaultdict(int),
+        description="Number of visits per node",
     )
     max_visits: int = Field(
         default=3, description="Maximum number of visits allowed per node"
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def set_failure(self, stage: str, reason: str, success_score: float = 0.0) -> None:
         """
@@ -369,16 +382,3 @@ class AgentState(BasePydanticModel):
         self.failure_reason = None
         self.success_score = 0.0
         self.status = Status.SUCCESS
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class WorkflowNode(StrEnum):
-    SELECT_ONTOLOGY = "Select Ontology"
-    TEXT_TO_ONTOLOGY = "Text to Ontology"
-    TEXT_TO_FACTS = "Text to Facts"
-    SUBLIMATE_ONTOLOGY = "Sublimate Ontology"
-    CRITICISE_ONTOLOGY = "Criticise Ontology"
-    CRITICISE_FACTS = "Criticise Facts"
-    SAVE_KG = "Load KG"
