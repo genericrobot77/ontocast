@@ -179,7 +179,7 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 @click.option("--temperature", type=float, default=0.0)
 @click.option("--head-chunks", type=int, default=None)
 @click.option("--port", type=int, default=8999)
-@click.option("--debug", is_flag=True, default=False)
+@click.option("--logging-level", type=click.STRING)
 @click.option("--input-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option("--output-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option(
@@ -196,19 +196,18 @@ def run(
     temperature: float,
     port: int,
     head_chunks: Optional[int],
-    debug: bool,
+    logging_level: Optional[str],
     input_path: Optional[pathlib.Path],
     output_path: Optional[pathlib.Path],
     max_visits: int,
 ):
-    if debug:
-        logger_conf = "logging.debug.conf"
-        logging.config.fileConfig(logger_conf, disable_existing_loggers=False)
-        logger.debug("debug is on")
-    else:
-        logger_conf = "logging.info.conf"
-        logging.config.fileConfig(logger_conf, disable_existing_loggers=False)
-        logger.debug("info logging level is on")
+    if logging_level is not None:
+        try:
+            logger_conf = f"logging.{logging_level}.conf"
+            logging.config.fileConfig(logger_conf, disable_existing_loggers=False)
+            logger.debug("debug is on")
+        except Exception as e:
+            logger.error(f"could set logging level correctly {e}")
 
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
