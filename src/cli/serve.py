@@ -9,7 +9,6 @@ import pathlib
 from io import BytesIO
 from src.agent import create_agent_graph, AgentState, init_toolbox
 from src.tools import ToolBox
-from src.onto import RDFGraph
 from langgraph.graph.state import CompiledStateGraph
 from robyn import Request, Response, Headers
 import logging
@@ -25,6 +24,7 @@ async def process_text(
     input_text: Optional[str] = None,
     chunks: Optional[list[str]] = None,
     head_chunks: Optional[int] = None,
+    max_visits: int = 3,
 ) -> Dict[str, Any]:
     """
     Process text through the agent workflow to extract facts.
@@ -34,6 +34,7 @@ async def process_text(
         workflow: The compiled agent workflow
         tools: ToolBox containing all tools
         head_chunks: Optional number of chunks to process
+        max_visits: Maximum number of visits allowed per node
 
     Returns:
         Dictionary containing ontology and facts
@@ -54,17 +55,9 @@ async def process_text(
     if head_chunks is not None:
         docs = docs[:head_chunks]
 
-    facts = RDFGraph()
-
     for doc in docs:
-        state = AgentState(input_text=doc)
-        output_state: AgentState = await workflow.ainvoke(state)
-        facts += output_state.graph_facts
-
-    return {
-        "ontology": output_state.current_ontology,
-        "facts": facts,
-    }
+        state = AgentState(input_text=doc, max_visits=max_visits)
+        _ = await workflow.ainvoke(state)
 
 
 async def process_file(
@@ -72,6 +65,7 @@ async def process_file(
     workflow: CompiledStateGraph,
     tools: ToolBox,
     head_chunks: Optional[int] = None,
+    max_visits: int = 3,
 ) -> Dict[str, Any]:
     """
     Process a file through the agent workflow.
@@ -98,11 +92,16 @@ async def process_file(
         chunks = jdata.pop("chunks", None)
 
     return await process_text(
-        workflow, tools, head_chunks=head_chunks, input_text=input_text, chunks=chunks
+        workflow,
+        tools,
+        head_chunks=head_chunks,
+        input_text=input_text,
+        chunks=chunks,
+        max_visits=max_visits,
     )
 
 
-def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
+def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: int = 3):
     app = Robyn(__file__)
     workflow: CompiledStateGraph = create_agent_graph(tools)
 
@@ -145,7 +144,11 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
                     break
 
             result = await process_text(
-                workflow, tools, input_text=input_text, head_chunks=head_chunks
+                workflow,
+                tools,
+                input_text=input_text,
+                head_chunks=head_chunks,
+                max_visits=max_visits,
             )
 
             return Response(
@@ -179,6 +182,12 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None):
 @click.option("--debug", is_flag=True, default=False)
 @click.option("--input-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option("--output-path", type=click.Path(path_type=pathlib.Path), default=None)
+@click.option(
+    "--max-visits",
+    type=int,
+    default=3,
+    help="Maximum number of visits allowed per node",
+)
 def run(
     env_path: pathlib.Path,
     ontology_directory: Optional[pathlib.Path],
@@ -190,6 +199,7 @@ def run(
     debug: bool,
     input_path: Optional[pathlib.Path],
     output_path: Optional[pathlib.Path],
+    max_visits: int,
 ):
     if debug:
         logger_conf = "logging.debug.conf"
@@ -232,7 +242,9 @@ def run(
         async def process_files():
             for file_path in files:
                 try:
-                    result = await process_file(file_path, workflow, tools, head_chunks)
+                    result = await process_file(
+                        file_path, workflow, tools, head_chunks, max_visits=max_visits
+                    )
                     ontology = result["ontology"]
                     facts = result["facts"]
 
@@ -247,7 +259,7 @@ def run(
 
         asyncio.run(process_files())
     else:
-        app = create_app(tools, head_chunks)
+        app = create_app(tools, head_chunks, max_visits=max_visits)
         logger.info(f"Starting server on port {port}")
         app.start(port=port)
 

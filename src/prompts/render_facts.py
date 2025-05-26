@@ -22,7 +22,7 @@ Follow the instructions:
 - all facts representing numeric values, dates etc should not be kept in literal strings: expand them into triple and use xsd:integer, xsd:decimal, xsd:float, xsd:date for dates, ISO for currencies, etc, assign correct units and define correct relations
 - pay attention to correct formatting of literals, e.g. dates, currencies. Numeric literals should be formatted using double quotes, when they are typed with `^^`, for example `fsec:hasRevenue "13"^^xsd:decimal ;`
 - make semantic representation of facts as atomic (!!!) as possible
-- extract all data from tables
+- to extract data from tables, use CSV on the Web (CSVW) to describe tables
 
 Here is the document:
 ```

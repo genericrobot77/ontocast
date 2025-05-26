@@ -1,9 +1,11 @@
-import hashlib
 import logging
+import hashlib
 import sys
 from src.onto import AgentState, WorkflowNode
 from functools import wraps
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 
 def get_document_hash(text: str) -> str:
@@ -44,6 +46,7 @@ def add_counter(func, node_name) -> tuple[WorkflowNode, Callable]:
 
     @wraps(func)
     def wrapper(state: AgentState):
+        logger.info(f"Starting to execute {node_name}")
         result = func(state)
         return modifier(result, node_name)
 

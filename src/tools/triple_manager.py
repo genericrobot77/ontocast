@@ -41,7 +41,6 @@ class FilesystemTripleStoreManager(TripleStoreManager):
                     logging.error(f"Failed to load ontology {fname}: {str(e)}")
         return ontologies
 
-    def serialize_triples(self, g: Graph, **kwargs):
-        fname = kwargs.get("fname")
+    def serialize_triples(self, g: Graph, fname: str):
         filename = self.working_directory / f"{fname}.ttl"
-        g.serialize(format="turtle", file_path=filename)
+        g.serialize(format="turtle", destination=filename)

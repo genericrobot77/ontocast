@@ -124,16 +124,16 @@ def add_conditional_with_visit_counter_logic(
     def route(state: AgentState) -> Status:
         # Initialize visit count if not exists
 
-        logger.info(f"Current node_visits state: {state.node_visits}")
         logger.info(
-            f"Visiting {current_node} (visit {state.node_visits[current_node]}/{state.max_visits})"
+            f"Making decision after {current_node} visit: visit {state.node_visits[current_node]}/{state.max_visits}, onto: {len(state.current_ontology.graph)}, facts: {len(state.graph_facts)}"
         )
+        logger.info(f"Current node_visits state: {state.node_visits}")
 
         if state.status == Status.SUCCESS:
             state.clear_failure()
             return state.status
 
-        if state.node_visits[current_node] > state.max_visits:
+        if state.node_visits[current_node] >= state.max_visits:
             logger.error(f"Maximum visits exceeded for {current_node}")
             state.set_failure(current_node, "Maximum visits exceeded")
             return Status.SUCCESS

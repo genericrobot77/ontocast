@@ -13,6 +13,12 @@ def create_kg_saver(state: AgentState, tools: ToolBox) -> AgentState:
         ontology_ext = state.current_ontology.iri.split("/")[-1].split("#")[0]
         if not ontology_ext:
             ontology_ext = "default"
-        # Create filename with hash
-        tsm_tool.serialize_triples(state.graph_facts, f"kg_{ontology_ext}_{doc_hash}")
+
+        tsm_tool.serialize_triples(
+            state.current_ontology.graph, fname=f"onotology_{ontology_ext}_{doc_hash}"
+        )
+        tsm_tool.serialize_triples(
+            state.graph_facts, fname=f"facts_{ontology_ext}_{doc_hash}"
+        )
+
     return state

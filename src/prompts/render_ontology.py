@@ -31,6 +31,7 @@ Follow the instructions:
 {specific_ontology_instruction}
 - ontology must be provided in turtle (ttl) format as a single string.
 - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
+- in case you are familiar with domain specific ontologies, feel free to use them. For example (Financial Industry Business Ontology (FIBO) in finance, or XBRL-to-RDF transformations.
 - do not add facts, or concrete entities from the document.
 - make sure newly introduced entites are well linked / described by their properties.
 - assign where possible correct units to numeric literals.
