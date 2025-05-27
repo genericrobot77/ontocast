@@ -1,9 +1,9 @@
-from src.nodes.get_ontology_summary import render_summary
-from src.onto import OntologyProperites
+from aot_cast.agent.get_ontology_summary import render_ontology_summary
+from aot_cast.onto import OntologyProperites
 
 
 def test_extract_metadata(test_ontology, llm_tool):
-    summary = render_summary(test_ontology, llm_tool)
+    summary = render_ontology_summary(test_ontology, llm_tool)
 
     # Validate output
     assert isinstance(summary, OntologyProperites)

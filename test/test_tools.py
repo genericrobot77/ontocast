@@ -1,4 +1,4 @@
-from src.nodes.update_ontology_properties import update_ontology_manager
+from aot_cast.tools import update_ontology_manager
 
 
 def test_setup_onto(om_tool, tsm_tool, llm_tool):

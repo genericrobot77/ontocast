@@ -7,12 +7,13 @@ from dotenv import load_dotenv
 import click
 import pathlib
 from io import BytesIO
-from src.agent import create_agent_graph, AgentState, init_toolbox
-from src.tools import ToolBox
+from aot_cast.onto import AgentState, RDFGraph
+from aot_cast.agent import create_agent_graph, init_toolbox
+from aot_cast.tools import ToolBox
 from langgraph.graph.state import CompiledStateGraph
 from robyn import Request, Response, Headers
 import logging
-from src.cli.util import crawl_directories
+from aot_cast.cli.util import crawl_directories
 from suthing import FileHandle
 
 logger = logging.getLogger(__name__)
@@ -55,9 +56,29 @@ async def process_text(
     if head_chunks is not None:
         docs = docs[:head_chunks]
 
+    all_facts = RDFGraph()
     for doc in docs:
         state = AgentState(input_text=doc, max_visits=max_visits)
-        _ = await workflow.ainvoke(state)
+
+        # Use astream to get the final state
+        final_state = None
+        async for chunk in workflow.astream(state, stream_mode="values"):
+            final_state = chunk
+
+        if final_state:
+            gf = final_state.pop("graph_facts", RDFGraph())
+            all_facts += gf
+
+            gf = final_state.pop("current_ontology", RDFGraph())
+
+        if final_state and "current_ontology" in final_state:
+            if final_state.current_ontology:
+                final_ontology = final_state.current_ontology
+
+        if final_state and hasattr(final_state, "status"):
+            final_status = final_state.status
+
+    return {"facts": all_facts, "ontology": final_ontology, "status": final_status}
 
 
 async def process_file(

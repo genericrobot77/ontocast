@@ -1,13 +1,13 @@
 import logging
-from src.onto import AgentState, OntologySelectorReport
+from aot_cast.onto import AgentState, OntologySelectorReport
 from langchain.prompts import PromptTemplate
-from src.tools import OntologyManager, ToolBox
-from src.prompts.select_ontology import template_prompt
+from aot_cast.tools import OntologyManager, ToolBox
+from aot_cast.prompts.select_ontology import template_prompt
 
 logger = logging.getLogger(__name__)
 
 
-def create_ontology_selector(state: AgentState, tools: ToolBox) -> AgentState:
+def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that selects the most appropriate ontology for the input text."""
     logger.debug("Starting ontology selection process")
     llm_tool = tools.llm

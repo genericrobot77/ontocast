@@ -1,4 +1,4 @@
-from src.onto import Ontology, RDFGraph, ONTOLOGY_VOID_ID, ONTOLOGY_VOID_IRI
+from aot_cast.onto import Ontology, RDFGraph, ONTOLOGY_VOID_ID, ONTOLOGY_VOID_IRI
 from .onto import Tool
 from pydantic import Field
 

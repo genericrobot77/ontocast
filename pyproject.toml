@@ -47,13 +47,13 @@ requires-python = ">=3.12"
 version = "0.1.0"
 
 [project.scripts]
-cmp-states = "src.cli.cmp_states:main"
-pdfs-to-markdown = "src.cli.pdfs_to_markdown:main"
-plot-graph = "src.cli.plot_graph:main"
-serve = "src.cli.serve:run"
+cmp-states = "aot_cast.cli.cmp_states:main"
+pdfs-to-markdown = "aot_cast.cli.pdfs_to_markdown:main"
+plot-graph = "aot_cast.cli.plot_graph:main"
+serve = "aot_cast.cli.serve:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["aot_cast"]
 
 [tool.pyright]
 venv = ".venv"

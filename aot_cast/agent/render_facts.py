@@ -1,17 +1,17 @@
 import logging
 import os
 
-from src.onto import AgentState, FailureStages, SemanticTriplesFactsReport
+from aot_cast.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
-from src.util import get_document_hash
-from src.onto import DEFAULT_DOMAIN
-from src.prompts.render_facts import ontology_instruction, template_prompt
-from src.tools import ToolBox
+from aot_cast.util import get_text_hash
+from aot_cast.onto import DEFAULT_DOMAIN
+from aot_cast.prompts.render_facts import ontology_instruction, template_prompt
+from aot_cast.tools import ToolBox
 
 logger = logging.getLogger(__name__)
 
 
-def create_facts_renderer(state: AgentState, tools: ToolBox):
+def render_facts(state: AgentState, tools: ToolBox):
     logger.debug("Starting facts rendering process")
     llm_tool = tools.llm
 
@@ -27,14 +27,14 @@ def create_facts_renderer(state: AgentState, tools: ToolBox):
     logger.debug(f"Extracted ontology extension: {ontology_ext}")
 
     # Generate document hash
-    doc_hash = get_document_hash(state.input_text)
+    doc_hash = get_text_hash(state.input_text)
     logger.debug(f"Generated document hash: {doc_hash}")
 
     current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
     logger.debug(f"Using domain: {current_domain}")
 
     # Construct namespace with domain, ontology extension and hash
-    state.current_namespace = f"{current_domain}/{ontology_ext}/{doc_hash}/"
+    state.current_namespace = f"{current_domain}/{doc_hash}/"
     logger.debug(f"Set current namespace to: {state.current_namespace}")
 
     ontology_instruction_str = ontology_instruction.format(

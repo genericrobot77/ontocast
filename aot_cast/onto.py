@@ -304,6 +304,13 @@ class Ontology(OntologyProperites):
             f"Ontology IRI: {self.iri}\n"
         )
 
+    @property
+    def iri_id(self):
+        oid = self.current_ontology.iri.split("/")[-1].split("#")[0]
+        if not oid:
+            oid = "default"
+        return oid
+
 
 class WorkflowNode(StrEnum):
     SELECT_ONTOLOGY = "Select Ontology"

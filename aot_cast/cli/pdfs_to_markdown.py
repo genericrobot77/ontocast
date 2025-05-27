@@ -1,7 +1,7 @@
 import sys
 import pathlib
 import click
-from src.cli.util import crawl_directories, pdf2markdown
+from aot_cast.cli.util import crawl_directories, pdf2markdown
 import json
 
 import logging

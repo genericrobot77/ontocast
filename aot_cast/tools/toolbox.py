@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional
 import pathlib
-from src.tools import (
+from aot_cast.tools import (
+    TripleStoreManager,
     FilesystemTripleStoreManager,
     OntologyManager,
     LLMTool,
@@ -12,7 +13,7 @@ from src.tools import (
 
 class ToolBox(BaseModel):
     llm: Optional[LLMTool] = None
-    triple_store_manager: Optional[FilesystemTripleStoreManager] = None
+    triple_store_manager: Optional[TripleStoreManager] = None
     ontology_manager: Optional[OntologyManager] = None
     converter: Optional[Converter] = None
     chunker: Optional[ChunkerTool] = None

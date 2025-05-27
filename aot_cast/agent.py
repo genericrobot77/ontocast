@@ -3,25 +3,25 @@ import logging
 from langgraph.graph import END, StateGraph, START
 from langgraph.graph.state import CompiledStateGraph
 from functools import partial
-from src.util import add_counter
+from aot_cast.util import add_counter
 
-from src.onto import (
+from aot_cast.onto import (
     AgentState,
     Status,
     WorkflowNode,
 )
-from src.tools import ToolBox
+from aot_cast.tools import ToolBox
 
-from .nodes import (
-    create_ontology_selector,
-    create_onto_triples_renderer,
-    create_facts_renderer,
-    create_facts_critic,
-    create_ontology_critic,
+from .agent import (
+    select_ontology,
+    render_onto_triples,
+    render_facts,
+    criticise_facts,
+    criticise_ontology,
     create_kg_saver,
-    create_ontology_sublimator,
+    sublimate_ontology,
 )
-from src.nodes.update_ontology_properties import update_ontology_manager
+from aot_cast.tools import update_ontology_manager
 
 logger = logging.getLogger(__name__)
 
@@ -39,23 +39,23 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
 
     # Create nodes with partial application of tools
     select_ontology_tuple = add_counter(
-        partial(create_ontology_selector, tools=tools), WorkflowNode.SELECT_ONTOLOGY
+        partial(select_ontology, tools=tools), WorkflowNode.SELECT_ONTOLOGY
     )
     render_ontology_tuple = add_counter(
-        partial(create_onto_triples_renderer, tools=tools),
+        partial(render_onto_triples, tools=tools),
         WorkflowNode.TEXT_TO_ONTOLOGY,
     )
     render_facts_tuple = add_counter(
-        partial(create_facts_renderer, tools=tools), WorkflowNode.TEXT_TO_FACTS
+        partial(render_facts, tools=tools), WorkflowNode.TEXT_TO_FACTS
     )
     criticise_ontology_tuple = add_counter(
-        partial(create_ontology_critic, tools=tools), WorkflowNode.CRITICISE_ONTOLOGY
+        partial(criticise_ontology, tools=tools), WorkflowNode.CRITICISE_ONTOLOGY
     )
     criticise_facts_tuple = add_counter(
-        partial(create_facts_critic, tools=tools), WorkflowNode.CRITICISE_FACTS
+        partial(criticise_facts, tools=tools), WorkflowNode.CRITICISE_FACTS
     )
     sublimate_ontology_tuple = add_counter(
-        partial(create_ontology_sublimator, tools=tools),
+        partial(sublimate_ontology, tools=tools),
         WorkflowNode.SUBLIMATE_ONTOLOGY,
     )
     save_kg_tuple = add_counter(
@@ -125,7 +125,8 @@ def add_conditional_with_visit_counter_logic(
         # Initialize visit count if not exists
 
         logger.info(
-            f"Making decision after {current_node} visit: visit {state.node_visits[current_node]}/{state.max_visits}, onto: {len(state.current_ontology.graph)}, facts: {len(state.graph_facts)}"
+            f"Making decision after {current_node} visit: visit {state.node_visits[current_node]}/{state.max_visits}, "
+            f"onto: {len(state.current_ontology.graph)}, facts: {len(state.graph_facts)}"
         )
         logger.info(f"Current node_visits state: {state.node_visits}")
 

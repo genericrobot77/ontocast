@@ -1,4 +1,4 @@
-from src.agent import load_document
+from aot_cast.agent import load_document
 import click
 import pathlib
 

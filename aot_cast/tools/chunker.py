@@ -1,6 +1,6 @@
 from pydantic import Field
 from langchain_huggingface import HuggingFaceEmbeddings
-from src.chunk import SemanticChunker
+from aot_cast.chunk import SemanticChunker
 import torch
 from .onto import Tool
 

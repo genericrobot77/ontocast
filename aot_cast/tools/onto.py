@@ -1,4 +1,4 @@
-from src.onto import BasePydanticModel
+from aot_cast.onto import BasePydanticModel
 
 
 class Tool(BasePydanticModel):

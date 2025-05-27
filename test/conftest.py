@@ -1,10 +1,15 @@
 import pytest
 import os
-from src.agent import init_toolbox
+from aot_cast.agent import init_toolbox
 from pathlib import Path
-from src.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
+from aot_cast.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
 from suthing import FileHandle
-from src.tools import LLMTool, FilesystemTripleStoreManager, OntologyManager, ToolBox
+from aot_cast.tools import (
+    LLMTool,
+    FilesystemTripleStoreManager,
+    OntologyManager,
+    ToolBox,
+)
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -1,7 +1,7 @@
 import logging
 
 import os
-from src.onto import (
+from aot_cast.onto import (
     AgentState,
     Ontology,
     FailureStages,
@@ -9,9 +9,9 @@ from src.onto import (
     DEFAULT_DOMAIN,
 )
 from langchain.prompts import PromptTemplate
-from src.tools import ToolBox
+from aot_cast.tools import ToolBox
 
-from src.prompts.render_ontology import (
+from aot_cast.prompts.render_ontology import (
     template_prompt,
     ontology_instruction_update,
     ontology_instruction_fresh,
@@ -24,7 +24,7 @@ from src.prompts.render_ontology import (
 logger = logging.getLogger(__name__)
 
 
-def create_onto_triples_renderer(state: AgentState, tools: ToolBox):
+def render_onto_triples(state: AgentState, tools: ToolBox):
     logger.debug("Starting ontology triples rendering process")
     llm_tool = tools.llm
 

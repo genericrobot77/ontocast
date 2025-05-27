@@ -1,7 +1,7 @@
 import logging
 from rdflib import Namespace
-from src.onto import AgentState, FailureStages, RDFGraph
-from src.tools import ToolBox
+from aot_cast.onto import AgentState, FailureStages, RDFGraph
+from aot_cast.tools import ToolBox
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _sublimate_ontology(state: AgentState):
     return graph_onto_addendum, graph_facts_pure
 
 
-def create_ontology_sublimator(state: AgentState, tools: ToolBox):
+def sublimate_ontology(state: AgentState, tools: ToolBox):
     om_tool = tools.ontology_manager
     try:
         graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)

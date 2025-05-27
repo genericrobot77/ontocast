@@ -1,13 +1,13 @@
 import logging
-from src.onto import AgentState, FailureStages, KGCritiqueReport
+from aot_cast.onto import AgentState, FailureStages, KGCritiqueReport
 from langchain.prompts import PromptTemplate
-from src.prompts.criticise_facts import prompt as criticise_facts_prompt
-from src.tools import ToolBox
+from aot_cast.prompts.criticise_facts import prompt as criticise_facts_prompt
+from aot_cast.tools import ToolBox
 
 logger = logging.getLogger(__name__)
 
 
-def create_facts_critic(state: AgentState, tools: ToolBox) -> AgentState:
+def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
     logger.debug("Starting facts critique process")
     llm_tool = tools.llm
     parser = llm_tool.get_parser(KGCritiqueReport)

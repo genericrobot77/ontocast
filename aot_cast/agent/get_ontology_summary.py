@@ -1,11 +1,11 @@
-from src.onto import OntologyProperites, RDFGraph
+from aot_cast.onto import OntologyProperites, RDFGraph
 
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
 
-def render_summary(graph: RDFGraph, llm_tool) -> OntologyProperites:
+def render_ontology_summary(graph: RDFGraph, llm_tool) -> OntologyProperites:
     ontology_str = graph.serialize(format="turtle")
 
     # Define the output parser

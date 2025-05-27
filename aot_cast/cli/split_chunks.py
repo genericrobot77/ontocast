@@ -1,8 +1,8 @@
 import sys
 import pathlib
 import click
-from src.cli.util import crawl_directories
-from src.tools.chunker import ChunkerTool
+from aot_cast.cli.util import crawl_directories
+from aot_cast.tools.chunker import ChunkerTool
 from suthing import FileHandle
 import json
 

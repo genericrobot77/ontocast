@@ -1,4 +1,4 @@
-from src.onto import (
+from aot_cast.onto import (
     AgentState,
     RDFGraph,
     Status,
@@ -7,15 +7,15 @@ from src.onto import (
     ToolType,
 )
 
-from src.nodes import (
-    create_ontology_selector,
-    create_onto_triples_renderer,
-    create_facts_renderer,
-    create_facts_critic,
-    create_ontology_critic,
-    create_ontology_sublimator,
+from aot_cast.agent import (
+    select_ontology,
+    render_onto_triples,
+    render_facts,
+    criticise_facts,
+    criticise_ontology,
+    sublimate_ontology,
 )
-from src.tools import OntologyManager
+from aot_cast.tools import OntologyManager
 from rdflib import URIRef, Literal
 from packaging.version import Version
 import pytest
@@ -48,16 +48,14 @@ def test_select_ontology(
     state_onto_selected_fname,
     state_onto_null_fname,
 ):
-    select_ontology = create_ontology_selector(tools)
-
     agent_state_init.input_text = apple_report["text"]
-    agent_state = select_ontology(agent_state_init)
+    agent_state = select_ontology(tools)(agent_state_init)
     assert "fsec" in agent_state.current_ontology.iri
 
     agent_state_init.serialize(state_onto_selected_fname)
 
     agent_state_init.input_text = random_report["text"]
-    agent_state_init = select_ontology(agent_state_init)
+    agent_state_init = select_ontology(tools)(agent_state_init)
     assert agent_state_init.current_ontology.short_name == ONTOLOGY_VOID_ID
 
     agent_state_init.serialize(state_onto_null_fname)
@@ -70,7 +68,7 @@ def test_agent_text_to_ontology_fresh(
     """here no relevant ontology is present, we are trying to create a new one"""
     agent_state_select_ontology.input_text = apple_report["text"]
 
-    render_ontology_triples = create_onto_triples_renderer(tools)
+    render_ontology_triples = render_onto_triples(tools)
     agent_state = render_ontology_triples(agent_state_select_ontology)
 
     assert agent_state.ontology_addendum.iri is not None
@@ -97,8 +95,8 @@ def test_agent_text_to_ontology_critique_loop(
             f"test/data/agent_state.onto.critique.loop.{k_init}.json"
         )
 
-    criticise_ontology_update = create_ontology_critic(tools)
-    render_ontology_triples = create_onto_triples_renderer(tools)
+    criticise_ontology_update = criticise_ontology(tools)
+    render_ontology_triples = render_onto_triples(tools)
 
     k = k_init
     while state.status == Status.FAILED and k < k_init + max_iter:
@@ -139,8 +137,8 @@ def test_agent_text_to_ontology_null_critique_loop(
             f"test/data/agent_state.onto.null.critique.loop.{k_init}.json"
         )
 
-    criticise_ontology_update = create_ontology_critic(tools)
-    render_ontology_triples = create_onto_triples_renderer(tools)
+    criticise_ontology_update = criticise_ontology(tools)
+    render_ontology_triples = render_onto_triples(tools)
 
     k = k_init
     while state.status == Status.FAILED and k < k_init + max_iter:
@@ -169,9 +167,7 @@ def test_agent_text_to_ontology_null_critique_loop(
 def test_agent_text_to_facts_critique_loop(
     agent_state_onto_critique_success: AgentState, apple_report: dict, tools, max_iter
 ):
-    render_facts_triples = create_facts_renderer(tools)
-    criticise_facts = create_facts_critic(tools)
-    sublimate_ontology = create_ontology_sublimator(tools)
+    render_facts_triples = render_facts(tools)
 
     agent_state = agent_state_onto_critique_success
     agent_state.input_text = apple_report["text"]
@@ -187,8 +183,8 @@ def test_agent_text_to_facts_critique_loop(
     while agent_state.status == Status.FAILED and k < k_init + max_iter:
         agent_state = render_facts_triples(agent_state)
         assert len(agent_state.graph_facts) > 0
-        agent_state = sublimate_ontology(agent_state)
-        agent_state = criticise_facts(agent_state)
+        agent_state = sublimate_ontology(tools)(agent_state)
+        agent_state = criticise_facts(tools)(agent_state)
 
         assert agent_state.success_score > 0
 

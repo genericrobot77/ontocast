@@ -1,7 +1,7 @@
 import pathlib
 import logging
 from typing import Optional
-from src.onto import Ontology
+from aot_cast.onto import Ontology
 import abc
 from rdflib import Graph
 from .onto import Tool
@@ -18,7 +18,11 @@ class TripleStoreManager(Tool):
         return []
 
     @abc.abstractmethod
-    def serialize_triples(self, g: Graph, **kwargs):
+    def serialize_ontology(self, o: Ontology, **kwargs):
+        pass
+
+    @abc.abstractmethod
+    def serialize_facts(self, g: Graph, **kwargs):
         pass
 
 
@@ -41,6 +45,14 @@ class FilesystemTripleStoreManager(TripleStoreManager):
                     logging.error(f"Failed to load ontology {fname}: {str(e)}")
         return ontologies
 
-    def serialize_triples(self, g: Graph, fname: str):
+    def serialize_ontology(self, o: Ontology):
+        fname = f"onotology_{o.oid}"
+        o.graph.serialize(
+            format="turtle", destination=self.working_directory / f"{fname}.ttl"
+        )
+
+    def serialize_facts(self, g: Graph):
+        # TODO change to chunk props
+        fname = "current"
         filename = self.working_directory / f"{fname}.ttl"
         g.serialize(format="turtle", destination=filename)

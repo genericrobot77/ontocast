@@ -1,6 +1,6 @@
-from src.tools import TripleStoreManager, OntologyManager, LLMTool
-from src.onto import ToolType
-from src.nodes.update_ontology_properties import update_ontology_manager
+from aot_cast.tools import TripleStoreManager, OntologyManager, LLMTool
+from aot_cast.onto import ToolType
+from aot_cast.tools import update_ontology_manager
 
 
 def setup_tools(tools):
