@@ -28,3 +28,10 @@ def update_ontology_properties(o: Ontology, llm_tool: LLMTool):
 def update_ontology_manager(om: OntologyManager, llm_tool: LLMTool):
     for o in om.ontologies:
         update_ontology_properties(o, llm_tool)
+
+
+def init_toolbox(toolbox: ToolBox):
+    toolbox.ontology_manager.ontologies = (
+        toolbox.triple_store_manager.fetch_ontologies()
+    )
+    update_ontology_manager(om=toolbox.ontology_manager, llm_tool=toolbox.llm)
