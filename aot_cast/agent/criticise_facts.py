@@ -25,7 +25,7 @@ def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
     response = llm_tool(
         prompt.format_prompt(
             ontology=state.current_ontology.graph.serialize(format="turtle"),
-            document=state.input_text,
+            document=state.current_chunk.text,
             knowledge_graph=state.graph_facts.serialize(format="turtle"),
             format_instructions=parser.get_format_instructions(),
         )

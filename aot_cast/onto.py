@@ -355,8 +355,12 @@ class AgentState(BasePydanticModel):
         description="An almost unique hash / id for the parent document of the chunk"
     )
 
-    files: dict[str, bytes] = Field(
+    files: dict[str, bytes | dict] = Field(
         default_factory=lambda: dict(), description="Files to process"
+    )
+
+    current_chunk: Optional[Chunk] = Field(
+        description="Current document chunk for processing"
     )
 
     chunks: dict[str, Chunk] = Field(
@@ -403,6 +407,8 @@ class AgentState(BasePydanticModel):
     max_visits: int = Field(
         default=3, description="Maximum number of visits allowed per node"
     )
+
+    max_chunks: Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True

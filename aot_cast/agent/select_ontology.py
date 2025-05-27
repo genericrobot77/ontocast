@@ -18,7 +18,7 @@ def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     ontologies_desc = "\n\n".join([o.describe() for o in om_tool.ontologies])
     logger.debug(f"Retrieved descriptions for {len(om_tool.ontologies)} ontologies")
 
-    excerpt = state.input_text[:1000] + "..."
+    excerpt = state.current_chunk.text[:1000] + "..."
 
     prompt = PromptTemplate(
         template=template_prompt,

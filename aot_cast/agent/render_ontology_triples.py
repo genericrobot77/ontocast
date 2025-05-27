@@ -78,7 +78,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox):
     try:
         response = llm_tool(
             prompt.format_prompt(
-                text=state.input_text,
+                text=state.current_chunk.text,
                 instructions=_instructions,
                 ontology_instruction=ontology_instruction,
                 failure_instruction=_failure_instruction,

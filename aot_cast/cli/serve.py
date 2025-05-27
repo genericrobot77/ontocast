@@ -1,12 +1,11 @@
 import logging.config
 import asyncio
 import os
-from typing import Optional, Dict, Any
+from typing import Optional
 from robyn import Robyn
 from dotenv import load_dotenv
 import click
 import pathlib
-from io import BytesIO
 from aot_cast.onto import AgentState, RDFGraph
 from aot_cast.stategraph import create_agent_graph
 from aot_cast.tool import ToolBox, init_toolbox
@@ -14,112 +13,8 @@ from langgraph.graph.state import CompiledStateGraph
 from robyn import Request, Response, Headers
 import logging
 from aot_cast.cli.util import crawl_directories
-from suthing import FileHandle
 
 logger = logging.getLogger(__name__)
-
-
-async def process_text(
-    workflow: CompiledStateGraph,
-    tools: ToolBox,
-    input_text: Optional[str] = None,
-    chunks: Optional[list[str]] = None,
-    head_chunks: Optional[int] = None,
-    max_visits: int = 3,
-) -> Dict[str, Any]:
-    """
-    Process text through the agent workflow to extract facts.
-
-    Args:
-        input_text: The input text to process
-        workflow: The compiled agent workflow
-        tools: ToolBox containing all tools
-        head_chunks: Optional number of chunks to process
-        max_visits: Maximum number of visits allowed per node
-
-    Returns:
-        Dictionary containing ontology and facts
-    """
-    if input_text is not None:
-        docs = tools.chunker(input_text)
-    elif chunks is not None:
-        docs = chunks
-    else:
-        raise ValueError("either input_text or chunks should be provided")
-
-    logger.debug(f"len docs: {len(docs)}")
-    logger.debug(f"docs: {docs}")
-
-    sizes = [len(x) for x in docs]
-    logger.debug(f"chunk sizes: {sizes}")
-
-    if head_chunks is not None:
-        docs = docs[:head_chunks]
-
-    all_facts = RDFGraph()
-    for doc in docs:
-        state = AgentState(input_text=doc, max_visits=max_visits)
-
-        # Use astream to get the final state
-        final_state = None
-        async for chunk in workflow.astream(state, stream_mode="values"):
-            final_state = chunk
-
-        if final_state:
-            gf = final_state.pop("graph_facts", RDFGraph())
-            all_facts += gf
-
-            gf = final_state.pop("current_ontology", RDFGraph())
-
-        if final_state and "current_ontology" in final_state:
-            if final_state.current_ontology:
-                final_ontology = final_state.current_ontology
-
-        if final_state and hasattr(final_state, "status"):
-            final_status = final_state.status
-
-    return {"facts": all_facts, "ontology": final_ontology, "status": final_status}
-
-
-async def process_file(
-    file_path: pathlib.Path,
-    workflow: CompiledStateGraph,
-    tools: ToolBox,
-    head_chunks: Optional[int] = None,
-    max_visits: int = 3,
-) -> Dict[str, Any]:
-    """
-    Process a file through the agent workflow.
-
-    Args:
-        file_path: Path to the file to process
-        workflow: The compiled agent workflow
-        tools: ToolBox containing all tools
-        head_chunks: Optional number of chunks to process
-
-    Returns:
-        Dictionary containing ontology and facts
-    """
-    file_extension = file_path.suffix.lower()
-
-    if file_extension in tools.converter.supported_extensions:
-        with open(file_path, "rb") as f:
-            result = tools.converter(BytesIO(f.read()))
-            input_text = result["text"]
-            chunks = None
-    elif file_extension == ".json":
-        jdata = FileHandle.load(file_path, encoding="utf-8")
-        input_text = jdata.pop("text", None)
-        chunks = jdata.pop("chunks", None)
-
-    return await process_text(
-        workflow,
-        tools,
-        head_chunks=head_chunks,
-        input_text=input_text,
-        chunks=chunks,
-        max_visits=max_visits,
-    )
 
 
 def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: int = 3):
@@ -134,43 +29,31 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 
             if content_type.startswith("application/json"):
                 data = await request.json()
-                input_text = data.get("text")
-                if not input_text:
+                if "text" not in data:
                     return Response(
                         status_code=400, description="'text' field is required in JSON"
                     )
-
+                request.files = {"input.json": data}
             elif content_type.startswith("multipart/form-data"):
                 files = request.files
+                logger.debug(f"{files.keys()}")
                 if not files:
                     return Response(status_code=400, description="No file provided")
+            else:
+                return Response(status_code=400, description="No data provided")
 
-                logger.debug(f"{files.keys()}")
-                for filename, file_content in files.items():
-                    file_extension = pathlib.Path(filename).suffix.lower()
-
-                    if file_extension in tools.converter.supported_extensions:
-                        supported_file = BytesIO(file_content)
-                        result = tools.converter(supported_file)
-                        input_text = result["text"]
-                    else:
-                        try:
-                            input_text = file_content.decode("utf-8")
-                        except UnicodeDecodeError:
-                            return Response(
-                                status_code=400,
-                                description=f"Unsupported file type: {file_extension}",
-                            )
-                    # process only one file
-                    break
-
-            result = await process_text(
-                workflow,
-                tools,
-                input_text=input_text,
-                head_chunks=head_chunks,
-                max_visits=max_visits,
+            state = AgentState(
+                files=files, max_visits=max_visits, max_chunks=head_chunks
             )
+
+            async for chunk in workflow.astream(state, stream_mode="values"):
+                state = chunk
+
+            result = {
+                "facts": state.all_facts,
+                "ontology": state.final_ontology,
+                "status": state.status,
+            }
 
             return Response(
                 status_code=200,
@@ -262,17 +145,21 @@ def run(
         async def process_files():
             for file_path in files:
                 try:
-                    result = await process_file(
-                        file_path, workflow, tools, head_chunks, max_visits=max_visits
+                    state = AgentState(
+                        files=files, max_visits=max_visits, max_chunks=head_chunks
                     )
-                    ontology = result["ontology"]
-                    facts = result["facts"]
+
+                    async for chunk in workflow.astream(state, stream_mode="values"):
+                        state = chunk
+
+                    facts = state.pop("graph_facts", RDFGraph())
+                    ontology = state.pop("current_ontology", RDFGraph())
 
                     onto_file = output_path / f"{file_path.stem}.ontology.ttl"
                     facts_file = output_path / f"{file_path.stem}.facts.ttl"
 
                     ontology.graph.serialize(destination=onto_file)
-                    facts.graph.serialize(destination=facts_file)
+                    facts.serialize(destination=facts_file)
 
                 except Exception as e:
                     logger.error(f"Error processing {file_path}: {str(e)}")

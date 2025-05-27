@@ -3,7 +3,6 @@ import os
 
 from aot_cast.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
-from aot_cast.util import render_text_hash
 from aot_cast.onto import DEFAULT_DOMAIN
 from aot_cast.prompt.render_facts import ontology_instruction, template_prompt
 from aot_cast.tool import ToolBox
@@ -26,15 +25,11 @@ def render_facts(state: AgentState, tools: ToolBox):
         ontology_ext = "default"
     logger.debug(f"Extracted ontology extension: {ontology_ext}")
 
-    # Generate document hash
-    doc_hash = render_text_hash(state.input_text)
-    logger.debug(f"Generated document hash: {doc_hash}")
-
     current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
     logger.debug(f"Using domain: {current_domain}")
 
     # Construct namespace with domain, ontology extension and hash
-    state.current_namespace = f"{current_domain}/{doc_hash}/"
+    state.current_namespace = f"{current_domain}/doc/{state.input_text_hash}/chunk/{state.current_chunk.hash}/"
     logger.debug(f"Set current namespace to: {state.current_namespace}")
 
     ontology_instruction_str = ontology_instruction.format(
@@ -72,7 +67,7 @@ def render_facts(state: AgentState, tools: ToolBox):
             prompt.format_prompt(
                 ontology_iri=ontology_iri,
                 current_namespace=state.current_namespace,
-                text=state.input_text,
+                text=state.current_chunk.text,
                 ontology_instruction=ontology_instruction_str,
                 failure_instruction=failure_instruction,
                 format_instructions=parser.get_format_instructions(),

@@ -37,7 +37,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     response = llm_tool(
         prompt.format_prompt(
             ontology_update=state.ontology_addendum.graph.serialize(format="turtle"),
-            document=state.input_text,
+            document=state.current_chunk.text,
             format_instructions=parser.get_format_instructions(),
             ontology_original_str=ontology_original_str,
         )
