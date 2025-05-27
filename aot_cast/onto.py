@@ -313,19 +313,56 @@ class Ontology(OntologyProperites):
 
 
 class WorkflowNode(StrEnum):
+    CONVERT_TO_MD = "Convert to Markdown"
+    CHUNK = "Chunk Text"
+
     SELECT_ONTOLOGY = "Select Ontology"
     TEXT_TO_ONTOLOGY = "Text to Ontology"
     TEXT_TO_FACTS = "Text to Facts"
     SUBLIMATE_ONTOLOGY = "Sublimate Ontology"
     CRITICISE_ONTOLOGY = "Criticise Ontology"
     CRITICISE_FACTS = "Criticise Facts"
+
+    CHUNKS_EMPTY = "Chunks Empty Check"
+
     SAVE_KG = "Save KG"
+
+
+class Chunk(BaseModel):
+    text: str = Field(description="Text of the chunk")
+
+    hash: str = Field(description="An almost unique hash / id for the chunk")
+
+    parent_doc_hash: str = Field(
+        description="An almost unique hash / id for the parent document of the chunk"
+    )
+
+    graph: Optional[RDFGraph] = Field(
+        description="RDF triples representing the facts from the current document",
+        default_factory=RDFGraph,
+    )
+
+    processed: bool = Field(
+        default=False, description="Whether chunk has been processed"
+    )
 
 
 class AgentState(BasePydanticModel):
     """State for the ontology-based knowledge graph agent."""
 
     input_text: Optional[str] = None
+    input_text_hash: Optional[str] = Field(
+        description="An almost unique hash / id for the parent document of the chunk"
+    )
+
+    files: dict[str, bytes] = Field(
+        default_factory=lambda: dict(), description="Files to process"
+    )
+
+    chunks: dict[str, Chunk] = Field(
+        default_factory=lambda: dict(), description="Chunks of the input text"
+    )
+
     current_ontology: Ontology = Field(
         default_factory=lambda: Ontology(
             short_name=ONTOLOGY_VOID_ID,
@@ -366,6 +403,9 @@ class AgentState(BasePydanticModel):
     max_visits: int = Field(
         default=3, description="Maximum number of visits allowed per node"
     )
+
+    class Config:
+        arbitrary_types_allowed = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

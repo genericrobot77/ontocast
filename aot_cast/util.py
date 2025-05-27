@@ -9,7 +9,7 @@ from hashlib import sha256
 logger = logging.getLogger(__name__)
 
 
-def get_text_hash(text: str, digits=12) -> str:
+def render_text_hash(text: str, digits=12) -> str:
     """Generate a hash from the text."""
 
     return sha256(text.encode("utf-8")).hexdigest()[:digits]
@@ -30,12 +30,12 @@ def setup_logging(debug: bool = False) -> None:
     )
 
 
-def modifier(state: AgentState, node_name) -> AgentState:
+def count_visits(state: AgentState, node_name) -> AgentState:
     state.node_visits[node_name] += 1
     return state
 
 
-def add_counter(func, node_name) -> tuple[WorkflowNode, Callable]:
+def wrap_with(func, node_name, post_func) -> tuple[WorkflowNode, Callable]:
     """Add a visit counter to a function.
 
     Args:
@@ -50,6 +50,6 @@ def add_counter(func, node_name) -> tuple[WorkflowNode, Callable]:
     def wrapper(state: AgentState):
         logger.info(f"Starting to execute {node_name}")
         result = func(state)
-        return modifier(result, node_name)
+        return post_func(result, node_name)
 
     return node_name, wrapper

@@ -5,14 +5,18 @@ from .criticise_facts import criticise_facts
 from .criticise_ontology import criticise_ontology
 from .save_kg import save_kg
 from .sublimate_ontology import sublimate_ontology
+from .chunk_text import chunk_text
+from .convert_document import convert_document
 
 
 __all__ = [
-    "select_ontology",
-    "render_onto_triples",
-    "render_facts",
+    "chunk_text",
+    "convert_document",
     "criticise_facts",
     "criticise_ontology",
     "save_kg",
+    "select_ontology",
     "sublimate_ontology",
+    "render_onto_triples",
+    "render_facts",
 ]
