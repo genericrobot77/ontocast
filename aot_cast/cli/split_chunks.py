@@ -2,7 +2,7 @@ import sys
 import pathlib
 import click
 from aot_cast.cli.util import crawl_directories
-from aot_cast.tools.chunker import ChunkerTool
+from aot_cast.tool.chunker import ChunkerTool
 from suthing import FileHandle
 import json
 

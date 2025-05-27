@@ -9,9 +9,9 @@ from aot_cast.onto import (
     DEFAULT_DOMAIN,
 )
 from langchain.prompts import PromptTemplate
-from aot_cast.tools import ToolBox
+from aot_cast.tool import ToolBox
 
-from aot_cast.prompts.render_ontology import (
+from aot_cast.prompt.render_ontology import (
     template_prompt,
     ontology_instruction_update,
     ontology_instruction_fresh,

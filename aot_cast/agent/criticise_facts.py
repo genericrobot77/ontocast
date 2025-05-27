@@ -1,8 +1,8 @@
 import logging
 from aot_cast.onto import AgentState, FailureStages, KGCritiqueReport
 from langchain.prompts import PromptTemplate
-from aot_cast.prompts.criticise_facts import prompt as criticise_facts_prompt
-from aot_cast.tools import ToolBox
+from aot_cast.prompt.criticise_facts import prompt as criticise_facts_prompt
+from aot_cast.tool import ToolBox
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,7 @@ from aot_cast.agent import (
     criticise_ontology,
     sublimate_ontology,
 )
-from aot_cast.tools import OntologyManager
+from aot_cast.tool import OntologyManager
 from rdflib import URIRef, Literal
 from packaging.version import Version
 import pytest

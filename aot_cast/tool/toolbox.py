@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 import pathlib
-from aot_cast.tools import (
+from aot_cast.tool import (
     TripleStoreManager,
     FilesystemTripleStoreManager,
     OntologyManager,

@@ -1,8 +1,8 @@
 import logging
 from aot_cast.onto import AgentState, OntologySelectorReport
 from langchain.prompts import PromptTemplate
-from aot_cast.tools import OntologyManager, ToolBox
-from aot_cast.prompts.select_ontology import template_prompt
+from aot_cast.tool import OntologyManager, ToolBox
+from aot_cast.prompt.select_ontology import template_prompt
 
 logger = logging.getLogger(__name__)
 

@@ -5,8 +5,8 @@ from aot_cast.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
 from aot_cast.util import get_text_hash
 from aot_cast.onto import DEFAULT_DOMAIN
-from aot_cast.prompts.render_facts import ontology_instruction, template_prompt
-from aot_cast.tools import ToolBox
+from aot_cast.prompt.render_facts import ontology_instruction, template_prompt
+from aot_cast.tool import ToolBox
 
 logger = logging.getLogger(__name__)
 

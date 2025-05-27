@@ -1,10 +1,10 @@
 import logging
 from aot_cast.onto import AgentState, FailureStages, OntologyUpdateCritiqueReport
-from aot_cast.tools import ToolBox
-from aot_cast.prompts.criticise_ontology import prompt_update
+from aot_cast.tool import ToolBox
+from aot_cast.prompt.criticise_ontology import prompt_update
 from aot_cast.onto import ONTOLOGY_VOID_IRI
-from aot_cast.tools import LLMTool, OntologyManager
-from aot_cast.prompts.criticise_ontology import prompt_fresh
+from aot_cast.tool import LLMTool, OntologyManager
+from aot_cast.prompt.criticise_ontology import prompt_fresh
 
 from langchain.prompts import PromptTemplate
 
