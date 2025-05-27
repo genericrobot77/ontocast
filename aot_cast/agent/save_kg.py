@@ -2,7 +2,7 @@ from aot_cast.onto import AgentState
 from aot_cast.tools import ToolBox
 
 
-def create_kg_saver(state: AgentState, tools: ToolBox) -> AgentState:
+def save_kg(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that saves the knowledge graph."""
     tsm_tool = tools.triple_store_manager
     if state.graph_facts is not None:
