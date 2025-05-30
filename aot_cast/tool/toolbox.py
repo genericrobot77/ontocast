@@ -1,4 +1,3 @@
-from pydantic import BaseModel
 from typing import Optional
 import pathlib
 from aot_cast.tool import (
@@ -11,24 +10,17 @@ from aot_cast.tool import (
 )
 
 
-class ToolBox(BaseModel):
-    llm: Optional[LLMTool] = None
-    triple_store_manager: Optional[TripleStoreManager] = None
-    ontology_manager: Optional[OntologyManager] = None
-    converter: Optional[Converter] = None
-    chunker: Optional[ChunkerTool] = None
-
+class ToolBox:
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         working_directory: pathlib.Path = kwargs.pop("working_directory")
         ontology_directory: Optional[pathlib.Path] = kwargs.pop("ontology_directory")
         model_name: str = kwargs.pop("model_name")
         temperature: float = kwargs.pop("temperature")
 
-        self.llm = LLMTool.create(model=model_name, temperature=temperature)
-        self.triple_store_manager = FilesystemTripleStoreManager(
+        self.llm: LLMTool = LLMTool.create(model=model_name, temperature=temperature)
+        self.triple_store_manager: TripleStoreManager = FilesystemTripleStoreManager(
             working_directory=working_directory, ontology_path=ontology_directory
         )
-        self.ontology_manager = OntologyManager()
-        self.converter = Converter()
-        self.chunker = ChunkerTool()
+        self.ontology_manager: OntologyManager = OntologyManager()
+        self.converter: Converter = Converter()
+        self.chunker: ChunkerTool = ChunkerTool()

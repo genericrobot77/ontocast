@@ -1,9 +1,7 @@
 import logging
-import os
 
 from aot_cast.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
-from aot_cast.onto import DEFAULT_DOMAIN
 from aot_cast.prompt.render_facts import ontology_instruction, template_prompt
 from aot_cast.tool import ToolBox
 
@@ -19,18 +17,11 @@ def render_facts(state: AgentState, tools: ToolBox):
     ontology_iri = state.current_ontology.iri
     ontology_str = state.current_ontology.graph.serialize(format="turtle")
 
-    # Extract ontology extension from IRI
     ontology_ext = ontology_iri.split("/")[-1].split("#")[0]
     if not ontology_ext:
         ontology_ext = "default"
+
     logger.debug(f"Extracted ontology extension: {ontology_ext}")
-
-    current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
-    logger.debug(f"Using domain: {current_domain}")
-
-    # Construct namespace with domain, ontology extension and hash
-    state.current_namespace = f"{current_domain}/doc/{state.input_text_hash}/chunk/{state.current_chunk.hash}/"
-    logger.debug(f"Set current namespace to: {state.current_namespace}")
 
     ontology_instruction_str = ontology_instruction.format(
         ontology_iri=ontology_iri, ontology_str=ontology_str
@@ -41,7 +32,7 @@ def render_facts(state: AgentState, tools: ToolBox):
         template=template_prompt_str,
         input_variables=[
             "ontology_iri",
-            "current_namespace",
+            "current_doc_iri",
             "text",
             "ontology_instruction",
             "failure_instruction",
@@ -66,7 +57,7 @@ def render_facts(state: AgentState, tools: ToolBox):
         response = llm_tool(
             prompt.format_prompt(
                 ontology_iri=ontology_iri,
-                current_namespace=state.current_namespace,
+                current_doc_iri=state.chunk_iri,
                 text=state.current_chunk.text,
                 ontology_instruction=ontology_instruction_str,
                 failure_instruction=failure_instruction,
@@ -75,7 +66,8 @@ def render_facts(state: AgentState, tools: ToolBox):
         )
 
         proj = parser.parse(response.content)
-        state.graph_facts += proj.semantic_graph
+        state.current_chunk.graph += proj.semantic_graph
+
         state.clear_failure()
         return state
 

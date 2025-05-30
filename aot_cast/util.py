@@ -3,16 +3,9 @@ import sys
 from aot_cast.onto import AgentState, WorkflowNode
 from functools import wraps
 from typing import Callable
-from hashlib import sha256
 
 
 logger = logging.getLogger(__name__)
-
-
-def render_text_hash(text: str, digits=12) -> str:
-    """Generate a hash from the text."""
-
-    return sha256(text.encode("utf-8")).hexdigest()[:digits]
 
 
 def setup_logging(debug: bool = False) -> None:

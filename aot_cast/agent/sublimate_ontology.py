@@ -2,17 +2,16 @@ import logging
 from rdflib import Namespace
 from aot_cast.onto import AgentState, FailureStages, RDFGraph
 from aot_cast.tool import ToolBox
+from aot_cast.agent.validate import validate_and_connect_chunk
 
 logger = logging.getLogger(__name__)
 
 
 def _sublimate_ontology(state: AgentState):
     logger.debug("Starting ontology sublimation process")
-    current_namespace = state.current_namespace
-    logger.debug(f"Using namespace: {current_namespace}")
 
     query_ontology = f"""
-    PREFIX cd: <{current_namespace}>
+    PREFIX cd: <{state.chunk_iri}>
     
     SELECT ?s ?p ?o
     WHERE {{
@@ -36,7 +35,7 @@ def _sublimate_ontology(state: AgentState):
         graph_onto_addendum.add((s, p, o))
 
     query_facts = f"""
-        PREFIX cd: <{current_namespace}>
+        PREFIX cd: <{state.chunk_iri}>
 
         SELECT ?s ?p ?o
         WHERE {{
@@ -63,6 +62,8 @@ def _sublimate_ontology(state: AgentState):
 
 def sublimate_ontology(state: AgentState, tools: ToolBox):
     om_tool = tools.ontology_manager
+    if state.current_ontology is None:
+        return state
     try:
         graph_onto_addendum, graph_facts = _sublimate_ontology(state=state)
 
@@ -80,6 +81,12 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
         )
 
         om_tool.update_ontology(state.current_ontology.short_name, graph_onto_addendum)
+
+        state.current_chunk = validate_and_connect_chunk(
+            state.current_chunk,
+            auto_connect=True,
+        )
+
         state.graph_facts = graph_facts
         state.clear_failure()
     except Exception as e:

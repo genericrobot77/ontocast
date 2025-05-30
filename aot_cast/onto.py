@@ -1,11 +1,12 @@
 from pydantic import BaseModel, Field
-from rdflib import Graph
+from rdflib import Graph, Namespace
 from typing import Optional
 import logging
 import pathlib
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
 from collections import defaultdict
+import os
 
 from typing import Any
 import re
@@ -19,7 +20,7 @@ ONTOLOGY_VOID_ID = "__void_ontology_name"
 ONTOLOGY_VOID_IRI = "NULL"
 
 DEFAULT_DOMAIN = "https://example.com"
-DEFAULT_NAMESPACE = "https://example.com/current-document#"
+DEFAULT_NAMESPACE = "https://example.com/doc#"
 
 
 class Status(StrEnum):
@@ -62,6 +63,9 @@ COMMON_PREFIXES = {
     "schema": "<http://schema.org/>",
     "ex": "<http://example.org/>",
 }
+
+PROV = Namespace("http://www.w3.org/ns/prov#")
+SCHEMA = Namespace("http://schema.org/")
 
 PREFIX_PATTERN = re.compile(r"@prefix\s+(\w+):\s+<[^>]+>\s+\.")
 
@@ -306,7 +310,7 @@ class Ontology(OntologyProperites):
 
     @property
     def iri_id(self):
-        oid = self.current_ontology.iri.split("/")[-1].split("#")[0]
+        oid = self.iri.split("/")[-1].split("#")[0]
         if not oid:
             oid = "default"
         return oid
@@ -331,7 +335,7 @@ class WorkflowNode(StrEnum):
 class Chunk(BaseModel):
     text: str = Field(description="Text of the chunk")
 
-    hash: str = Field(description="An almost unique hash / id for the chunk")
+    hid: str = Field(description="An almost unique hash / id for the chunk")
 
     parent_doc_hash: str = Field(
         description="An almost unique hash / id for the parent document of the chunk"
@@ -341,6 +345,7 @@ class Chunk(BaseModel):
         description="RDF triples representing the facts from the current document",
         default_factory=RDFGraph,
     )
+    iri: str = Field(description="Chunk iri")
 
     processed: bool = Field(
         default=False, description="Whether chunk has been processed"
@@ -351,7 +356,7 @@ class AgentState(BasePydanticModel):
     """State for the ontology-based knowledge graph agent."""
 
     input_text: Optional[str] = None
-    input_text_hash: Optional[str] = Field(
+    doc_hid: Optional[str] = Field(
         description="An almost unique hash / id for the parent document of the chunk"
     )
 
@@ -377,11 +382,6 @@ class AgentState(BasePydanticModel):
         ),
         description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
     )
-
-    current_namespace: str = Field(
-        default=DEFAULT_NAMESPACE, description="The namespace of the current document"
-    )
-
     graph_facts: RDFGraph = Field(
         default_factory=RDFGraph,
         description="RDF triples representing the facts from the current document",
@@ -415,6 +415,7 @@ class AgentState(BasePydanticModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
 
     def set_failure(self, stage: str, reason: str, success_score: float = 0.0) -> None:
         """
@@ -435,3 +436,16 @@ class AgentState(BasePydanticModel):
         self.failure_reason = None
         self.success_score = 0.0
         self.status = Status.SUCCESS
+
+    @property
+    def document_iri(self):
+        return f"{self.current_domain}/doc/{self.doc_hid}/"
+
+    @property
+    def chunk_iri(self):
+        return (
+            f"{self.current_domain}/doc/{self.doc_hid}/chunk/{self.current_chunk.hid}/"
+        )
+
+    def render_chunk_iri(self, chunk_hash):
+        return f"{self.current_domain}/doc/{self.doc_hid}/chunk/{chunk_hash}/"

@@ -8,11 +8,12 @@ import click
 import pathlib
 from aot_cast.onto import AgentState, RDFGraph
 from aot_cast.stategraph import create_agent_graph
-from aot_cast.tool import ToolBox, init_toolbox
+from aot_cast.tool import ToolBox
 from langgraph.graph.state import CompiledStateGraph
 from robyn import Request, Response, Headers
 import logging
 from aot_cast.cli.util import crawl_directories
+from aot_cast.tb import init_toolbox
 
 logger = logging.getLogger(__name__)
 

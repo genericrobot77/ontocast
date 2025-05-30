@@ -1,5 +1,10 @@
 import logging
-from aot_cast.onto import AgentState, FailureStages, OntologyUpdateCritiqueReport
+from aot_cast.onto import (
+    AgentState,
+    FailureStages,
+    OntologyUpdateCritiqueReport,
+    Status,
+)
 from aot_cast.tool import ToolBox
 from aot_cast.prompt.criticise_ontology import prompt_update
 from aot_cast.onto import ONTOLOGY_VOID_IRI
@@ -16,6 +21,10 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     llm_tool: LLMTool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager
     parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
+
+    if state.current_chunk is None:
+        state.status == Status.FAILED
+        return state
 
     if state.current_ontology.iri == ONTOLOGY_VOID_IRI:
         prompt = prompt_fresh

@@ -1,6 +1,6 @@
 import pytest
 import os
-from aot_cast.tool import init_toolbox
+from aot_cast.tb import init_toolbox
 from pathlib import Path
 from aot_cast.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
 from suthing import FileHandle

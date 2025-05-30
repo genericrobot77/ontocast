@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
     logger.debug("Starting facts critique process")
+
     llm_tool = tools.llm
     parser = llm_tool.get_parser(KGCritiqueReport)
 
@@ -37,6 +38,7 @@ def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
 
     if critique.facts_graph_derivation_success:
         logger.debug("Facts critique successful, clearing failure state")
+        state.chunks[state.current_chunk.hid] = state.current_chunk
         state.clear_failure()
     else:
         logger.debug("Facts critique failed, setting failure state")
