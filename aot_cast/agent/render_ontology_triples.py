@@ -49,7 +49,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox):
             ontology_str=ontology_str,
         )
         specific_ontology_instruction = specific_ontology_instruction_update.format(
-            ontology_iri=ontology_iri
+            ontology_namespace=state.current_ontology.namespace
         )
 
     _instructions = instructions.format(

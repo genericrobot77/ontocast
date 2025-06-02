@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class EntityDisambiguator:
-    """Disambiguates and aggregates entities across multiple chunk graphs"""
+    """Disambiguate and aggregate entities across multiple chunk graphs"""
 
     def __init__(self, similarity_threshold: float = 85.0):
         self.similarity_threshold = similarity_threshold

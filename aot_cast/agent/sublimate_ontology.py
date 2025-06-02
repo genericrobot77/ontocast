@@ -11,7 +11,7 @@ def _sublimate_ontology(state: AgentState):
     logger.debug("Starting ontology sublimation process")
 
     query_ontology = f"""
-    PREFIX cd: <{state.chunk_iri}>
+    PREFIX cd: <{state.current_chunk.namespace}>
     
     SELECT ?s ?p ?o
     WHERE {{
@@ -35,7 +35,7 @@ def _sublimate_ontology(state: AgentState):
         graph_onto_addendum.add((s, p, o))
 
     query_facts = f"""
-        PREFIX cd: <{state.chunk_iri}>
+        PREFIX cd: <{state.current_chunk.namespace}>
 
         SELECT ?s ?p ?o
         WHERE {{

@@ -23,7 +23,6 @@ def validate_and_connect_chunk(
     Args:
         chunk: The RDF graph to validate
         auto_connect: Whether to automatically connect disconnected graphs
-        connection_strategy: Strategy to use for connecting ("chunk_hub", "minimal_bridge", "semantic_bridge")
 
     Returns:
         Connected graph (original if already connected, or modified if auto_connect=True)

@@ -2,7 +2,10 @@ import logging
 
 from aot_cast.onto import AgentState, FailureStages, SemanticTriplesFactsReport
 from langchain.prompts import PromptTemplate
-from aot_cast.prompt.render_facts import ontology_instruction, template_prompt
+from aot_cast.prompt.render_facts import (
+    ontology_instruction,
+    template_prompt as template_prompt_str,
+)
 from aot_cast.tool import ToolBox
 
 logger = logging.getLogger(__name__)
@@ -14,25 +17,17 @@ def render_facts(state: AgentState, tools: ToolBox):
 
     parser = llm_tool.get_parser(SemanticTriplesFactsReport)
 
-    ontology_iri = state.current_ontology.iri
     ontology_str = state.current_ontology.graph.serialize(format="turtle")
 
-    ontology_ext = ontology_iri.split("/")[-1].split("#")[0]
-    if not ontology_ext:
-        ontology_ext = "default"
-
-    logger.debug(f"Extracted ontology extension: {ontology_ext}")
-
     ontology_instruction_str = ontology_instruction.format(
-        ontology_iri=ontology_iri, ontology_str=ontology_str
+        ontology_iri=state.current_ontology.iri, ontology_str=ontology_str
     )
-    template_prompt_str = template_prompt
 
     prompt = PromptTemplate(
         template=template_prompt_str,
         input_variables=[
-            "ontology_iri",
-            "current_doc_iri",
+            "ontology_namespace",
+            "current_doc_namespace",
             "text",
             "ontology_instruction",
             "failure_instruction",
@@ -56,8 +51,8 @@ def render_facts(state: AgentState, tools: ToolBox):
 
         response = llm_tool(
             prompt.format_prompt(
-                ontology_iri=ontology_iri,
-                current_doc_iri=state.chunk_iri,
+                ontology_namespace=state.current_ontology.namespace,
+                current_doc_namespace=state.current_chunk.namespace,
                 text=state.current_chunk.text,
                 ontology_instruction=ontology_instruction_str,
                 failure_instruction=failure_instruction,

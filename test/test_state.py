@@ -116,7 +116,7 @@ def test_agent_text_to_ontology_critique_loop(
         if state.status != Status.SUCCESS:
             state.serialize(f"test/data/agent_state.onto.critique.loop.{k}.json")
         k += 1
-    state.status == Status.SUCCESS
+    assert state.status == Status.SUCCESS
     state.clear_failure()
     state.serialize("test/data/agent_state.onto.critique.success.json")
 

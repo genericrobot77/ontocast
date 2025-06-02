@@ -17,12 +17,7 @@ def chunk_text(state: AgentState, tools: ToolBox) -> AgentState:
 
         for doc in docs:
             hid = render_text_hash(doc)
-            state.chunks[hid] = Chunk(
-                text=doc,
-                hid=hid,
-                iri=state.render_chunk_iri(hid),
-                parent_doc_hash=state.doc_hid,
-            )
+            state.chunks[hid] = Chunk(text=doc, hid=hid, doc_iri=state.doc_iri)
         state.status = Status.SUCCESS
     else:
         state.status = Status.FAILED

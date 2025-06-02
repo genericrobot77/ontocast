@@ -12,15 +12,16 @@ from aot_cast.onto import RDFGraph
 
 def create_sample_chunk_graph(current_domain, chunk_id: str) -> Chunk:
     g = RDFGraph()
-    base_uri = f"{current_domain}/doc/123/chunk/{chunk_id}#"
+    doc_iri = f"{current_domain}/doc/123"
+    c = Chunk(graph=g, doc_iri=doc_iri, text="", hid=chunk_id)
 
-    person1 = URIRef(base_uri + "person1")
-    person2 = URIRef(base_uri + "person2")
+    person1 = URIRef(c.namespace + "person1")
+    person2 = URIRef(c.namespace + "person2")
 
     g.add((person1, RDFS.label, Literal("John Doe")))
-    g.add((person1, URIRef(base_uri + "knows"), person2))
+    g.add((person1, URIRef(c.namespace + "knows"), person2))
     g.add((person2, RDFS.label, Literal("Jane Smith")))
-    c = Chunk(graph=g, iri=base_uri, text="", hid=chunk_id, parent_doc_hash="123")
+    c.graph = g
     return c
 
 

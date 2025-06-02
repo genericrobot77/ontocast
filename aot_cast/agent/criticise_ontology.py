@@ -23,7 +23,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
 
     if state.current_chunk is None:
-        state.status == Status.FAILED
+        state.status = Status.FAILED
         return state
 
     if state.current_ontology.iri == ONTOLOGY_VOID_IRI:

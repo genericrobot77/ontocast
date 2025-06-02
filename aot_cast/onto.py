@@ -20,7 +20,10 @@ ONTOLOGY_VOID_ID = "__void_ontology_name"
 ONTOLOGY_VOID_IRI = "NULL"
 
 DEFAULT_DOMAIN = "https://example.com"
-DEFAULT_NAMESPACE = "https://example.com/doc#"
+
+
+def iri2namespace(iri, ontology=False):
+    return f"{iri}#" if ontology else f"{iri}/"
 
 
 class Status(StrEnum):
@@ -216,7 +219,7 @@ class KGCritiqueReport(BaseModel):
     )
 
 
-class OntologyProperites(BaseModel):
+class OntologyProperties(BaseModel):
     short_name: Optional[str] = Field(
         default=None,
         description="A short name (identifier) for the ontology. It should be an abbreviation. Must be provided.",
@@ -226,7 +229,7 @@ class OntologyProperites(BaseModel):
     )
     description: Optional[str] = Field(
         default=None,
-        description="A consise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)",
+        description="A concise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)",
     )
     version: Optional[str] = Field(
         description="Version of the ontology",
@@ -234,18 +237,21 @@ class OntologyProperites(BaseModel):
     )
     iri: Optional[str] = Field(
         default=None,
-        description="Ontology IRI (Internationalized Resource Identifier), ends with either `#` or `/`",
+        description="Ontology IRI (Internationalized Resource Identifier)",
     )
 
+    @property
+    def namespace(self):
+        return iri2namespace(self.iri, ontology=True)
 
-class Ontology(OntologyProperites):
+
+class Ontology(OntologyProperties):
     """
     A Pydantic model representing an ontology with its RDF graph and description.
 
     Attributes:
         graph (Graph): The RDF graph containing the ontology data
         description (str): A human-readable description of the ontology
-        name (Optional[str]): Optional name for the ontology
         version (Optional[str]): Optional version information
     """
 
@@ -287,7 +293,6 @@ class Ontology(OntologyProperites):
 
         Args:
             file_path (str): Path to the ontology file
-            description (str): Description of the ontology
             format (str): Format of the input file (default: "turtle")
             **kwargs: Additional arguments to pass to the constructor
 
@@ -335,27 +340,34 @@ class WorkflowNode(StrEnum):
 class Chunk(BaseModel):
     text: str = Field(description="Text of the chunk")
 
-    hid: str = Field(description="An almost unique hash / id for the chunk")
+    hid: str = Field(description="An almost unique (hash) id for the chunk")
 
-    parent_doc_hash: str = Field(
-        description="An almost unique hash / id for the parent document of the chunk"
-    )
+    doc_iri: str = Field(description="IRI of parent doc")
 
     graph: Optional[RDFGraph] = Field(
         description="RDF triples representing the facts from the current document",
         default_factory=RDFGraph,
     )
-    iri: str = Field(description="Chunk iri")
 
     processed: bool = Field(
         default=False, description="Whether chunk has been processed"
     )
+
+    @property
+    def iri(self):
+        return f"{self.doc_iri}/chunk/{self.hid}"
+
+    @property
+    def namespace(self):
+        return iri2namespace(self.iri, ontology=False)
 
 
 class AgentState(BasePydanticModel):
     """State for the ontology-based knowledge graph agent."""
 
     input_text: Optional[str] = None
+    current_domain: Optional[str] = None
+
     doc_hid: Optional[str] = Field(
         description="An almost unique hash / id for the parent document of the chunk"
     )
@@ -424,6 +436,7 @@ class AgentState(BasePydanticModel):
         Args:
             stage: The stage where the failure occurred
             reason: The reason for the failure
+            success_score: The reason for the failure
         """
         self.failure_stage = stage
         self.failure_reason = reason
@@ -438,14 +451,9 @@ class AgentState(BasePydanticModel):
         self.status = Status.SUCCESS
 
     @property
-    def document_iri(self):
-        return f"{self.current_domain}/doc/{self.doc_hid}/"
+    def doc_iri(self):
+        return f"{self.current_domain}/doc/{self.doc_hid}"
 
     @property
-    def chunk_iri(self):
-        return (
-            f"{self.current_domain}/doc/{self.doc_hid}/chunk/{self.current_chunk.hid}/"
-        )
-
-    def render_chunk_iri(self, chunk_hash):
-        return f"{self.current_domain}/doc/{self.doc_hid}/chunk/{chunk_hash}/"
+    def doc_namespace(self):
+        return iri2namespace(self.doc_iri, ontology=False)
