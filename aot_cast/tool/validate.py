@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 def validate_and_connect_chunk(
     chunk: Chunk,
-    current_domain,
     auto_connect: bool = True,
 ) -> Chunk:
     """
@@ -28,7 +27,7 @@ def validate_and_connect_chunk(
         Connected graph (original if already connected, or modified if auto_connect=True)
     """
 
-    validator = RDFGraphConnectivityValidator(chunk.graph, current_domain)
+    validator = RDFGraphConnectivityValidator(chunk.graph)
 
     result = validator.validate_connectivity()
 
@@ -49,7 +48,7 @@ def validate_and_connect_chunk(
         final_graph = validator.make_graph_connected(chunk_iri=chunk.iri)
 
         # Re-validate
-        new_validator = RDFGraphConnectivityValidator(final_graph, current_domain)
+        new_validator = RDFGraphConnectivityValidator(final_graph)
         new_result = new_validator.validate_connectivity()
         logger.debug(
             f"After connection - Components: {new_result['num_components']}, Triples: {len(final_graph)}"
@@ -61,9 +60,8 @@ def validate_and_connect_chunk(
 class RDFGraphConnectivityValidator:
     """Validates that entities within a chunk graph are connected"""
 
-    def __init__(self, graph: RDFGraph, current_domain):
+    def __init__(self, graph: RDFGraph):
         self.graph = graph
-        self.current_domain = current_domain
 
     def get_all_entities(self) -> Set[URIRef]:
         """Extract all unique entities (subjects and objects) from the graph"""
@@ -277,7 +275,7 @@ class RDFGraphConnectivityValidator:
 
         # Add hub entity metadata
 
-        graph.add((hub_uri, RDF.type, URIRef(f"{self.current_domain}TextChunk")))
+        graph.add((hub_uri, RDF.type, SCHEMA.TextDigitalDocument))
         graph.add((hub_uri, RDFS.label, Literal("Document chunk")))
 
         # Connect hub to one representative entity from each component

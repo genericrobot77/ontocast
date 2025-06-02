@@ -1,7 +1,7 @@
 import pytest
 from aot_cast.onto import Chunk
-from aot_cast.agent.aggregate import ChunkRDFGraphAggregator
-from aot_cast.agent.validate import (
+from aot_cast.tool.aggregate import ChunkRDFGraphAggregator
+from aot_cast.tool.validate import (
     validate_and_connect_chunk,
     RDFGraphConnectivityValidator,
 )
@@ -41,22 +41,18 @@ def sample_chunks(current_domain):
 
 
 @pytest.fixture
-def connected_chunks(sample_chunks, current_domain):
+def connected_chunks(sample_chunks):
     connected_chunks = {}
     for _, chunk in sample_chunks.items():
-        new_chunk = validate_and_connect_chunk(
-            chunk, auto_connect=True, current_domain=current_domain
-        )
+        new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
         connected_chunks[new_chunk.hid] = new_chunk
     return connected_chunks
 
 
-def test_validation(sample_chunks, current_domain):
+def test_validation(sample_chunks):
     gs = []
     for _, chunk in sample_chunks.items():
-        new_chunk = validate_and_connect_chunk(
-            chunk, auto_connect=True, current_domain=current_domain
-        )
+        new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
         gs += [new_chunk]
 
     assert [len(x.graph) for x in gs] == [3, 3]
@@ -64,12 +60,14 @@ def test_validation(sample_chunks, current_domain):
 
 def test_aggregation(doc_id, connected_chunks, current_domain):
     # Aggregate graphs (now using connected versions)
-    aggregator = ChunkRDFGraphAggregator(doc_iri=f"{current_domain}/{doc_id}")
-    aggregated_graph = aggregator.aggregate_graphs(chunks=connected_chunks)
+    aggregator = ChunkRDFGraphAggregator()
+    aggregated_graph = aggregator.aggregate_graphs(
+        chunks=connected_chunks, doc_iri=f"{current_domain}/{doc_id}"
+    )
 
     # Validate aggregated graph connectivity
     connectivity_result = RDFGraphConnectivityValidator(
-        aggregated_graph, current_domain=current_domain
+        aggregated_graph
     ).validate_connectivity()
     assert len(aggregated_graph) == 11
     assert connectivity_result["num_components"] == 1

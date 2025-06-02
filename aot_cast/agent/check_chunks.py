@@ -1,13 +1,12 @@
 import logging
 from aot_cast.onto import AgentState
-from aot_cast.tool import ToolBox
 from aot_cast.onto import Status
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
 
-def check_chunks_empty(state: AgentState, tools: ToolBox) -> AgentState:
+def check_chunks_empty(state: AgentState) -> AgentState:
     logger.debug("Converting documents. NB: processing one file")
 
     if not all(c.processed for c in state.chunks.values()):

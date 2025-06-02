@@ -1,16 +1,23 @@
+import logging
 from aot_cast.onto import AgentState
 from aot_cast.tool import ToolBox
+from aot_cast.tool.validate import RDFGraphConnectivityValidator
+
+logger = logging.getLogger(__name__)
 
 
 def save_kg(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that saves the knowledge graph."""
     tsm_tool = tools.triple_store_manager
 
-    # graphs = [c.graph for c in state.chunks]
-    # total_facts_graph = RDFGraph()
-    if state.graph_facts is not None:
-        tsm_tool.serialize_ontology(state.current_ontology)
+    aggregated_graph = tools.aggregator.aggregate_graphs(state.chunks, state.doc_iri)
+    connectivity_result = RDFGraphConnectivityValidator(
+        aggregated_graph
+    ).validate_connectivity()
+    logger.info(connectivity_result)
 
-        tsm_tool.serialize_facts(state.graph_facts)
+    tsm_tool.serialize_ontology(state.current_ontology)
+    if len(aggregated_graph) > 0:
+        tsm_tool.serialize_facts(aggregated_graph)
 
     return state

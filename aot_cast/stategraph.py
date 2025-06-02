@@ -60,7 +60,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     select_ontology_ = partial(select_ontology, tools=tools)
     convert_document_ = partial(convert_document, tools=tools)
     chunk_text_ = partial(chunk_text, tools=tools)
-    check_chunks_empty_ = partial(check_chunks_empty, tools=tools)
+    check_chunks_empty_ = partial(check_chunks_empty)
 
     render_ontology_tuple = wrap_with(
         partial(render_onto_triples, tools=tools),

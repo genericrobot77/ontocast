@@ -8,6 +8,7 @@ from aot_cast.tool import (
     Converter,
     ChunkerTool,
 )
+from aot_cast.tool.aggregate import ChunkRDFGraphAggregator
 
 
 class ToolBox:
@@ -24,3 +25,4 @@ class ToolBox:
         self.ontology_manager: OntologyManager = OntologyManager()
         self.converter: Converter = Converter()
         self.chunker: ChunkerTool = ChunkerTool()
+        self.aggregator: ChunkRDFGraphAggregator = ChunkRDFGraphAggregator()
