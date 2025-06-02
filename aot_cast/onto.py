@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from rdflib import Graph, Namespace
-from typing import Optional
+from typing import Optional, Any
 import logging
 import pathlib
 from pydantic import GetCoreSchemaHandler
@@ -8,7 +8,6 @@ from pydantic_core import core_schema
 from collections import defaultdict
 import os
 
-from typing import Any
 import re
 from enum import StrEnum
 
@@ -260,8 +259,7 @@ class Ontology(OntologyProperties):
         description="Semantic triples (abstract entities/relations) that define the ontology in turtle (ttl) format as a string.",
     )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __iadd__(self, other: "Ontology") -> "Ontology":
         """
@@ -422,8 +420,7 @@ class AgentState(BasePydanticModel):
 
     max_chunks: Optional[int] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
