@@ -18,6 +18,11 @@ def set_env_vars():
 
 
 @pytest.fixture
+def current_domain():
+    return os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+
+
+@pytest.fixture
 def test_ontology():
     return RDFGraph._from_turtle_str("""
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .

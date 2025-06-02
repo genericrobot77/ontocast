@@ -117,6 +117,96 @@ class RDFGraphConnectivityValidator:
 
         return components
 
+    def validate_predicates(self) -> dict[str, Any]:
+        """
+        Validate predicate consistency and required properties
+        Returns dict with validation results
+        """
+        result = {
+            "has_required_properties": True,
+            "domain_range_consistent": True,
+            "missing_labels": [],
+            "domain_range_violations": [],
+            "predicate_stats": {
+                "total": 0,
+                "with_labels": 0,
+                "with_domains": 0,
+                "with_ranges": 0,
+            },
+        }
+
+        # Track all predicates
+        predicates = set()
+        for _, pred, _ in self.graph:
+            if isinstance(pred, URIRef):
+                predicates.add(pred)
+
+        result["predicate_stats"]["total"] = len(predicates)
+
+        # Check each predicate
+        for pred in predicates:
+            has_label = False
+            has_domain = False
+            has_range = False
+            domain = None
+            range_ = None
+
+            # Get predicate properties
+            for s, p, o in self.graph:
+                if s == pred:
+                    if p == RDFS.label:
+                        has_label = True
+                        result["predicate_stats"]["with_labels"] += 1
+                    elif p == RDFS.domain:
+                        has_domain = True
+                        domain = o
+                        result["predicate_stats"]["with_domains"] += 1
+                    elif p == RDFS.range:
+                        has_range = True
+                        range_ = o
+                        result["predicate_stats"]["with_ranges"] += 1
+
+            # Check required properties
+            if not has_label:
+                result["has_required_properties"] = False
+                result["missing_labels"].append(str(pred))
+
+            # Check domain/range consistency in usage
+            if has_domain or has_range:
+                for s, p, o in self.graph:
+                    if p == pred:
+                        if has_domain and isinstance(s, URIRef):
+                            # Check if subject is of correct domain type
+                            subject_type = None
+                            for s2, p2, o2 in self.graph:
+                                if s2 == s and p2 == RDF.type:
+                                    subject_type = o2
+                                    break
+
+                            if subject_type and domain and subject_type != domain:
+                                result["domain_range_consistent"] = False
+                                result["domain_range_violations"].append(
+                                    f"Subject {s} of type {subject_type} used with predicate {pred} "
+                                    f"that requires domain {domain}"
+                                )
+
+                        if has_range and isinstance(o, URIRef):
+                            # Check if object is of correct range type
+                            object_type = None
+                            for s2, p2, o2 in self.graph:
+                                if s2 == o and p2 == RDF.type:
+                                    object_type = o2
+                                    break
+
+                            if object_type and range_ and object_type != range_:
+                                result["domain_range_consistent"] = False
+                                result["domain_range_violations"].append(
+                                    f"Object {o} of type {object_type} used with predicate {pred} "
+                                    f"that requires range {range_}"
+                                )
+
+        return result
+
     def validate_connectivity(self) -> dict[str, Any]:
         """
         Validate graph connectivity and return detailed results
@@ -142,33 +232,11 @@ class RDFGraphConnectivityValidator:
                 list(comp)[0] for comp in components if len(comp) == 1
             ]
 
+        # Add predicate validation results
+        predicate_validation = self.validate_predicates()
+        result.update(predicate_validation)
+
         return result
-
-    def get_path_between_entities(
-        self, entity_a: URIRef, entity_b: URIRef
-    ) -> Optional[list[URIRef]]:
-        """Find the shortest path between two entities using BFS"""
-        if entity_a == entity_b:
-            return [entity_a]
-
-        adjacency = self.build_adjacency_graph()
-        visited = set()
-        queue = deque([(entity_a, [entity_a])])
-
-        while queue:
-            current, path = queue.popleft()
-
-            if current == entity_b:
-                return path
-
-            if current not in visited:
-                visited.add(current)
-
-                for neighbor in adjacency.get(current, set()):
-                    if neighbor not in visited:
-                        queue.append((neighbor, path + [neighbor]))
-
-        return None  # No path found
 
     def make_graph_connected(self, chunk_iri) -> RDFGraph:
         """
@@ -230,11 +298,6 @@ class RDFGraphConnectivityValidator:
         """Choose the best representative entity from a component"""
         if not component:
             return None
-
-        # Heuristics for choosing representative:
-        # 1. Entity with most connections (highest degree)
-        # 2. Entity with a label
-        # 3. First entity alphabetically
 
         entity_degrees = {}
         entities_with_labels = set()
