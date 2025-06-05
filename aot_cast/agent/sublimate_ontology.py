@@ -1,7 +1,7 @@
 import logging
 from rdflib import Namespace
 from aot_cast.onto import AgentState, FailureStages, RDFGraph
-from aot_cast.tool import ToolBox
+from aot_cast.toolbox import ToolBox
 from aot_cast.tool.validate import validate_and_connect_chunk
 
 logger = logging.getLogger(__name__)

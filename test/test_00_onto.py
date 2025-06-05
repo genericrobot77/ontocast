@@ -1,4 +1,4 @@
-from aot_cast.agent.get_ontology_summary import render_ontology_summary
+from aot_cast.toolbox import render_ontology_summary
 from aot_cast.onto import OntologyProperties
 
 

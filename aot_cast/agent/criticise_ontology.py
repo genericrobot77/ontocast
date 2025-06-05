@@ -5,7 +5,7 @@ from aot_cast.onto import (
     OntologyUpdateCritiqueReport,
     Status,
 )
-from aot_cast.tool import ToolBox
+from aot_cast.toolbox import ToolBox
 from aot_cast.prompt.criticise_ontology import prompt_update
 from aot_cast.onto import ONTOLOGY_VOID_IRI
 from aot_cast.tool import LLMTool, OntologyManager

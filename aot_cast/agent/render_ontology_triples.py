@@ -9,7 +9,7 @@ from aot_cast.onto import (
     DEFAULT_DOMAIN,
 )
 from langchain.prompts import PromptTemplate
-from aot_cast.tool import ToolBox
+from aot_cast.toolbox import ToolBox
 
 from aot_cast.prompt.render_ontology import (
     template_prompt,
@@ -24,7 +24,7 @@ from aot_cast.prompt.render_ontology import (
 logger = logging.getLogger(__name__)
 
 
-def render_onto_triples(state: AgentState, tools: ToolBox):
+def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
     logger.debug("Starting ontology triples rendering process")
     llm_tool = tools.llm
 

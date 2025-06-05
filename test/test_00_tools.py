@@ -1,4 +1,4 @@
-from aot_cast.tb import update_ontology_manager
+from aot_cast.toolbox import update_ontology_manager
 
 
 def test_setup_onto(om_tool, tsm_tool, llm_tool):

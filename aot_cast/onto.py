@@ -10,7 +10,7 @@ import os
 
 import re
 from enum import StrEnum
-
+from aot_cast.text_utils import render_text_hash
 
 logger = logging.getLogger(__name__)
 
@@ -263,14 +263,14 @@ class Ontology(OntologyProperties):
 
     def __iadd__(self, other: "Ontology") -> "Ontology":
         """
-        In-place addition operator for Ontology instances.
-        Merges the RDF graphs and takes properties from the right-hand operand.
+                In-place addition operator for Ontology instances.
+                Merges the RDF graphs and takes properties from the right-hand operand.
+        9
+                Args:
+                    other (Ontology): The ontology to add to this one
 
-        Args:
-            other (Ontology): The ontology to add to this one
-
-        Returns:
-            Ontology: self after modification
+                Returns:
+                    Ontology: self after modification
         """
 
         self.graph += other.graph
@@ -363,11 +363,14 @@ class Chunk(BaseModel):
 class AgentState(BasePydanticModel):
     """State for the ontology-based knowledge graph agent."""
 
-    input_text: Optional[str] = None
-    current_domain: Optional[str] = None
+    input_text: str = Field(description="Input text", default="")
+    current_domain: str = Field(
+        description="IRI used for forming document namespace", default=DEFAULT_DOMAIN
+    )
 
     doc_hid: Optional[str] = Field(
-        description="An almost unique hash / id for the parent document of the chunk"
+        description="An almost unique hash / id for the parent document of the chunk",
+        default=None,
     )
 
     files: dict[str, bytes | dict] = Field(
@@ -375,7 +378,7 @@ class AgentState(BasePydanticModel):
     )
 
     current_chunk: Optional[Chunk] = Field(
-        description="Current document chunk for processing"
+        description="Current document chunk for processing", default=None
     )
 
     chunks: dict[str, Chunk] = Field(
@@ -422,9 +425,17 @@ class AgentState(BasePydanticModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def model_post_init(self, __context):
+        # object.__setattr__(self, 'hid', render_text_hash(self.input_text))
+        pass
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+
+    def set_text(self, text):
+        self.input_text = text
+        self.doc_hid = render_text_hash(self.input_text)
 
     def set_failure(self, stage: str, reason: str, success_score: float = 0.0) -> None:
         """

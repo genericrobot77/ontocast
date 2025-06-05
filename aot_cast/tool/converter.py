@@ -7,7 +7,7 @@ from docling.datamodel.base_models import (
 )
 
 
-class Converter(Tool):
+class ConverterTool(Tool):
     supported_extensions: set[str] = {".pdf", ".ppt", ".pptx"}
 
     def __init__(

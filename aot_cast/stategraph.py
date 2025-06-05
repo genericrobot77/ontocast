@@ -12,7 +12,7 @@ from aot_cast.agent.convert_document import convert_document
 from aot_cast.agent.chunk_text import chunk_text
 from aot_cast.agent.check_chunks import check_chunks_empty
 from aot_cast.onto import AgentState, Status, WorkflowNode
-from aot_cast.tool import ToolBox
+from aot_cast.toolbox import ToolBox
 from aot_cast.util import wrap_with, count_visits
 
 

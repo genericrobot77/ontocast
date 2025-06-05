@@ -1,8 +1,9 @@
 from pydantic import Field
 from langchain_huggingface import HuggingFaceEmbeddings
-from aot_cast.chunk import SemanticChunker
+from aot_cast.tool.chunk.util import SemanticChunker
 import torch
-from .onto import Tool
+from typing import Literal
+from aot_cast.tool.onto import Tool
 
 import logging
 
@@ -10,12 +11,16 @@ logger = logging.getLogger(__name__)
 
 
 class ChunkerTool(Tool):
-    model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2")
-    breakpoint_threshold_type: str = Field(default="standard_deviation")
-    breakpoint_threshold_amount: float = Field(default=2.5)
+    model: str = Field(
+        default="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+    breakpoint_threshold_type: Literal[
+        "percentile", "standard_deviation", "interquartile", "gradient"
+    ] = Field(default="percentile")
+    breakpoint_threshold_amount: float = Field(default=95)
     buffer_size: int = Field(default=5)
     min_chunk_size: int = Field(default=2000)
-    max_chunk_size: int = Field(default=12000)
+    max_chunk_size: int = Field(default=20000)
 
     def __init__(
         self,

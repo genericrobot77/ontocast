@@ -2,7 +2,7 @@ import sys
 import pathlib
 import click
 from aot_cast.cli.util import crawl_directories
-from aot_cast.tool.chunker import ChunkerTool
+from aot_cast.tool.chunk.chunker import ChunkerTool
 from suthing import FileHandle
 import json
 
@@ -148,7 +148,6 @@ def main(input_path, output_path, prefix):
         breakpoint_threshold_amount=95,
         breakpoint_threshold_type="percentile",
         max_chunk_size=20000,
-        #   model="sentence-transformers/all-mpnet-base-v2"
         model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
     )
 

@@ -1,97 +1,11 @@
-from langchain_core.documents import Document
-import torch
 import copy
 import re
-from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple, cast
+from typing import Optional, List, Tuple, cast, Iterable, Sequence, Any, Dict, Literal
 
 import numpy as np
-from langchain_community.utils.math import (
-    cosine_similarity,
-)
-from langchain_core.documents import BaseDocumentTransformer
+from langchain_community.utils.math import cosine_similarity
+from langchain_core.documents import BaseDocumentTransformer, Document
 from langchain_core.embeddings import Embeddings
-
-
-"""
-Experimental **text splitter** based on semantic similarity.
-taken from https://github.com/langchain-ai/langchain-experimental
-
-minor corrections
-
-"""
-
-
-def combine_sentences(sentences: List[dict], buffer_size: int = 1) -> List[dict]:
-    """Combine sentences based on buffer size.
-
-    Args:
-        sentences: List of sentences to combine.
-        buffer_size: Number of sentences to combine. Defaults to 1.
-
-    Returns:
-        List of sentences with combined sentences.
-    """
-
-    # Go through each sentence dict
-    for i in range(len(sentences)):
-        # Create a string that will hold the sentences which are joined
-        combined_sentence = ""
-
-        # Add sentences before the current one, based on the buffer size.
-        for j in range(i - buffer_size, i):
-            # Check if the index j is not negative
-            # (to avoid index out of range like on the first one)
-            if j >= 0:
-                # Add the sentence at index j to the combined_sentence string
-                combined_sentence += sentences[j]["sentence"] + ""
-
-        # Add the current sentence
-        combined_sentence += sentences[i]["sentence"]
-
-        # Add sentences after the current one, based on the buffer size
-        for j in range(i + 1, i + 1 + buffer_size):
-            # Check if the index j is within the range of the sentences list
-            if j < len(sentences):
-                # Add the sentence at index j to the combined_sentence string
-                combined_sentence += " " + sentences[j]["sentence"]
-
-        # Then add the whole thing to your dict
-        # Store the combined sentence in the current sentence dict
-        sentences[i]["combined_sentence"] = combined_sentence
-
-    return sentences
-
-
-def calculate_cosine_distances(sentences: List[dict]) -> Tuple[List[float], List[dict]]:
-    """Calculate cosine distances between sentences.
-
-    Args:
-        sentences: List of sentences to calculate distances for.
-
-    Returns:
-        Tuple of distances and sentences.
-    """
-    distances = []
-    for i in range(len(sentences) - 1):
-        embedding_current = sentences[i]["combined_sentence_embedding"]
-        embedding_next = sentences[i + 1]["combined_sentence_embedding"]
-
-        # Calculate cosine similarity
-        similarity = cosine_similarity([embedding_current], [embedding_next])[0][0]
-
-        # Convert to cosine distance
-        distance = 1 - similarity
-
-        # Append cosine distance to the list
-        distances.append(distance)
-
-        # Store distance in the dictionary
-        sentences[i]["distance_to_next"] = distance
-
-    # Optionally handle the last sentence
-    # sentences[-1]['distance_to_next'] = None  # or a default value
-
-    return distances, sentences
 
 
 BreakpointThresholdType = Literal[
@@ -314,23 +228,96 @@ class SemanticChunker(BaseDocumentTransformer):
         return self.split_documents(list(documents))
 
 
-def split(doc, embed_model=None) -> list[Document]:
-    if embed_model is None:
-        from langchain_community.embeddings import HuggingFaceEmbeddings
+def calculate_cosine_distances(sentences: List[dict]) -> Tuple[List[float], List[dict]]:
+    """Calculate cosine distances between sentences.
 
-        embed_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={"device": "cuda" if torch.cuda.is_available() else "cpu"},
-            encode_kwargs={"normalize_embeddings": False},
-        )
+    Args:
+        sentences: List of sentences to calculate distances for.
 
-    documents = [doc]
+    Returns:
+        Tuple of distances and sentences.
+    """
+    distances = []
+    for i in range(len(sentences) - 1):
+        embedding_current = sentences[i]["combined_sentence_embedding"]
+        embedding_next = sentences[i + 1]["combined_sentence_embedding"]
 
-    text_splitter = SemanticChunker(
-        buffer_size=5,
-        breakpoint_threshold_type="standard_deviation",
-        breakpoint_threshold_amount=3,
-        embeddings=embed_model,
-    )
-    docs = text_splitter.create_documents(documents)
-    return docs
+        # Calculate cosine similarity
+        similarity = cosine_similarity([embedding_current], [embedding_next])[0][0]
+
+        # Convert to cosine distance
+        distance = 1 - similarity
+
+        # Append cosine distance to the list
+        distances.append(distance)
+
+        # Store distance in the dictionary
+        sentences[i]["distance_to_next"] = distance
+
+    # Optionally handle the last sentence
+    # sentences[-1]['distance_to_next'] = None  # or a default value
+
+    return distances, sentences
+
+
+def combine_sentences(sentences: List[dict], buffer_size: int = 1) -> List[dict]:
+    """Combine sentences based on buffer size.
+
+    Args:
+        sentences: List of sentences to combine.
+        buffer_size: Number of sentences to combine. Defaults to 1.
+
+    Returns:
+        List of sentences with combined sentences.
+    """
+
+    # Go through each sentence dict
+    for i in range(len(sentences)):
+        # Create a string that will hold the sentences which are joined
+        combined_sentence = ""
+
+        # Add sentences before the current one, based on the buffer size.
+        for j in range(i - buffer_size, i):
+            # Check if the index j is not negative
+            # (to avoid index out of range like on the first one)
+            if j >= 0:
+                # Add the sentence at index j to the combined_sentence string
+                combined_sentence += sentences[j]["sentence"] + ""
+
+        # Add the current sentence
+        combined_sentence += sentences[i]["sentence"]
+
+        # Add sentences after the current one, based on the buffer size
+        for j in range(i + 1, i + 1 + buffer_size):
+            # Check if the index j is within the range of the sentences list
+            if j < len(sentences):
+                # Add the sentence at index j to the combined_sentence string
+                combined_sentence += " " + sentences[j]["sentence"]
+
+        # Then add the whole thing to your dict
+        # Store the combined sentence in the current sentence dict
+        sentences[i]["combined_sentence"] = combined_sentence
+
+    return sentences
+
+
+# def split(doc, embed_model=None) -> list[Document]:
+#     if embed_model is None:
+#         from langchain_community.embeddings import HuggingFaceEmbeddings
+#
+#         embed_model = HuggingFaceEmbeddings(
+#             model_name="sentence-transformers/all-MiniLM-L6-v2",
+#             model_kwargs={"device": "cuda" if torch.cuda.is_available() else "cpu"},
+#             encode_kwargs={"normalize_embeddings": False},
+#         )
+#
+#     documents = [doc]
+#
+#     text_splitter = SemanticChunker(
+#         buffer_size=5,
+#         breakpoint_threshold_type="standard_deviation",
+#         breakpoint_threshold_amount=3,
+#         embeddings=embed_model,
+#     )
+#     docs = text_splitter.create_documents(documents)
+#     return docs

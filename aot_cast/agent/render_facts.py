@@ -6,12 +6,12 @@ from aot_cast.prompt.render_facts import (
     ontology_instruction,
     template_prompt as template_prompt_str,
 )
-from aot_cast.tool import ToolBox
+from aot_cast.toolbox import ToolBox
 
 logger = logging.getLogger(__name__)
 
 
-def render_facts(state: AgentState, tools: ToolBox):
+def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
     logger.debug("Starting facts rendering process")
     llm_tool = tools.llm
 

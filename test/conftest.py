@@ -1,6 +1,6 @@
 import pytest
 import os
-from aot_cast.tb import init_toolbox
+from aot_cast.toolbox import init_toolbox, ToolBox
 from pathlib import Path
 from aot_cast.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
 from suthing import FileHandle
@@ -8,7 +8,6 @@ from aot_cast.tool import (
     LLMTool,
     FilesystemTripleStoreManager,
     OntologyManager,
-    ToolBox,
 )
 
 
@@ -75,13 +74,13 @@ def om_tool_fname():
 
 
 @pytest.fixture
-def state_onto_selected_fname():
-    return "test/data/agent_state.select_ontology.json"
+def state_onto_selected_filename():
+    return "test/data/state_ontology_selected.json"
 
 
 @pytest.fixture
-def state_onto_null_fname():
-    return "test/data/agent_state.select_ontology.null.json"
+def state_onto_null_filename():
+    return "test/data/state_null_ontology_selected.json"
 
 
 @pytest.fixture
@@ -112,7 +111,7 @@ def max_iter():
 @pytest.fixture
 def apple_report():
     r = FileHandle.load(Path("data/json/fin.10Q.apple.json"))
-    return {"text": r["text"][:8870]}
+    return {"text": r["text"]}
 
 
 @pytest.fixture
@@ -127,13 +126,13 @@ def agent_state_init():
 
 
 @pytest.fixture
-def agent_state_select_ontology(state_onto_selected_fname):
-    return AgentState.load(state_onto_selected_fname)
+def state_ontology_selected(state_onto_selected_filename):
+    return AgentState.load(state_onto_selected_filename)
 
 
 @pytest.fixture
-def agent_state_select_ontology_null(state_onto_null_fname):
-    return AgentState.load(state_onto_null_fname)
+def agent_state_select_ontology_null(state_onto_null_filename):
+    return AgentState.load(state_onto_null_filename)
 
 
 @pytest.fixture
