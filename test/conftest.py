@@ -1,10 +1,10 @@
 import pytest
 import os
-from aot_cast.toolbox import init_toolbox, ToolBox
+from ontocast.toolbox import init_toolbox, ToolBox
 from pathlib import Path
-from aot_cast.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
+from ontocast.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
 from suthing import FileHandle
-from aot_cast.tool import (
+from ontocast.tool import (
     LLMTool,
     FilesystemTripleStoreManager,
     OntologyManager,
@@ -71,6 +71,16 @@ def tsm_tool(ontology_path, working_directory):
 @pytest.fixture
 def om_tool_fname():
     return "test/data/om_tool.json"
+
+
+@pytest.fixture
+def state_chunked_filename():
+    return "test/data/state_chunked.json"
+
+
+@pytest.fixture
+def state_chunked(state_chunked_filename):
+    return AgentState.load(state_chunked_filename)
 
 
 @pytest.fixture

@@ -1,8 +1,8 @@
 import pytest
 from packaging.version import Version
 
-from aot_cast.agent import render_onto_triples, criticise_ontology
-from aot_cast.onto import AgentState, DEFAULT_DOMAIN, Status
+from ontocast.agent import render_onto_triples, criticise_ontology
+from ontocast.onto import AgentState, DEFAULT_DOMAIN, Status
 
 
 @pytest.mark.order(after="test_select_ontology")

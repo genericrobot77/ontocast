@@ -1,5 +1,5 @@
-from aot_cast.toolbox import render_ontology_summary
-from aot_cast.onto import OntologyProperties
+from ontocast.toolbox import render_ontology_summary
+from ontocast.onto import OntologyProperties
 
 
 def test_extract_metadata(test_ontology, llm_tool):

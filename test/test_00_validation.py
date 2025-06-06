@@ -1,13 +1,13 @@
 import pytest
-from aot_cast.onto import Chunk
-from aot_cast.tool.aggregate import ChunkRDFGraphAggregator
-from aot_cast.tool.validate import (
+from ontocast.onto import Chunk
+from ontocast.tool.aggregate import ChunkRDFGraphAggregator
+from ontocast.tool.validate import (
     validate_and_connect_chunk,
     RDFGraphConnectivityValidator,
 )
 from rdflib import URIRef, Literal
 from rdflib.namespace import RDFS
-from aot_cast.onto import RDFGraph
+from ontocast.onto import RDFGraph
 
 
 def create_sample_chunk_graph(current_domain, chunk_id: str) -> Chunk:

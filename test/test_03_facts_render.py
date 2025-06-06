@@ -1,7 +1,7 @@
 import pytest
 
-from aot_cast.agent import render_facts, sublimate_ontology, criticise_facts
-from aot_cast.onto import AgentState, Status
+from ontocast.agent import render_facts, sublimate_ontology, criticise_facts
+from ontocast.onto import AgentState, Status
 
 
 @pytest.mark.order(after="test_agent_text_to_ontology_null_critique_loop")

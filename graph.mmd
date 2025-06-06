@@ -24,22 +24,22 @@ graph TD;
 	Sublimate_Ontology(Sublimate Ontology)
 	Criticise_Ontology(Criticise Ontology)
 	Criticise_Facts(Criticise Facts)
-	Chunks_Empty_Check(Chunks Empty Check)
-	Save_KG(Save KG)
+	Chunks_Empty_(Chunks Empty?)
+	Aggregate_Facts(Aggregate Facts)
 	__end__([<p>__end__</p>]):::last
-	Chunk_Text --> Select_Ontology;
+	Aggregate_Facts --> __end__;
+	Chunk_Text --> Chunks_Empty_;
 	Convert_to_Markdown --> Chunk_Text;
-	Save_KG --> __end__;
 	Select_Ontology --> Text_to_Ontology;
 	Sublimate_Ontology --> Criticise_Facts;
 	__start__ --> Convert_to_Markdown;
-	Chunks_Empty_Check -. &nbsp;success&nbsp; .-> Save_KG;
-	Chunks_Empty_Check -. &nbsp;failed&nbsp; .-> Select_Ontology;
+	Chunks_Empty_ -. &nbsp;success&nbsp; .-> Aggregate_Facts;
+	Chunks_Empty_ -. &nbsp;failed&nbsp; .-> Select_Ontology;
 	Text_to_Ontology -. &nbsp;success&nbsp; .-> Criticise_Ontology;
 	Criticise_Ontology -. &nbsp;success&nbsp; .-> Text_to_Facts;
 	Criticise_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;
 	Text_to_Facts -. &nbsp;success&nbsp; .-> Sublimate_Ontology;
-	Criticise_Facts -. &nbsp;success&nbsp; .-> Chunks_Empty_Check;
+	Criticise_Facts -. &nbsp;success&nbsp; .-> Chunks_Empty_;
 	Criticise_Facts -. &nbsp;failed&nbsp; .-> Text_to_Facts;
 	Text_to_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;
 	Text_to_Facts -. &nbsp;failed&nbsp; .-> Text_to_Facts;

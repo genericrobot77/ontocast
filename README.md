@@ -1,4 +1,4 @@
-# Agentic Ontology Triplecast <img src="https://raw.githubusercontent.com/agentic-onto-triplecast/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
+# OntoCast: Agentic Ontology and Knowledge Graph co-generation <img src="https://raw.githubusercontent.com/agentic-onto-triplecast/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
 
 Agentic ontology assisted framework for semantic triple extraction from text/pdfs.
 

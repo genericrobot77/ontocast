@@ -41,20 +41,20 @@ dependencies = [
   "simsimd>=6.2.1",
   "suthing>=0.4.1"
 ]
-description = "Agentic ontology assisted KG generation"
-name = "agentic-onto-triple-cast"
+description = "Agentic ontology and knowledge graph co-generation"
+name = "ontocast"
 readme = "README.md"
 requires-python = ">=3.12"
 version = "0.1.0"
 
 [project.scripts]
-cmp-states = "aot_cast.cli.cmp_states:main"
-pdfs-to-markdown = "aot_cast.cli.pdfs_to_markdown:main"
-plot-graph = "aot_cast.cli.plot_graph:main"
-serve = "aot_cast.cli.serve:run"
+cmp-states = "ontocast.cli.cmp_states:main"
+pdfs-to-markdown = "ontocast.cli.pdfs_to_markdown:main"
+plot-graph = "ontocast.cli.plot_graph:main"
+serve = "ontocast.cli.serve:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["aot_cast"]
+packages = ["ontocast"]
 
 [tool.pyright]
 venv = ".venv"
