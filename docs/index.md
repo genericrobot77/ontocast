@@ -1,9 +1,9 @@
-# Agentic Ontology Triplecast <img src="https://raw.githubusercontent.com/agentic-onto-triplecast/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
+# Agentic Ontology Triplecast <img src="https://raw.githubusercontent.com/ontocast/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
 
 Agentic ontology assisted framework for semantic triple extraction from text/pdfs.
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg) 
-[![pre-commit](https://github.com/growgraph/agentic-onto-triplecast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/agentic-onto-triplecast/actions/workflows/pre-commit.yml)
+[![pre-commit](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Features
@@ -18,8 +18,8 @@ Agentic ontology assisted framework for semantic triple extraction from text/pdf
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/growgraph/agentic-onto-triplecast.git
-cd agentic-onto-triplecast
+git clone https://github.com/growgraph/ontocast.git
+cd ontocast
 ```
 
 2. Install dependencies using `uv`:
