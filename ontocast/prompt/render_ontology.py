@@ -1,13 +1,13 @@
 ontology_instruction_fresh = """
-You task is to propose/develop a new domain ontology based on the document. When picking the ontology name and scope, remember that the document you are given is just an example, so the ontology name, short_name and scope should be at least one level of abstraction above the scope of the document."""
+Propose/develop a new domain ontology based on the provided document. When deciding on the name and scope, remember that the document you are given is just an example, so the ontology name, short_name and scope should be at least one level of abstraction above the scope of the document."""
 
 
 specific_ontology_instruction_fresh = """
 - all new abstract entities/classes/types or properties added to the new ontology must be linked to entities from basic ontologies (RDFS, OWL, schema etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
 - propose and use a domain specific and succinct specifier (short name) for the new ontology, which should be an abbreviation, consistent with the Ontology property `short_name`, for example it could be <{current_domain}/ont_abc> for a some imaginary A... B... of C... Ontology.
-- derive from the ontology short name/specifier an IRI (URI) using domain {current_domain}, 
-- use namespace
-- explicitly use namespace `co:` for entities/properties placed in the proposed ontology."""
+- derive from the ontology short name/specifier an IRI (URI) using domain {current_domain}
+- explicitly use namespace `co:` for entities/properties placed in the proposed ontology.
+"""
 
 
 ontology_instruction_update = """

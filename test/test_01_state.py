@@ -1,18 +1,18 @@
 from ontocast.onto import (
     AgentState,
-    RDFGraph,
+    Ontology,
     ONTOLOGY_VOID_ID,
 )
 
-from ontocast.agent import select_ontology, chunk_text
+from ontocast.agent import select_ontology, chunk_text, check_chunks_empty
 from rdflib import URIRef, Literal
 import pytest
 
 
 def test_agent_state_json():
     state = AgentState()
-    state.graph_facts = RDFGraph()
-    state.graph_facts.add(
+    state.current_ontology = Ontology(short_name="ex")
+    state.current_ontology.graph.add(
         (
             URIRef("http://example.com/subject"),
             URIRef("http://example.com/predicate"),
@@ -24,37 +24,42 @@ def test_agent_state_json():
 
     loaded_state = AgentState.model_validate_json(state_json)
 
-    assert isinstance(loaded_state.graph_facts, RDFGraph)
+    assert len(loaded_state.current_ontology.graph) > 0
 
 
-def test_chunks(
-    agent_state_init: AgentState, apple_report: dict, tools, state_chunked_filename
-):
-    state = agent_state_init
+def test_chunks(apple_report: dict, tools, state_chunked_filename):
+    state = AgentState()
     state.set_text(apple_report["text"])
     state = chunk_text(state, tools)
     assert len(state.chunks) == 10
     state.chunks = state.chunks[:2]
-    agent_state_init.serialize(state_chunked_filename)
+    state = check_chunks_empty(state)
+    assert state.current_chunk is not None
+    state.serialize(state_chunked_filename)
 
 
-@pytest.mark.order(after="test_agent_state_json")
-def test_select_ontology(
+@pytest.mark.order(after="test_chunks")
+def test_select_ontology_fsec(
     state_chunked: AgentState,
-    apple_report: dict,
-    random_report: dict,
     tools,
     state_onto_selected_filename,
-    state_onto_null_filename,
 ):
     state = state_chunked
-    state.set_text(apple_report["text"])
     state = select_ontology(state=state, tools=tools)
-    assert "fsec" in state.current_ontology.iri
+    assert state.current_ontology.short_name == "FSEC"
 
     state.serialize(state_onto_selected_filename)
 
+
+def test_select_ontology_null(
+    random_report: dict,
+    tools,
+    state_onto_null_filename,
+):
+    state = AgentState()
     state.set_text(random_report["text"])
+    state = chunk_text(state, tools)
+    state = check_chunks_empty(state)
     state = select_ontology(state=state, tools=tools)
     assert state.current_ontology.short_name == ONTOLOGY_VOID_ID
 

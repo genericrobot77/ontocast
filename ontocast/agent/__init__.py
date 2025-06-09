@@ -6,10 +6,12 @@ from .criticise_ontology import criticise_ontology
 from .save_kg import aggregate_chunks
 from .sublimate_ontology import sublimate_ontology
 from .chunk_text import chunk_text
+from .check_chunks import check_chunks_empty
 from .convert_document import convert_document
 
 
 __all__ = [
+    "check_chunks_empty",
     "chunk_text",
     "convert_document",
     "criticise_facts",

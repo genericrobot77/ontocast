@@ -25,7 +25,7 @@ def _sublimate_ontology(state: AgentState):
     )
     }}
     """
-    results = state.graph_facts.query(query_ontology)
+    results = state.current_chunk.graph.query(query_ontology)
     logger.debug(f"Found {len(results)} ontology triples")
 
     graph_onto_addendum = RDFGraph()
@@ -48,7 +48,7 @@ def _sublimate_ontology(state: AgentState):
         }}
     """
 
-    results = state.graph_facts.query(query_facts)
+    results = state.current_chunk.graph.query(query_facts)
     logger.debug(f"Found {len(results)} facts triples")
 
     graph_facts_pure = RDFGraph()
@@ -82,16 +82,16 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
 
         om_tool.update_ontology(state.current_ontology.short_name, graph_onto_addendum)
 
+        state.current_chunk.graph = graph_facts
         state.current_chunk = validate_and_connect_chunk(
             state.current_chunk,
             auto_connect=True,
         )
 
-        state.graph_facts = graph_facts
         state.clear_failure()
     except Exception as e:
         state.set_failure(
-            FailureStages.FAILED_AT_SUBLIMATE_ONTOLOGY,
+            FailureStages.SUBLIMATE_ONTOLOGY,
             str(e),
         )
 

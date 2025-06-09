@@ -40,12 +40,10 @@ def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
             failure_instruction = "The previous attempt to generate triples failed."
             if state.failure_stage is not None:
                 failure_instruction += (
-                    f"\n\nIt failed at the stage: {state.failure_stage}."
+                    f"\n\nIt failed at the stage: {state.failure_stage}"
                 )
             failure_instruction += f"\n\n{state.failure_reason}"
-            failure_instruction += (
-                "\n\nPlease fix the errors and do your best to generate triples again."
-            )
+            failure_instruction += "\n\nPlease fix the errors and do your best to generate fact triples again."
         else:
             failure_instruction = ""
 
@@ -68,5 +66,5 @@ def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
 
     except Exception as e:
         logger.error(f"Failed to generate triples: {str(e)}")
-        state.set_failure(FailureStages.FAILED_AT_PARSE_TEXT_TO_FACTS_TRIPLES, str(e))
+        state.set_failure(FailureStages.PARSE_TEXT_TO_FACTS_TRIPLES, str(e))
         return state

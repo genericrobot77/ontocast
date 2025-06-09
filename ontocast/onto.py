@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from rdflib import Graph, Namespace
-from typing import Optional, Any
+from typing import Optional, Any, Union
 import logging
 import pathlib
 from pydantic import GetCoreSchemaHandler
@@ -40,19 +40,13 @@ class ToolType(StrEnum):
 
 
 class FailureStages(StrEnum):
-    FAILED_AT_ONTOLOGY_CRITIQUE = (
-        "The produced ontology did not pass the critique stage."
-    )
-    FAILED_AT_FACTS_CRITIQUE = (
-        "The produced graph of facts did not pass the critique stage."
-    )
-    FAILED_AT_PARSE_TEXT_TO_ONTOLOGY_TRIPLES = (
-        "Failed to parse the text into ontology triples."
-    )
-    FAILED_AT_PARSE_TEXT_TO_FACTS_TRIPLES = (
-        "Failed to parse the text into facts triples."
-    )
-    FAILED_AT_SUBLIMATE_ONTOLOGY = "The produced semantic could not be validated or separated into ontology and facts (technical issue)."
+    NO_CHUNKS_TO_PROCESS = "No chunks to process"
+    ONTOLOGY_CRITIQUE = "The produced ontology did not pass the critique stage."
+    FACTS_CRITIQUE = "The produced graph of facts did not pass the critique stage."
+
+    PARSE_TEXT_TO_ONTOLOGY_TRIPLES = "Failed to parse the text into ontology triples."
+    PARSE_TEXT_TO_FACTS_TRIPLES = "Failed to parse the text into facts triples."
+    SUBLIMATE_ONTOLOGY = "The produced semantic could not be validated or separated into ontology and facts (technical issue)."
 
 
 COMMON_PREFIXES = {
@@ -261,7 +255,7 @@ class Ontology(OntologyProperties):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __iadd__(self, other: "Ontology") -> "Ontology":
+    def __iadd__(self, other: Union["Ontology", RDFGraph]) -> "Ontology":
         """
                 In-place addition operator for Ontology instances.
                 Merges the RDF graphs and takes properties from the right-hand operand.
@@ -273,14 +267,16 @@ class Ontology(OntologyProperties):
                     Ontology: self after modification
         """
 
-        self.graph += other.graph
+        if isinstance(other, Ontology):
+            self.graph += other.graph
+            self.title = other.title
+            self.short_name = other.short_name
+            self.description = other.description
+            self.iri = other.iri
+            self.version = other.version
 
-        # Take properties from the right-hand operand
-        self.title = other.title
-        self.short_name = other.short_name
-        self.description = other.description
-        self.iri = other.iri
-        self.version = other.version
+        else:
+            self.graph += other
 
         return self
 
@@ -399,10 +395,7 @@ class AgentState(BasePydanticModel):
         ),
         description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
     )
-    graph_facts: RDFGraph = Field(
-        default_factory=RDFGraph,
-        description="RDF triples representing the facts from the current document",
-    )
+
     ontology_addendum: Ontology = Field(
         default_factory=lambda: Ontology(
             short_name=ONTOLOGY_VOID_ID,

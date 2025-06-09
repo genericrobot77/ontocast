@@ -4,6 +4,7 @@ from langchain.prompts import PromptTemplate
 from ontocast.tool import OntologyManager
 from ontocast.toolbox import ToolBox
 from ontocast.prompt.select_ontology import template_prompt
+from ontocast.onto import FailureStages
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,13 @@ def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     ontologies_desc = "\n\n".join([o.describe() for o in om_tool.ontologies])
     logger.debug(f"Retrieved descriptions for {len(om_tool.ontologies)} ontologies")
 
+    if state.current_chunk is None:
+        if state.chunks:
+            state.current_chunk = state.chunks.pop(0)
+        else:
+            state.set_failure(
+                FailureStages.NO_CHUNKS_TO_PROCESS, "No chunks to process"
+            )
     excerpt = state.current_chunk.text[:1000] + "..."
 
     prompt = PromptTemplate(

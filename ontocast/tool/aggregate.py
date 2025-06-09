@@ -38,7 +38,7 @@ class ChunkRDFGraphAggregator:
         all_predicates_with_info = {}
         chunk_predicate_mapping = {}
 
-        for chunk_id, chunk in chunks:
+        for chunk in chunks:
             chunk_id = chunk.hid
             # Entity disambiguation
             entities_labels = self.disambiguator.extract_entity_labels(chunk.graph)

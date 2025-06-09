@@ -1,0 +1,39 @@
+{
+    "input_text": "Intern: John A. Peterson Advisor: Dr. Michael Andersson\nInstitution: Department of Physics, University of Copenhagen\n\nAbstract\n\nLow-temperature physics, or cryogenics, is a field of physics that explores the behavior of materials at temperatures approaching absolute zero. This report presents an internship study focusing on the experimental investigation of superconductivity and quantum fluids at cryogenic temperatures. Using liquid helium-based cooling techniques, we examined the superconducting transition temperature of niobium samples and performed measurements on superfluid helium. Our study provides insights into the fundamental properties of quantum materials at ultra-low temperatures and highlights challenges in experimental cryogenics.",
+    "current_domain": "https://example.com",
+    "doc_hid": "fe8647f4be6a",
+    "files": {},
+    "current_chunk": {
+        "text": "Intern: John A. Peterson Advisor: Dr. Michael Andersson\nInstitution: Department of Physics, University of Copenhagen\n\nAbstract\n\nLow-temperature physics, or cryogenics, is a field of physics that explores the behavior of materials at temperatures approaching absolute zero. This report presents an internship study focusing on the experimental investigation of superconductivity and quantum fluids at cryogenic temperatures. Using liquid helium-based cooling techniques, we examined the superconducting transition temperature of niobium samples and performed measurements on superfluid helium. Our study provides insights into the fundamental properties of quantum materials at ultra-low temperatures and highlights challenges in experimental cryogenics.",
+        "hid": "fe8647f4be6a",
+        "doc_iri": "https://example.com/doc/fe8647f4be6a",
+        "graph": "\n",
+        "processed": false
+    },
+    "chunks": [],
+    "chunks_processed": [],
+    "current_ontology": {
+        "short_name": "__void_ontology_name",
+        "title": "null title",
+        "description": "null description",
+        "version": "0.0.0",
+        "iri": "NULL",
+        "graph": "\n"
+    },
+    "graph_facts": "\n",
+    "ontology_addendum": {
+        "short_name": "ont_cqf",
+        "title": "Cryogenics and Quantum Fluids Ontology",
+        "description": "This ontology provides a structured representation of concepts and relationships in the field of cryogenics and quantum fluids, focusing on low-temperature physics, superconductivity, and experimental techniques.",
+        "version": "0.1.0",
+        "iri": "https://example.com/ont_cqf",
+        "graph": "@prefix co: <https://example.com/ont_cqf#> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema1: <http://schema.org/> .\n\nco:CoolingTechnique a rdfs:Class ;\n    rdfs:label \"Cooling Technique\" ;\n    rdfs:comment \"Techniques used to achieve low temperatures, such as liquid helium cooling.\" ;\n    rdfs:subClassOf co:ExperimentalTechnique .\n\nco:ExperimentalTechnique a rdfs:Class ;\n    rdfs:label \"Experimental Technique\" ;\n    rdfs:comment \"Methods used to conduct experiments in cryogenics and quantum physics.\" ;\n    rdfs:subClassOf schema1:Method .\n\nco:LowTemperaturePhysics a rdfs:Class ;\n    rdfs:label \"Low Temperature Physics\" ;\n    rdfs:comment \"A field of physics that studies the behavior of materials at temperatures approaching absolute zero.\" ;\n    rdfs:subClassOf schema1:Science .\n\nco:QuantumFluids a rdfs:Class ;\n    rdfs:label \"Quantum Fluids\" ;\n    rdfs:comment \"Fluids that exhibit quantum mechanical effects at macroscopic scales, typically at very low temperatures.\" ;\n    rdfs:subClassOf co:LowTemperaturePhysics .\n\nco:Superconductivity a rdfs:Class ;\n    rdfs:label \"Superconductivity\" ;\n    rdfs:comment \"A phenomenon where a material exhibits zero electrical resistance and expulsion of magnetic fields at low temperatures.\" ;\n    rdfs:subClassOf co:LowTemperaturePhysics .\n\nco:CryogenicsOntology a owl:Ontology ;\n    rdfs:label \"Cryogenics and Quantum Fluids Ontology\" ;\n    rdfs:comment \"This ontology provides a structured representation of concepts and relationships in the field of cryogenics and quantum fluids, focusing on low-temperature physics, superconductivity, and experimental techniques.\" ;\n    owl:versionInfo \"0.1.0\" .\n\nco:Measurement a rdf:Property ;\n    rdfs:label \"Measurement\" ;\n    rdfs:comment \"Quantitative assessment of physical properties in experiments.\" ;\n    rdfs:domain co:ExperimentalTechnique ;\n    rdfs:range schema1:Float .\n\nco:SuperconductingTransitionTemperature a rdf:Property ;\n    rdfs:label \"Superconducting Transition Temperature\" ;\n    rdfs:comment \"The temperature at which a material transitions into a superconducting state.\" ;\n    rdfs:domain co:Superconductivity ;\n    rdfs:range schema1:Float .\n\n"
+    },
+    "failure_stage": null,
+    "failure_reason": null,
+    "success_score": 0.0,
+    "status": "success",
+    "node_visits": {},
+    "max_visits": 3,
+    "max_chunks": null
+}

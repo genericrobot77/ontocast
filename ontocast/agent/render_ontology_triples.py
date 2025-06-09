@@ -1,12 +1,10 @@
 import logging
 
-import os
 from ontocast.onto import (
     AgentState,
     Ontology,
     FailureStages,
     ONTOLOGY_VOID_ID,
-    DEFAULT_DOMAIN,
 )
 from langchain.prompts import PromptTemplate
 from ontocast.toolbox import ToolBox
@@ -30,14 +28,13 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
 
     parser = llm_tool.get_parser(Ontology)
 
-    current_domain = os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
-    logger.debug(f"Using domain: {current_domain}")
+    logger.debug(f"Using domain: {state.current_domain}")
 
     if state.current_ontology.short_name == ONTOLOGY_VOID_ID:
         logger.debug("Creating fresh ontology")
         ontology_instruction = ontology_instruction_fresh
         specific_ontology_instruction = specific_ontology_instruction_fresh.format(
-            current_domain=current_domain
+            current_domain=state.current_domain
         )
     else:
         ontology_iri = state.current_ontology.iri

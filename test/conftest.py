@@ -89,8 +89,78 @@ def state_onto_selected_filename():
 
 
 @pytest.fixture
+def state_ontology_selected(state_onto_selected_filename):
+    return AgentState.load(state_onto_selected_filename)
+
+
+@pytest.fixture
+def state_ontology_rendered_filename():
+    return "test/data/state_onto_rendered.json"
+
+
+@pytest.fixture
+def state_ontology_rendered(state_ontology_rendered_filename):
+    return AgentState.load(state_ontology_rendered_filename)
+
+
+@pytest.fixture
+def state_ontology_criticized_filename():
+    return "test/data/state_onto_criticized.json"
+
+
+@pytest.fixture
+def state_ontology_criticized(state_ontology_criticized_filename):
+    return AgentState.load(state_ontology_criticized_filename)
+
+
+@pytest.fixture
+def state_rendered_facts_filename():
+    return "test/data/state_rendered_facts.json"
+
+
+@pytest.fixture
+def state_rendered_facts(state_rendered_facts_filename):
+    return AgentState.load(state_rendered_facts_filename)
+
+
+@pytest.fixture
+def state_sublimated_filename():
+    return "test/data/state_sublimated.json"
+
+
+@pytest.fixture
+def state_sublimated(state_sublimated_filename):
+    return AgentState.load(state_sublimated_filename)
+
+
+@pytest.fixture
+def state_facts_failed_filename():
+    return "test/data/state_facts_failed.json"
+
+
+@pytest.fixture
+def state_facts_failed(state_facts_failed_filename):
+    return AgentState.load(state_facts_failed_filename)
+
+
+@pytest.fixture
+def state_facts_success_filename():
+    return "test/data/state_facts_success.json"
+
+
+@pytest.fixture
+def state_facts_success(state_facts_success_filename):
+    return AgentState.load(state_facts_success_filename)
+
+
+@pytest.fixture
 def state_onto_null_filename():
     return "test/data/state_null_ontology_selected.json"
+
+
+@pytest.fixture
+def agent_state_select_ontology_null(state_onto_null_filename):
+    return AgentState.load(state_onto_null_filename)
 
 
 @pytest.fixture
@@ -130,29 +200,8 @@ def random_report():
 
 
 @pytest.fixture
-def agent_state_init():
-    state = AgentState()
-    return state
-
-
-@pytest.fixture
-def state_ontology_selected(state_onto_selected_filename):
-    return AgentState.load(state_onto_selected_filename)
-
-
-@pytest.fixture
-def agent_state_select_ontology_null(state_onto_null_filename):
-    return AgentState.load(state_onto_null_filename)
-
-
-@pytest.fixture
 def agent_state_onto_fresh():
-    return AgentState.load("test/data/agent_state.onto.fresh.json")
-
-
-@pytest.fixture
-def agent_state_onto_critique():
-    return AgentState.load("test/data/agent_state.onto.critique.json")
+    return AgentState.load("test/data/state_onto_addendum.json")
 
 
 @pytest.fixture

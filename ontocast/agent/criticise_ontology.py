@@ -72,7 +72,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     else:
         logger.debug("Ontology critique failed, setting failure state")
         state.set_failure(
-            stage=FailureStages.FAILED_AT_ONTOLOGY_CRITIQUE,
+            stage=FailureStages.ONTOLOGY_CRITIQUE,
             reason=critique.ontology_update_critique_comment,
             success_score=critique.ontology_update_score,
         )

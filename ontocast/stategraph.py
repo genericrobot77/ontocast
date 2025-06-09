@@ -33,7 +33,7 @@ def add_conditional_with_visit_counter_logic(
 
         logger.info(
             f"Making decision after {current_node} visit: visit {state.node_visits[current_node]}/{state.max_visits}, "
-            f"onto: {len(state.current_ontology.graph)}, facts: {len(state.graph_facts)}"
+            f"onto: {len(state.current_ontology.graph)}, facts: {len(state.current_chunk.graph)}"
         )
         logger.info(f"Current node_visits state: {state.node_visits}")
 

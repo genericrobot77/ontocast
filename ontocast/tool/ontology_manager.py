@@ -9,7 +9,7 @@ class OntologyManager(Tool):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def update_ontology(self, short_name: str, ontology_addendum: Ontology):
+    def update_ontology(self, short_name: str, ontology_addendum: RDFGraph):
         current_idx = next(
             i for i, o in enumerate(self.ontologies) if o.short_name == short_name
         )

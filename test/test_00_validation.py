@@ -33,25 +33,25 @@ def doc_id():
 @pytest.fixture
 def sample_chunks(current_domain):
     ids = ["abc123", "def456"]
-    sample_chunks = {
-        i: create_sample_chunk_graph(chunk_id=i, current_domain=current_domain)
+    sample_chunks = [
+        create_sample_chunk_graph(chunk_id=i, current_domain=current_domain)
         for i in ids
-    }
+    ]
     return sample_chunks
 
 
 @pytest.fixture
 def connected_chunks(sample_chunks):
-    connected_chunks = {}
-    for _, chunk in sample_chunks.items():
+    connected_chunks = []
+    for chunk in sample_chunks:
         new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
-        connected_chunks[new_chunk.hid] = new_chunk
+        connected_chunks.append(new_chunk)
     return connected_chunks
 
 
 def test_validation(sample_chunks):
     gs = []
-    for _, chunk in sample_chunks.items():
+    for chunk in sample_chunks:
         new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
         gs += [new_chunk]
 

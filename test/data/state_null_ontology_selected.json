@@ -1,5 +1,17 @@
 {
     "input_text": "Intern: John A. Peterson Advisor: Dr. Michael Andersson\nInstitution: Department of Physics, University of Copenhagen\n\nAbstract\n\nLow-temperature physics, or cryogenics, is a field of physics that explores the behavior of materials at temperatures approaching absolute zero. This report presents an internship study focusing on the experimental investigation of superconductivity and quantum fluids at cryogenic temperatures. Using liquid helium-based cooling techniques, we examined the superconducting transition temperature of niobium samples and performed measurements on superfluid helium. Our study provides insights into the fundamental properties of quantum materials at ultra-low temperatures and highlights challenges in experimental cryogenics.",
+    "current_domain": "https://example.com",
+    "doc_hid": "fe8647f4be6a",
+    "files": {},
+    "current_chunk": {
+        "text": "Intern: John A. Peterson Advisor: Dr. Michael Andersson\nInstitution: Department of Physics, University of Copenhagen\n\nAbstract\n\nLow-temperature physics, or cryogenics, is a field of physics that explores the behavior of materials at temperatures approaching absolute zero. This report presents an internship study focusing on the experimental investigation of superconductivity and quantum fluids at cryogenic temperatures. Using liquid helium-based cooling techniques, we examined the superconducting transition temperature of niobium samples and performed measurements on superfluid helium. Our study provides insights into the fundamental properties of quantum materials at ultra-low temperatures and highlights challenges in experimental cryogenics.",
+        "hid": "fe8647f4be6a",
+        "doc_iri": "https://example.com/doc/fe8647f4be6a",
+        "graph": "\n",
+        "processed": false
+    },
+    "chunks": [],
+    "chunks_processed": [],
     "current_ontology": {
         "short_name": "__void_ontology_name",
         "title": "null title",
@@ -8,7 +20,6 @@
         "iri": "NULL",
         "graph": "\n"
     },
-    "current_namespace": "https://example.com/current-document#",
     "graph_facts": "\n",
     "ontology_addendum": {
         "short_name": "__void_ontology_name",
@@ -21,7 +32,8 @@
     "failure_stage": null,
     "failure_reason": null,
     "success_score": 0.0,
-    "status": "success",
+    "status": "failed",
     "node_visits": {},
-    "max_visits": 3
+    "max_visits": 3,
+    "max_chunks": null
 }
