@@ -146,7 +146,9 @@ def run(
             for file_path in files:
                 try:
                     state = AgentState(
-                        files=files, max_visits=max_visits, max_chunks=head_chunks
+                        files={file_path: None},
+                        max_visits=max_visits,
+                        max_chunks=head_chunks,
                     )
 
                     async for chunk in workflow.astream(state, stream_mode="values"):

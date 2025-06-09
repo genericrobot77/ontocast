@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 def crawl_directories(
     input_path: pathlib.Path, suffixes=(".pdf", ".json"), prefix=None
-):
+) -> list[pathlib.Path]:
     file_paths: list[pathlib.Path] = []
 
     if not input_path.is_dir():

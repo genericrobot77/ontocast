@@ -45,13 +45,13 @@ class FilesystemTripleStoreManager(TripleStoreManager):
                     logging.error(f"Failed to load ontology {fname}: {str(e)}")
         return ontologies
 
-    def serialize_ontology(self, o: Ontology):
-        fname = f"onotology_{o.oid}"
+    def serialize_ontology(self, o: Ontology, **kwargs):
+        fname = f"ontology_{o.short_name}_{o.version}"
         o.graph.serialize(
             format="turtle", destination=self.working_directory / f"{fname}.ttl"
         )
 
-    def serialize_facts(self, g: Graph):
+    def serialize_facts(self, g: Graph, **kwargs):
         # TODO change to chunk props
         fname = "current"
         filename = self.working_directory / f"{fname}.ttl"

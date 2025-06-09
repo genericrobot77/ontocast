@@ -307,13 +307,6 @@ class Ontology(OntologyProperties):
             f"Ontology IRI: {self.iri}\n"
         )
 
-    @property
-    def iri_id(self):
-        oid = self.iri.split("/")[-1].split("#")[0]
-        if not oid:
-            oid = "default"
-        return oid
-
 
 class WorkflowNode(StrEnum):
     CONVERT_TO_MD = "Convert to Markdown"
@@ -369,7 +362,7 @@ class AgentState(BasePydanticModel):
         default=None,
     )
 
-    files: dict[str, bytes | dict] = Field(
+    files: dict[str, bytes] | dict[pathlib.Path, None] = Field(
         default_factory=lambda: dict(), description="Files to process"
     )
 

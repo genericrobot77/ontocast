@@ -106,7 +106,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
 
     workflow.add_conditional_edges(
         WorkflowNode.CHUNKS_EMPTY,
-        lambda state: Status.SUCCESS if state.succes else Status.FAILED,
+        lambda state: Status.SUCCESS if state.status else Status.FAILED,
         {
             Status.SUCCESS: WorkflowNode.AGGREGATE_FACTS,
             Status.FAILED: WorkflowNode.SELECT_ONTOLOGY,
