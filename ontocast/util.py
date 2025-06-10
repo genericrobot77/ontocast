@@ -42,7 +42,8 @@ def wrap_with(func, node_name, post_func) -> tuple[WorkflowNode, Callable]:
     @wraps(func)
     def wrapper(state: AgentState):
         logger.info(f"Starting to execute {node_name}")
-        result = func(state)
-        return post_func(result, node_name)
+        state = post_func(state, node_name)
+        state = func(state)
+        return state
 
     return node_name, wrapper

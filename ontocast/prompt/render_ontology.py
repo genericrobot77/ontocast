@@ -30,6 +30,7 @@ specific_ontology_instruction_update = """
 instructions = """
 Follow the instructions:
 
+
 {specific_ontology_instruction}
 - ontology must be provided in turtle (ttl) format as a single string.
 - (IMPORTANT) define all prefixes for all namespaces used in the ontology, etc rdf, rdfs, owl, schema, etc.
@@ -44,24 +45,34 @@ Follow the instructions:
 failure_instruction = """
 IMPORTANT: The previous attempt to generate ontology triples failed/was unsatisfactory.
 
+
 It failed at the stage: {failure_stage}
+
 
 {failure_reason}
  
+
 Please address ALL the issues outlined in the critique. We will be penalized :( for each unaddressed issue."""
 
 template_prompt = """
+
 {ontology_instruction}
+
 
 {instructions}
 
+
 Here is the document:
+
 
 ```
 {text}
 ```
     
+
 {failure_instruction}
 
+
 {format_instructions}
+
 """

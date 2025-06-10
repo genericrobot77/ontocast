@@ -22,6 +22,7 @@ DEFAULT_DOMAIN = "https://example.com"
 
 
 def iri2namespace(iri, ontology=False):
+    iri = iri.rstrip("#")
     return f"{iri}#" if ontology else f"{iri}/"
 
 
@@ -436,7 +437,7 @@ class AgentState(BasePydanticModel):
         self.input_text = text
         self.doc_hid = render_text_hash(self.input_text)
 
-    def set_failure(self, stage: str, reason: str, success_score: float = 0.0) -> None:
+    def set_failure(self, stage: str, reason: str, success_score: float = 0.0):
         """
         Set failure state with stage and reason.
 
@@ -450,7 +451,7 @@ class AgentState(BasePydanticModel):
         self.success_score = success_score
         self.status = Status.FAILED
 
-    def clear_failure(self) -> None:
+    def clear_failure(self):
         """Clear failure state and set status to success."""
         self.failure_stage = None
         self.failure_reason = None

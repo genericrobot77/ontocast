@@ -38,14 +38,19 @@ def add_conditional_with_visit_counter_logic(
         logger.info(f"Current node_visits state: {state.node_visits}")
 
         if state.status == Status.SUCCESS:
+            logger.info("Status is SUCCESS, proceeding to next node")
             state.clear_failure()
             return state.status
 
         if state.node_visits[current_node] >= state.max_visits:
             logger.error(f"Maximum visits exceeded for {current_node}")
-            state.set_failure(current_node, "Maximum visits exceeded")
+            state.clear_failure()
+            state.set_failure(current_node, reason="Maximum visits exceeded")
             return Status.SUCCESS
         else:
+            logger.info(
+                f"Visit count {state.node_visits[current_node]} < max {state.max_visits}, retrying {current_node}"
+            )
             return Status.FAILED
 
     workflow.add_conditional_edges(current_node, route, mapping)

@@ -11,10 +11,16 @@ def check_chunks_empty(state: AgentState) -> AgentState:
 
     if state.chunks:
         state.current_chunk = state.chunks.pop(0)
-        state.node_visits = defaultdict()
+        state.node_visits = defaultdict(int)
         state.status = Status.FAILED
-        return state
+        logger.debug(
+            "Chunk available, setting status to FAILED and proceeding to SELECT_ONTOLOGY"
+        )
+    else:
+        state.current_chunk = None
+        state.status = Status.SUCCESS
+        logger.debug(
+            "No more chunks, setting status to SUCCESS and proceeding to AGGREGATE_FACTS"
+        )
 
-    state.current_chunk = None
-    state.status = Status.SUCCESS
     return state
