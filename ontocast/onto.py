@@ -15,7 +15,7 @@ from ontocast.text_utils import render_text_hash
 logger = logging.getLogger(__name__)
 
 
-ONTOLOGY_VOID_ID = "__void_ontology_name"
+ONTOLOGY_VOID_ID = "_void_ontology_name"
 ONTOLOGY_VOID_IRI = "NULL"
 
 DEFAULT_DOMAIN = "https://example.com"
@@ -306,6 +306,15 @@ class Ontology(OntologyProperties):
             f"Description: {self.description}\n"
             f"Ontology IRI: {self.iri}\n"
         )
+
+
+NULL_ONTOLOGY = Ontology(
+    short_name=ONTOLOGY_VOID_ID,
+    title="null title",
+    description="null description",
+    graph=RDFGraph(),
+    iri=ONTOLOGY_VOID_IRI,
+)
 
 
 class WorkflowNode(StrEnum):

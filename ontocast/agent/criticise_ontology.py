@@ -63,7 +63,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     else:
         logger.debug(f"Updating existing ontology: {state.current_ontology.short_name}")
         om_tool.update_ontology(
-            state.current_ontology.short_name, state.ontology_addendum
+            state.current_ontology.short_name, state.ontology_addendum.graph
         )
 
     if critique.ontology_update_success:

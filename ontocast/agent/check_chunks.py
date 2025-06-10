@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def check_chunks_empty(state: AgentState) -> AgentState:
-    logger.debug("Converting documents. NB: processing one file")
+    logger.debug(f"Setting current if chunks are available: {len(state.chunks)}")
 
     if state.chunks:
         state.current_chunk = state.chunks.pop(0)

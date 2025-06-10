@@ -1,4 +1,4 @@
-from ontocast.onto import Ontology, RDFGraph, ONTOLOGY_VOID_ID, ONTOLOGY_VOID_IRI
+from ontocast.onto import Ontology, RDFGraph, NULL_ONTOLOGY
 from .onto import Tool
 from pydantic import Field
 
@@ -25,10 +25,4 @@ class OntologyManager(Tool):
             )
             return self.ontologies[current_idx]
         else:
-            return Ontology(
-                short_name=ONTOLOGY_VOID_ID,
-                title="null title",
-                description="null description",
-                graph=RDFGraph(),
-                iri=ONTOLOGY_VOID_IRI,
-            )
+            return NULL_ONTOLOGY

@@ -118,7 +118,9 @@ def run(
     if "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-    working_directory.mkdir(parents=True, exist_ok=True)
+    if working_directory:
+        working_directory = working_directory.expanduser()
+        working_directory.mkdir(parents=True, exist_ok=True)
 
     tools: ToolBox = ToolBox(
         working_directory=working_directory,

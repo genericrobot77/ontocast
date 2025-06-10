@@ -5,7 +5,7 @@ from ontocast.agent.criticise_facts import criticise_facts
 from ontocast.agent.criticise_ontology import criticise_ontology
 from ontocast.agent.render_facts import render_facts
 from ontocast.agent.render_ontology_triples import render_onto_triples
-from ontocast.agent.save_kg import aggregate_chunks
+from ontocast.agent.aggregate_facts import aggregate_serialize
 from ontocast.agent.select_ontology import select_ontology
 from ontocast.agent.sublimate_ontology import sublimate_ontology
 from ontocast.agent.convert_document import convert_document
@@ -81,7 +81,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
         count_visits,
     )
     sublimate_ontology_tuple = partial(sublimate_ontology, tools=tools)
-    aggregate_chunks_tuple = partial(aggregate_chunks, tools=tools)
+    aggregate_facts_tuple = partial(aggregate_serialize, tools=tools)
 
     # Add nodes using string values
     workflow.add_node(WorkflowNode.CONVERT_TO_MD, convert_document_)
@@ -94,7 +94,7 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     workflow.add_node(*criticise_ontology_tuple)
     workflow.add_node(*criticise_facts_tuple)
     workflow.add_node(WorkflowNode.CHUNKS_EMPTY, check_chunks_empty_)
-    workflow.add_node(WorkflowNode.AGGREGATE_FACTS, aggregate_chunks_tuple)
+    workflow.add_node(WorkflowNode.AGGREGATE_FACTS, aggregate_facts_tuple)
 
     # Standard edges using string values
     workflow.add_edge(START, WorkflowNode.CONVERT_TO_MD)
@@ -104,9 +104,13 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     workflow.add_edge(WorkflowNode.SUBLIMATE_ONTOLOGY, WorkflowNode.CRITICISE_FACTS)
     workflow.add_edge(WorkflowNode.AGGREGATE_FACTS, END)
 
+    def simple_routing(state: AgentState):
+        logger.debug(f"{state.status}, {state.failure_stage}, {state.failure_reason}")
+        return state.status
+
     workflow.add_conditional_edges(
         WorkflowNode.CHUNKS_EMPTY,
-        lambda state: Status.SUCCESS if state.status else Status.FAILED,
+        simple_routing,
         {
             Status.SUCCESS: WorkflowNode.AGGREGATE_FACTS,
             Status.FAILED: WorkflowNode.SELECT_ONTOLOGY,

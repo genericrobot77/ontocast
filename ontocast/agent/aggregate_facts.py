@@ -6,7 +6,7 @@ from ontocast.tool.validate import RDFGraphConnectivityValidator
 logger = logging.getLogger(__name__)
 
 
-def aggregate_chunks(state: AgentState, tools: ToolBox) -> AgentState:
+def aggregate_serialize(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that saves the knowledge graph."""
     tsm_tool = tools.triple_store_manager
 
