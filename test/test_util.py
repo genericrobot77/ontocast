@@ -1,6 +1,6 @@
 import pytest
 from ontocast.onto import AgentState, WorkflowNode
-from ontocast.util import wrap_with, count_visits
+from ontocast.util import wrap_with, count_visits_conditional_success
 
 
 def test_wrap_with_basic_functionality():
@@ -11,7 +11,9 @@ def test_wrap_with_basic_functionality():
         return state
 
     node_name = WorkflowNode.TEXT_TO_ONTOLOGY
-    node_name, wrapped_func = wrap_with(simple_func, node_name, count_visits)
+    node_name, wrapped_func = wrap_with(
+        simple_func, node_name, count_visits_conditional_success
+    )
 
     # Initialize state
     state = AgentState()
@@ -33,7 +35,9 @@ def test_wrap_with_multiple_calls():
         return state
 
     node_name = WorkflowNode.TEXT_TO_ONTOLOGY
-    node_name, wrapped_func = wrap_with(increment_func, node_name, count_visits)
+    node_name, wrapped_func = wrap_with(
+        increment_func, node_name, count_visits_conditional_success
+    )
 
     # Initialize state
     state = AgentState()
@@ -57,7 +61,9 @@ def test_wrap_with_error_handling():
         raise ValueError("Test error")
 
     node_name = WorkflowNode.TEXT_TO_ONTOLOGY
-    node_name, wrapped_func = wrap_with(error_func, node_name, count_visits)
+    node_name, wrapped_func = wrap_with(
+        error_func, node_name, count_visits_conditional_success
+    )
 
     # Initialize state
     state = AgentState()
@@ -84,7 +90,9 @@ def test_wrap_with_different_node_types():
     ]
 
     for node in test_nodes:
-        node_name, wrapped_func = wrap_with(test_func, node, count_visits)
+        node_name, wrapped_func = wrap_with(
+            test_func, node, count_visits_conditional_success
+        )
 
         state = AgentState()
 

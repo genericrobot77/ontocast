@@ -1,11 +1,6 @@
 import logging
 
-from ontocast.onto import (
-    AgentState,
-    Ontology,
-    FailureStages,
-    ONTOLOGY_VOID_ID,
-)
+from ontocast.onto import AgentState, Ontology, FailureStages, ONTOLOGY_VOID_ID, Status
 from langchain.prompts import PromptTemplate
 from ontocast.toolbox import ToolBox
 
@@ -64,7 +59,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
         ],
     )
 
-    if state.failure_reason is not None:
+    if state.status != Status.SUCCESS and state.failure_reason is not None:
         _failure_instruction = failure_instruction.format(
             failure_stage=state.failure_stage,
             failure_reason=state.failure_reason,

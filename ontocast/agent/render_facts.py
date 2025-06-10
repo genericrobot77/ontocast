@@ -1,6 +1,6 @@
 import logging
 
-from ontocast.onto import AgentState, FailureStages, SemanticTriplesFactsReport
+from ontocast.onto import AgentState, FailureStages, SemanticTriplesFactsReport, Status
 from langchain.prompts import PromptTemplate
 from ontocast.prompt.render_facts import (
     ontology_instruction,
@@ -36,7 +36,7 @@ def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
     )
 
     try:
-        if state.failure_reason is not None:
+        if state.status != Status.SUCCESS and state.failure_reason is not None:
             failure_instruction = "The previous attempt to generate triples failed."
             if state.failure_stage is not None:
                 failure_instruction += (

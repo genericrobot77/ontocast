@@ -13,7 +13,7 @@ from ontocast.agent.chunk_text import chunk_text
 from ontocast.agent.check_chunks import check_chunks_empty
 from ontocast.onto import AgentState, Status, WorkflowNode
 from ontocast.toolbox import ToolBox
-from ontocast.util import wrap_with, count_visits
+from ontocast.util import wrap_with, count_visits_conditional_success
 
 
 from langgraph.graph import END, START, StateGraph
@@ -21,39 +21,6 @@ from langgraph.graph.state import CompiledStateGraph
 
 
 logger = logging.getLogger(__name__)
-
-
-def add_conditional_with_visit_counter_logic(
-    workflow: StateGraph,
-    current_node: WorkflowNode,
-    mapping: dict[Status, WorkflowNode],
-):
-    def route(state: AgentState) -> Status:
-        # Initialize visit count if not exists
-
-        logger.info(
-            f"Making decision after {current_node} visit: visit {state.node_visits[current_node]}/{state.max_visits}, "
-            f"onto: {len(state.current_ontology.graph)}, facts: {len(state.current_chunk.graph)}"
-        )
-        logger.info(f"Current node_visits state: {state.node_visits}")
-
-        if state.status == Status.SUCCESS:
-            logger.info("Status is SUCCESS, proceeding to next node")
-            state.clear_failure()
-            return state.status
-
-        if state.node_visits[current_node] >= state.max_visits:
-            logger.error(f"Maximum visits exceeded for {current_node}")
-            state.clear_failure()
-            state.set_failure(current_node, reason="Maximum visits exceeded")
-            return Status.SUCCESS
-        else:
-            logger.info(
-                f"Visit count {state.node_visits[current_node]} < max {state.max_visits}, retrying {current_node}"
-            )
-            return Status.FAILED
-
-    workflow.add_conditional_edges(current_node, route, mapping)
 
 
 def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
@@ -70,20 +37,22 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     render_ontology_tuple = wrap_with(
         partial(render_onto_triples, tools=tools),
         WorkflowNode.TEXT_TO_ONTOLOGY,
-        count_visits,
+        count_visits_conditional_success,
     )
     render_facts_tuple = wrap_with(
-        partial(render_facts, tools=tools), WorkflowNode.TEXT_TO_FACTS, count_visits
+        partial(render_facts, tools=tools),
+        WorkflowNode.TEXT_TO_FACTS,
+        count_visits_conditional_success,
     )
     criticise_ontology_tuple = wrap_with(
         partial(criticise_ontology, tools=tools),
         WorkflowNode.CRITICISE_ONTOLOGY,
-        count_visits,
+        count_visits_conditional_success,
     )
     criticise_facts_tuple = wrap_with(
         partial(criticise_facts, tools=tools),
         WorkflowNode.CRITICISE_FACTS,
-        count_visits,
+        count_visits_conditional_success,
     )
     sublimate_ontology_tuple = partial(sublimate_ontology, tools=tools)
     aggregate_facts_tuple = partial(aggregate_serialize, tools=tools)
@@ -122,37 +91,37 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
         },
     )
 
-    add_conditional_with_visit_counter_logic(
-        workflow=workflow,
-        current_node=WorkflowNode.TEXT_TO_ONTOLOGY,
-        mapping={
+    workflow.add_conditional_edges(
+        WorkflowNode.TEXT_TO_ONTOLOGY,
+        simple_routing,
+        {
             Status.SUCCESS: WorkflowNode.CRITICISE_ONTOLOGY,
             Status.FAILED: WorkflowNode.TEXT_TO_ONTOLOGY,
         },
     )
 
-    add_conditional_with_visit_counter_logic(
-        workflow=workflow,
-        current_node=WorkflowNode.CRITICISE_ONTOLOGY,
-        mapping={
+    workflow.add_conditional_edges(
+        WorkflowNode.CRITICISE_ONTOLOGY,
+        simple_routing,
+        {
             Status.SUCCESS: WorkflowNode.TEXT_TO_FACTS,
             Status.FAILED: WorkflowNode.TEXT_TO_ONTOLOGY,
         },
     )
 
-    add_conditional_with_visit_counter_logic(
-        workflow=workflow,
-        current_node=WorkflowNode.TEXT_TO_FACTS,
-        mapping={
+    workflow.add_conditional_edges(
+        WorkflowNode.TEXT_TO_FACTS,
+        simple_routing,
+        {
             Status.SUCCESS: WorkflowNode.SUBLIMATE_ONTOLOGY,
             Status.FAILED: WorkflowNode.TEXT_TO_FACTS,
         },
     )
 
-    add_conditional_with_visit_counter_logic(
-        workflow=workflow,
-        current_node=WorkflowNode.CRITICISE_FACTS,
-        mapping={
+    workflow.add_conditional_edges(
+        WorkflowNode.CRITICISE_FACTS,
+        simple_routing,
+        {
             Status.SUCCESS: WorkflowNode.CHUNKS_EMPTY,
             Status.FAILED: WorkflowNode.TEXT_TO_FACTS,
         },

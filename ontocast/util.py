@@ -1,6 +1,6 @@
 import logging
 import sys
-from ontocast.onto import AgentState, WorkflowNode
+from ontocast.onto import AgentState, WorkflowNode, Status
 from functools import wraps
 from typing import Callable
 
@@ -23,8 +23,15 @@ def setup_logging(debug: bool = False) -> None:
     )
 
 
-def count_visits(state: AgentState, node_name) -> AgentState:
-    state.node_visits[node_name] += 1
+def count_visits_conditional_success(state: AgentState, current_node) -> AgentState:
+    state.node_visits[current_node] += 1
+    if state.status == Status.SUCCESS:
+        logger.info("Status is SUCCESS, proceeding to next node")
+        state.clear_failure()
+    elif state.node_visits[current_node] >= state.max_visits:
+        logger.error(f"Maximum visits exceeded for {current_node}")
+        state.set_failure(current_node, reason="Maximum visits exceeded")
+        state.status = Status.SUCCESS
     return state
 
 
@@ -42,8 +49,8 @@ def wrap_with(func, node_name, post_func) -> tuple[WorkflowNode, Callable]:
     @wraps(func)
     def wrapper(state: AgentState):
         logger.info(f"Starting to execute {node_name}")
-        state = post_func(state, node_name)
         state = func(state)
+        state = post_func(state, node_name)
         return state
 
     return node_name, wrapper
