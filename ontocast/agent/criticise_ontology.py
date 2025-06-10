@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
-    logger.debug("Starting ontology critique process")
+    logger.info("Criticize ontology")
     llm_tool: LLMTool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager
     parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
@@ -53,7 +53,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     )
     critique: OntologyUpdateCritiqueReport = parser.parse(response.content)
     logger.debug(
-        f"Parsed critique report - Success: {critique.ontology_update_success}, Score: {critique.ontology_update_score}"
+        f"Parsed critique report status: {critique.ontology_update_success}, score: {critique.ontology_update_score}"
     )
 
     if state.current_ontology.iri == ONTOLOGY_VOID_IRI:
@@ -61,16 +61,16 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
         om_tool.ontologies.append(state.ontology_addendum)
         state.current_ontology = state.ontology_addendum
     else:
-        logger.debug(f"Updating existing ontology: {state.current_ontology.short_name}")
+        logger.info(f"Updating existing ontology: {state.current_ontology.short_name}")
         om_tool.update_ontology(
             state.current_ontology.short_name, state.ontology_addendum.graph
         )
 
     if critique.ontology_update_success:
-        logger.debug("Ontology critique successful, clearing failure state")
+        logger.info("Ontology critique successful, clearing failure state")
         state.clear_failure()
     else:
-        logger.debug("Ontology critique failed, setting failure state")
+        logger.info("Ontology critique failed, setting failure state")
         state.set_failure(
             stage=FailureStages.ONTOLOGY_CRITIQUE,
             reason=critique.ontology_update_critique_comment,

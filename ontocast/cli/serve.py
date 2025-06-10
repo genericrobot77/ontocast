@@ -13,6 +13,7 @@ from robyn import Request, Response, Headers
 import logging
 from ontocast.cli.util import crawl_directories
 from ontocast.toolbox import init_toolbox, ToolBox
+from langchain_core.runnables import RunnableConfig
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,9 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                 files=files, max_visits=max_visits, max_chunks=head_chunks
             )
 
-            async for chunk in workflow.astream(state, stream_mode="values"):
+            async for chunk in workflow.astream(
+                state, stream_mode="values", config=RunnableConfig(recursion_limit=100)
+            ):
                 state = chunk
 
             result = {
@@ -152,8 +155,11 @@ def run(
                         max_visits=max_visits,
                         max_chunks=head_chunks,
                     )
-
-                    async for chunk in workflow.astream(state, stream_mode="values"):
+                    async for chunk in workflow.astream(
+                        state,
+                        stream_mode="values",
+                        config=RunnableConfig(recursion_limit=50),
+                    ):
                         state = chunk
 
                     facts = state.pop("graph_facts", RDFGraph())

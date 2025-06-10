@@ -24,7 +24,7 @@ class ChunkRDFGraphAggregator:
         Returns:
             Aggregated graph with disambiguated entities and predicates
         """
-        logger.debug(f"Aggregating {len(chunks)} chunks for document {doc_namespace}")
+        logger.info(f"Aggregating {len(chunks)} chunks for document {doc_namespace}")
         aggregated_graph = RDFGraph()
 
         # Bind document namespace for the aggregated graph
@@ -42,13 +42,7 @@ class ChunkRDFGraphAggregator:
         # First pass: collect all entities and predicates
         for chunk in chunks:
             chunk_id = chunk.hid
-            logger.debug(
-                f"Processing chunk {chunk_id} with namespace {chunk.namespace}"
-            )
-
-            # Get all namespaces from this chunk
-            chunk_namespaces = dict(chunk.graph.namespaces())
-            logger.debug(f"Chunk namespaces: {chunk_namespaces}")
+            logger.info(f"Processing chunk {chunk_id} with namespace {chunk.namespace}")
 
             # Entity disambiguation
             entities_labels = self.disambiguator.extract_entity_labels(chunk.graph)

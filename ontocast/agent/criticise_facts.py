@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
-    logger.debug("Starting facts critique process")
+    logger.info("Criticize facts")
 
     llm_tool = tools.llm
     parser = llm_tool.get_parser(KGCritiqueReport)

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def chunk_text(state: AgentState, tools: ToolBox) -> AgentState:
-    logger.debug("Converting documents. NB: processing one file")
+    logger.info("Chunking the text")
     if state.input_text is not None:
         chunks_txt: list[str] = tools.chunker(state.input_text)
 

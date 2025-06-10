@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
-    logger.debug("Starting facts rendering process")
+    logger.info("Starting to render facts")
     llm_tool = tools.llm
 
     parser = llm_tool.get_parser(SemanticTriplesFactsReport)

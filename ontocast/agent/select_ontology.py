@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that selects the most appropriate ontology for the input text."""
-    logger.debug("Starting ontology selection process")
+    logger.info("Selecting ontology")
     llm_tool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager
 
@@ -19,7 +19,7 @@ def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
 
     if len(om_tool.ontologies) > 0:
         ontologies_desc = "\n\n".join([o.describe() for o in om_tool.ontologies])
-        logger.debug(f"Retrieved descriptions for {len(om_tool.ontologies)} ontologies")
+        logger.info(f"Retrieved descriptions for {len(om_tool.ontologies)} ontologies")
 
         if state.current_chunk is None:
             if state.chunks:

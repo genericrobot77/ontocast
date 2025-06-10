@@ -79,7 +79,6 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     workflow.add_edge(WorkflowNode.AGGREGATE_FACTS, END)
 
     def simple_routing(state: AgentState):
-        logger.debug(f"{state.status}, {state.failure_stage}, {state.failure_reason}")
         return state.status
 
     workflow.add_conditional_edges(

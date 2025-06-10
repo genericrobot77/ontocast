@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def convert_document(state: AgentState, tools: ToolBox) -> AgentState:
-    logger.debug("Converting documents. NB: processing one file")
+    logger.debug("Converting documents. NB: processing only one file")
 
     state.status = Status.SUCCESS
     files = state.files

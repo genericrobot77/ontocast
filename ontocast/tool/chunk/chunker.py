@@ -48,7 +48,7 @@ class ChunkerTool(Tool):
 
         def recursive_chunking(docs, stop_flag=False):
             lens = [len(d) for d in docs]
-            logger.debug(f"{lens}")
+            logger.info(f"chunk lengths: {lens}")
             if all(len(doc) < self.max_chunk_size for doc in docs) or stop_flag:
                 return docs
             else:

@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 
 def _sublimate_ontology(state: AgentState):
-    logger.debug("Starting ontology sublimation process")
-    logger.debug(f"Current chunk namespace: {state.current_chunk.namespace}")
+    logger.debug("Starting ontology sublimation")
+    logger.info(f"Current chunk namespace: {state.current_chunk.namespace}")
 
     # Create new graphs
     graph_onto_addendum = RDFGraph()
@@ -35,7 +35,7 @@ def _sublimate_ontology(state: AgentState):
     }}
     """
     results = state.current_chunk.graph.query(query_ontology)
-    logger.debug(f"Found {len(results)} ontology triples")
+    logger.info(f"Found {len(results)} ontology triples")
 
     # Add filtered triples to the new graph
     for s, p, o in results:
@@ -56,7 +56,7 @@ def _sublimate_ontology(state: AgentState):
     """
 
     results = state.current_chunk.graph.query(query_facts)
-    logger.debug(f"Found {len(results)} facts triples")
+    logger.info(f"Found {len(results)} facts triples")
 
     # Add filtered triples to the new graph
     for s, p, o in results:
@@ -92,11 +92,6 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
         state.current_chunk = validate_and_connect_chunk(
             state.current_chunk,
             auto_connect=True,
-        )
-
-        # Log the final state of the chunk graph
-        logger.debug(
-            f"Final chunk graph namespaces: {list(state.current_chunk.graph.namespaces())}"
         )
 
         state.clear_failure()

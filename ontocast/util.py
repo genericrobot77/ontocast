@@ -26,10 +26,10 @@ def setup_logging(debug: bool = False) -> None:
 def count_visits_conditional_success(state: AgentState, current_node) -> AgentState:
     state.node_visits[current_node] += 1
     if state.status == Status.SUCCESS:
-        logger.info("Status is SUCCESS, proceeding to next node")
+        logger.info(f"For {current_node}: status is SUCCESS, proceeding to next node")
         state.clear_failure()
     elif state.node_visits[current_node] >= state.max_visits:
-        logger.error(f"Maximum visits exceeded for {current_node}")
+        logger.error(f"For {current_node}: maximum visits exceeded")
         state.set_failure(current_node, reason="Maximum visits exceeded")
         state.status = Status.SUCCESS
     return state

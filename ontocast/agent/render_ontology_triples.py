@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
-    logger.debug("Starting ontology triples rendering process")
+    logger.info("Starting to render ontology triples")
     llm_tool = tools.llm
 
     parser = llm_tool.get_parser(Ontology)
@@ -26,7 +26,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
     logger.debug(f"Using domain: {state.current_domain}")
 
     if state.current_ontology.short_name == ONTOLOGY_VOID_ID:
-        logger.debug("Creating fresh ontology")
+        logger.info("Creating fresh ontology")
         ontology_instruction = ontology_instruction_fresh
         specific_ontology_instruction = specific_ontology_instruction_fresh.format(
             current_domain=state.current_domain
