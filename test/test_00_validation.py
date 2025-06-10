@@ -62,7 +62,7 @@ def test_aggregation(doc_id, connected_chunks, current_domain):
     # Aggregate graphs (now using connected versions)
     aggregator = ChunkRDFGraphAggregator()
     aggregated_graph = aggregator.aggregate_graphs(
-        chunks=connected_chunks, doc_iri=f"{current_domain}/{doc_id}"
+        chunks=connected_chunks, doc_namespace=f"{current_domain}/{doc_id}/"
     )
 
     # Validate aggregated graph connectivity

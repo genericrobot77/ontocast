@@ -9,6 +9,15 @@ logger = logging.getLogger(__name__)
 
 def _sublimate_ontology(state: AgentState):
     logger.debug("Starting ontology sublimation process")
+    logger.debug(f"Current chunk namespace: {state.current_chunk.namespace}")
+
+    # Create new graphs
+    graph_onto_addendum = RDFGraph()
+    graph_facts_pure = RDFGraph()
+
+    # Only bind document namespace to facts graph
+    cd_ns = Namespace(state.current_chunk.namespace)
+    graph_facts_pure.bind("cd", cd_ns)
 
     query_ontology = f"""
     PREFIX cd: <{state.current_chunk.namespace}>
@@ -27,8 +36,6 @@ def _sublimate_ontology(state: AgentState):
     """
     results = state.current_chunk.graph.query(query_ontology)
     logger.debug(f"Found {len(results)} ontology triples")
-
-    graph_onto_addendum = RDFGraph()
 
     # Add filtered triples to the new graph
     for s, p, o in results:
@@ -51,8 +58,6 @@ def _sublimate_ontology(state: AgentState):
     results = state.current_chunk.graph.query(query_facts)
     logger.debug(f"Found {len(results)} facts triples")
 
-    graph_facts_pure = RDFGraph()
-
     # Add filtered triples to the new graph
     for s, p, o in results:
         graph_facts_pure.add((s, p, o))
@@ -73,12 +78,13 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
             if str(ns) == state.current_ontology.iri
         ]
 
-        graph_onto_addendum.bind(
-            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
-        )
-        graph_facts.bind(
-            ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
-        )
+        if ns_prefix_current_ontology:
+            graph_onto_addendum.bind(
+                ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
+            )
+            graph_facts.bind(
+                ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
+            )
 
         om_tool.update_ontology(state.current_ontology.short_name, graph_onto_addendum)
 
@@ -88,8 +94,14 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
             auto_connect=True,
         )
 
+        # Log the final state of the chunk graph
+        logger.debug(
+            f"Final chunk graph namespaces: {list(state.current_chunk.graph.namespaces())}"
+        )
+
         state.clear_failure()
     except Exception as e:
+        logger.error(f"Error in sublimate_ontology: {str(e)}")
         state.set_failure(
             FailureStages.SUBLIMATE_ONTOLOGY,
             str(e),

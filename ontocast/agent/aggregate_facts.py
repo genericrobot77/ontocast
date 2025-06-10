@@ -11,7 +11,7 @@ def aggregate_serialize(state: AgentState, tools: ToolBox) -> AgentState:
     tsm_tool = tools.triple_store_manager
 
     aggregated_graph = tools.aggregator.aggregate_graphs(
-        state.chunks_processed, state.doc_iri
+        state.chunks_processed, state.doc_namespace
     )
     connectivity_result = RDFGraphConnectivityValidator(
         aggregated_graph
