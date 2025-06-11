@@ -22,11 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
-    """Create the agent workflow graph."""
+    """Create the agent workflow graph.
+
+    This function constructs a directed graph representing the workflow of the
+    ontology-based knowledge graph agent. The graph defines the sequence of
+    operations and their dependencies for processing documents and generating
+    knowledge graphs.
+
+    Args:
+        tools: The ToolBox instance containing all necessary tools for the workflow.
+
+    Returns:
+        CompiledStateGraph: A compiled state graph ready for execution.
+    """
     workflow = StateGraph(AgentState)
 
     # Create nodes with partial application of tools
-
     select_ontology_ = partial(select_ontology, tools=tools)
     convert_document_ = partial(convert_document, tools=tools)
     chunk_text_ = partial(chunk_text, tools=tools)
@@ -58,7 +69,6 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     # Add nodes using string values
     workflow.add_node(WorkflowNode.CONVERT_TO_MD, convert_document_)
     workflow.add_node(WorkflowNode.CHUNK, chunk_text_)
-
     workflow.add_node(WorkflowNode.SELECT_ONTOLOGY, select_ontology_)
     workflow.add_node(*render_ontology_tuple)
     workflow.add_node(*render_facts_tuple)
@@ -77,8 +87,17 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     workflow.add_edge(WorkflowNode.AGGREGATE_FACTS, END)
 
     def simple_routing(state: AgentState):
+        """Simple routing function based on state status.
+
+        Args:
+            state: The current agent state.
+
+        Returns:
+            Status: The current status of the state.
+        """
         return state.status
 
+    # Add conditional edges for workflow control
     workflow.add_conditional_edges(
         WorkflowNode.CHUNKS_EMPTY,
         simple_routing,

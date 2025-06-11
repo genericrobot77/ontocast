@@ -9,11 +9,13 @@ logger = logging.getLogger(__name__)
 
 
 def setup_logging(debug: bool = False) -> None:
-    """
-    Set up logging configuration for the project.
+    """Set up logging configuration for the project.
+
+    This function configures the logging system with appropriate formatting
+    and log level based on the debug flag.
 
     Args:
-        debug: If True, sets logging level to DEBUG, otherwise INFO
+        debug: If True, sets logging level to DEBUG, otherwise INFO.
     """
     level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
@@ -24,6 +26,18 @@ def setup_logging(debug: bool = False) -> None:
 
 
 def count_visits_conditional_success(state: AgentState, current_node) -> AgentState:
+    """Track node visits and handle success/failure conditions.
+
+    This function increments the visit counter for a node and manages the state
+    based on success/failure conditions and maximum visit limits.
+
+    Args:
+        state: The current agent state.
+        current_node: The node being visited.
+
+    Returns:
+        AgentState: Updated agent state after processing visit conditions.
+    """
     state.node_visits[current_node] += 1
     if state.status == Status.SUCCESS:
         logger.info(f"For {current_node}: status is SUCCESS, proceeding to next node")
@@ -38,12 +52,17 @@ def count_visits_conditional_success(state: AgentState, current_node) -> AgentSt
 def wrap_with(func, node_name, post_func) -> tuple[WorkflowNode, Callable]:
     """Add a visit counter to a function.
 
+    This function wraps a given function with logging and post-processing
+    functionality, typically used for workflow node execution.
+
     Args:
-        func: The function to wrap
-        node_name: The name of the node
+        func: The function to wrap.
+        node_name: The name of the node.
+        post_func: Function to execute after the main function.
 
     Returns:
-        A tuple of (node_name, wrapped_function)
+        tuple[WorkflowNode, Callable]: A tuple containing the node name and
+            the wrapped function.
     """
 
     @wraps(func)

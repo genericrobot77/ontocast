@@ -52,15 +52,25 @@ plugins:
 
 nav:
 -   Home: index.md
-# -   Getting Started:
-#     -   Installation: getting_started/installation.md
-#     -   Quick Start: getting_started/quickstart.md
-# -   Concepts: concepts/index.md
-# -   Examples:
-#     -   1 - Ingest csv files: examples/example-1.md
-#     -   2 - Ingest jsons with self-references: examples/example-2.md
-# -   API Reference: reference/
-# -   Contributing: contributing.md
+-   Getting Started:
+    -   Installation: getting_started/installation.md
+    -   Quick Start: getting_started/quickstart.md
+    -   Configuration: getting_started/configuration.md
+-   User Guide:
+    -   Core Concepts: user_guide/core_concepts.md
+    -   Workflow: user_guide/workflow.md
+    -   Best Practices: user_guide/best_practices.md
+-   API Reference:
+    -   Core: reference/core.md
+    -   Tools: reference/tools.md
+    -   Models: reference/models.md
+-   Examples:
+    -   Basic Usage: examples/basic_usage.md
+    -   Advanced Usage: examples/advanced_usage.md
+-   Contributing:
+    -   Development Guide: contributing/development.md
+    -   Code Style: contributing/code_style.md
+    -   Testing: contributing/testing.md
 
 markdown_extensions:
 -   pymdownx.highlight:
@@ -95,7 +105,6 @@ markdown_extensions:
 -   pymdownx.arithmatex
 -   pymdownx.progressbar
 -   pymdownx.escapeall
-
 
 -   toc:
         permalink: true

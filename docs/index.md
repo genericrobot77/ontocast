@@ -101,5 +101,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ### Agent graph
 
-<!-- ![SVG Image](graph.png|200) -->
+<!-- ![SVG Image](assets/graph.png|200) -->
 [<img src="assets/graph.png" width="400"/>](graph.png)
