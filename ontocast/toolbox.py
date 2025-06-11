@@ -31,9 +31,16 @@ class ToolBox:
         working_directory: pathlib.Path = kwargs.pop("working_directory")
         ontology_directory: Optional[pathlib.Path] = kwargs.pop("ontology_directory")
         model_name: str = kwargs.pop("model_name")
+        llm_base_url: str = kwargs.pop("llm_base_url")
         temperature: float = kwargs.pop("temperature")
+        llm_provider: float = kwargs.pop("llm_provider")
 
-        self.llm: LLMTool = LLMTool.create(model=model_name, temperature=temperature)
+        self.llm: LLMTool = LLMTool.create(
+            provider=llm_provider,
+            model=model_name,
+            temperature=temperature,
+            base_url=llm_base_url,
+        )
         self.triple_store_manager: TripleStoreManager = FilesystemTripleStoreManager(
             working_directory=working_directory, ontology_path=ontology_directory
         )

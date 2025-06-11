@@ -83,6 +83,7 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 @click.option(
     "--working-directory", type=click.Path(path_type=pathlib.Path), required=True
 )
+@click.option("--llm-provider", type=str, default="openai")
 @click.option("--model-name", type=str, default="gpt-4o-mini")
 @click.option("--temperature", type=float, default=0.0)
 @click.option("--head-chunks", type=int, default=None)
@@ -100,6 +101,7 @@ def run(
     env_path: pathlib.Path,
     ontology_directory: Optional[pathlib.Path],
     working_directory: pathlib.Path,
+    llm_provider: str,
     model_name: str,
     temperature: float,
     port: int,
@@ -119,7 +121,7 @@ def run(
 
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
-    if "OPENAI_API_KEY" not in os.environ:
+    if llm_provider == "openai" and "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
     if working_directory:
@@ -127,6 +129,8 @@ def run(
         working_directory.mkdir(parents=True, exist_ok=True)
 
     tools: ToolBox = ToolBox(
+        llm_provider=llm_provider,
+        llm_base_url=os.environ["LLM_BASE_URL"],
         working_directory=working_directory,
         ontology_directory=ontology_directory,
         model_name=model_name,

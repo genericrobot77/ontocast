@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 def check_chunks_empty(state: AgentState) -> AgentState:
     logger.info(f"Chunks remaining: {len(state.chunks)}, setting up current chunk")
 
+    if state.current_chunk is not None:
+        state.chunks_processed.append(state.current_chunk)
+
     if state.chunks:
         state.current_chunk = state.chunks.pop(0)
         state.node_visits = defaultdict(int)

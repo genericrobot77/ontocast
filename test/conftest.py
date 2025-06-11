@@ -13,14 +13,29 @@ from ontocast.tool import (
 from ontocast.toolbox import ToolBox, init_toolbox
 
 
-@pytest.fixture(scope="session", autouse=True)
-def set_env_vars():
-    os.environ["CURRENT_DOMAIN"] = DEFAULT_DOMAIN
-
-
 @pytest.fixture
 def current_domain():
     return os.getenv("CURRENT_DOMAIN", DEFAULT_DOMAIN)
+
+
+@pytest.fixture
+def llm_base_url():
+    return os.getenv("LLM_BASE_URL", None)
+
+
+@pytest.fixture
+def provider():
+    return os.getenv("LLM_PROVIDER", "openai")
+
+
+@pytest.fixture
+def model_name():
+    return os.getenv("LLM_MODEL_NAME", None)
+
+
+@pytest.fixture
+def temperature():
+    return 0.1
 
 
 @pytest.fixture
@@ -52,18 +67,13 @@ def working_directory():
 
 
 @pytest.fixture
-def model_name():
-    return "gpt-4o-mini"
-
-
-@pytest.fixture
-def temperature():
-    return 0.0
-
-
-@pytest.fixture
-def llm_tool(model_name, temperature):
-    llm_tool = LLMTool.create(model=model_name, temperature=temperature)
+def llm_tool(provider, model_name, temperature, llm_base_url):
+    llm_tool = LLMTool.create(
+        provider=provider,
+        model=model_name,
+        temperature=temperature,
+        base_url=llm_base_url,
+    )
     return llm_tool
 
 
@@ -77,6 +87,22 @@ def tsm_tool(ontology_path, working_directory):
 @pytest.fixture
 def om_tool_fname():
     return "test/data/om_tool.json"
+
+
+@pytest.fixture
+def tools(
+    ontology_path, working_directory, model_name, temperature, provider, llm_base_url
+) -> ToolBox:
+    tools: ToolBox = ToolBox(
+        llm_base_url=llm_base_url,
+        llm_provider=provider,
+        working_directory=working_directory,
+        ontology_directory=ontology_path,
+        model_name=model_name,
+        temperature=temperature,
+    )
+    init_toolbox(tools)
+    return tools
 
 
 @pytest.fixture
@@ -175,18 +201,6 @@ def om_tool(om_tool_fname):
         return OntologyManager.load(om_tool_fname)
     except (FileNotFoundError, Exception):
         return OntologyManager()
-
-
-@pytest.fixture
-def tools(ontology_path, working_directory, model_name, temperature) -> ToolBox:
-    tools: ToolBox = ToolBox(
-        working_directory=working_directory,
-        ontology_directory=ontology_path,
-        model_name=model_name,
-        temperature=temperature,
-    )
-    init_toolbox(tools)
-    return tools
 
 
 @pytest.fixture

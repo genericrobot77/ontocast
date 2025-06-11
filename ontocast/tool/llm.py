@@ -42,14 +42,10 @@ class LLMTool(Tool):
             self._llm = ChatOpenAI(
                 model=self.model,
                 temperature=self.temperature,
-                api_key=self.api_key,
-                base_url=self.base_url,
             )
         elif self.provider == "ollama":
             self._llm = ChatOllama(
-                model=self.model,
-                temperature=self.temperature,
-                base_url=self.base_url,
+                model=self.model, base_url=self.base_url, temperature=self.temperature
             )
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
@@ -66,17 +62,13 @@ class LLMTool(Tool):
             )
         return self._llm
 
-    def get_parser(self, pydantic_object: Type[T]) -> PydanticOutputParser:
-        """Get a LangChain Pydantic parser for the given model"""
-        return PydanticOutputParser(pydantic_object=pydantic_object)
-
     async def complete(self, prompt: str, **kwargs) -> Any:
         response = await self.llm.ainvoke(prompt)
         return response.content
 
     async def extract(self, prompt: str, output_schema: Type[T], **kwargs) -> T:
         """Extract structured data according to schema"""
-        parser = self.get_parser(output_schema)
+        parser = PydanticOutputParser(pydantic_object=output_schema)
         format_instructions = parser.get_format_instructions()
 
         full_prompt = f"{prompt}\n\n{format_instructions}"

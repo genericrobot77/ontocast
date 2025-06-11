@@ -42,7 +42,6 @@ def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
 
     if critique.facts_graph_derivation_success:
         logger.debug("Facts critique successful, clearing failure state")
-        state.chunks_processed.append(state.current_chunk)
         state.clear_failure()
     else:
         logger.debug("Facts critique failed, setting failure state")
