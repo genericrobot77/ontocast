@@ -90,7 +90,6 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 @click.option("--port", type=int, default=8999)
 @click.option("--logging-level", type=click.STRING)
 @click.option("--input-path", type=click.Path(path_type=pathlib.Path), default=None)
-@click.option("--output-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option(
     "--max-visits",
     type=int,
@@ -108,7 +107,6 @@ def run(
     head_chunks: Optional[int],
     logging_level: Optional[str],
     input_path: Optional[pathlib.Path],
-    output_path: Optional[pathlib.Path],
     max_visits: int,
 ):
     if logging_level is not None:
@@ -140,10 +138,8 @@ def run(
 
     workflow: CompiledStateGraph = create_agent_graph(tools)
 
-    if input_path and output_path:
+    if input_path:
         input_path = input_path.expanduser()
-        output_path = output_path.expanduser()
-        output_path.mkdir(parents=True, exist_ok=True)
 
         files = sorted(
             crawl_directories(
