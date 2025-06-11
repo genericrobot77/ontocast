@@ -12,7 +12,7 @@ from langgraph.graph.state import CompiledStateGraph
 from robyn import Headers, Request, Response, Robyn
 
 from ontocast.cli.util import crawl_directories
-from ontocast.onto import AgentState, RDFGraph
+from ontocast.onto import AgentState
 from ontocast.stategraph import create_agent_graph
 from ontocast.toolbox import ToolBox, init_toolbox
 
@@ -130,7 +130,7 @@ def run(
 
     tools: ToolBox = ToolBox(
         llm_provider=llm_provider,
-        llm_base_url=os.environ["LLM_BASE_URL"],
+        llm_base_url=os.getenv("LLM_BASE_URL", None),
         working_directory=working_directory,
         ontology_directory=ontology_directory,
         model_name=model_name,
@@ -160,21 +160,12 @@ def run(
                         max_visits=max_visits,
                         max_chunks=head_chunks,
                     )
-                    async for chunk in workflow.astream(
+                    async for _ in workflow.astream(
                         state,
                         stream_mode="values",
                         config=RunnableConfig(recursion_limit=50),
                     ):
-                        state = chunk
-
-                    facts = state.pop("graph_facts", RDFGraph())
-                    ontology = state.pop("current_ontology", RDFGraph())
-
-                    onto_file = output_path / f"{file_path.stem}.ontology.ttl"
-                    facts_file = output_path / f"{file_path.stem}.facts.ttl"
-
-                    ontology.graph.serialize(destination=onto_file)
-                    facts.serialize(destination=facts_file)
+                        pass
 
                 except Exception as e:
                     logger.error(f"Error processing {file_path}: {str(e)}")

@@ -7,7 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 def check_chunks_empty(state: AgentState) -> AgentState:
-    logger.info(f"Chunks remaining: {len(state.chunks)}, setting up current chunk")
+    logger.info(
+        f"Chunks (rem): {len(state.chunks)}, "
+        f"chunks proc: {len(state.chunks_processed)}. "
+        f"Setting up current chunk"
+    )
 
     if state.current_chunk is not None:
         state.chunks_processed.append(state.current_chunk)

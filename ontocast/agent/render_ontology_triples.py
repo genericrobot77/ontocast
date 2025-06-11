@@ -79,9 +79,10 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
             )
         )
 
-        proj_ontology = parser.parse(response.content)
-        # check that the returned ontology name aligns with the candidate ontology name
-        state.ontology_addendum = proj_ontology
+        state.ontology_addendum = parser.parse(response.content)
+        logger.info(
+            f"Ontology addendum has {len(state.ontology_addendum.graph)} triples."
+        )
         state.clear_failure()
         return state
 

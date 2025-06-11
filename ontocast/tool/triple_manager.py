@@ -55,7 +55,13 @@ class FilesystemTripleStoreManager(TripleStoreManager):
         )
 
     def serialize_facts(self, g: Graph, **kwargs):
-        # TODO change to chunk props
-        fname = "current"
-        filename = self.working_directory / f"{fname}.ttl"
+        spec = kwargs.pop("spec", None)
+        if spec is None:
+            fname = "current.ttl"
+        elif isinstance(spec, str):
+            s = "_".join(spec.split("/")[-2:])
+            fname = f"facts_{s}.ttl"
+        else:
+            raise TypeError(f"string expected for spec {spec}")
+        filename = self.working_directory / fname
         g.serialize(format="turtle", destination=filename)

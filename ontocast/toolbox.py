@@ -31,9 +31,9 @@ class ToolBox:
         working_directory: pathlib.Path = kwargs.pop("working_directory")
         ontology_directory: Optional[pathlib.Path] = kwargs.pop("ontology_directory")
         model_name: str = kwargs.pop("model_name")
-        llm_base_url: str = kwargs.pop("llm_base_url")
+        llm_base_url: Optional[str] = kwargs.pop("llm_base_url")
         temperature: float = kwargs.pop("temperature")
-        llm_provider: float = kwargs.pop("llm_provider")
+        llm_provider: str = kwargs.pop("llm_provider", "openai")
 
         self.llm: LLMTool = LLMTool.create(
             provider=llm_provider,
