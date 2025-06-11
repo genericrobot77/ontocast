@@ -1,6 +1,7 @@
 import pytest
+
 from ontocast.onto import AgentState, WorkflowNode
-from ontocast.util import wrap_with, count_visits_conditional_success
+from ontocast.util import count_visits_conditional_success, wrap_with
 
 
 def test_wrap_with_basic_functionality():

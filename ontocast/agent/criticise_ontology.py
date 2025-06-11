@@ -1,17 +1,18 @@
 import logging
+
+from langchain.output_parsers import PydanticOutputParser
+from langchain.prompts import PromptTemplate
+
 from ontocast.onto import (
+    ONTOLOGY_VOID_IRI,
     AgentState,
     FailureStages,
     OntologyUpdateCritiqueReport,
     Status,
 )
-from ontocast.toolbox import ToolBox
-from ontocast.prompt.criticise_ontology import prompt_update
-from ontocast.onto import ONTOLOGY_VOID_IRI
+from ontocast.prompt.criticise_ontology import prompt_fresh, prompt_update
 from ontocast.tool import LLMTool, OntologyManager
-from ontocast.prompt.criticise_ontology import prompt_fresh
-
-from langchain.prompts import PromptTemplate
+from ontocast.toolbox import ToolBox
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     logger.info("Criticize ontology")
     llm_tool: LLMTool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager
-    parser = llm_tool.get_parser(OntologyUpdateCritiqueReport)
+    parser = PydanticOutputParser(pydantic_object=OntologyUpdateCritiqueReport)
 
     if state.current_chunk is None:
         state.status = Status.FAILED
@@ -30,7 +31,10 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
         prompt = prompt_fresh
         ontology_original_str = ""
     else:
-        ontology_original_str = f"""Here is the original ontology:\n```ttl\n{state.current_ontology.graph.serialize(format="turtle")}\n```"""
+        ontology_original_str = (
+            f"Here is the original ontology:"
+            f"\n```ttl\n{state.current_ontology.graph.serialize(format='turtle')}\n```"
+        )
         prompt = prompt_update
 
     prompt = PromptTemplate(
@@ -53,7 +57,8 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     )
     critique: OntologyUpdateCritiqueReport = parser.parse(response.content)
     logger.debug(
-        f"Parsed critique report status: {critique.ontology_update_success}, score: {critique.ontology_update_score}"
+        f"Parsed critique report status: {critique.ontology_update_success}, "
+        f"score: {critique.ontology_update_score}"
     )
 
     if state.current_ontology.iri == ONTOLOGY_VOID_IRI:

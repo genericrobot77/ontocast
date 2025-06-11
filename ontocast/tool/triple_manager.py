@@ -1,9 +1,12 @@
-import pathlib
-import logging
-from typing import Optional
-from ontocast.onto import Ontology
 import abc
+import logging
+import pathlib
+from typing import Optional
+
 from rdflib import Graph
+
+from ontocast.onto import Ontology
+
 from .onto import Tool
 
 logger = logging.getLogger(__name__)

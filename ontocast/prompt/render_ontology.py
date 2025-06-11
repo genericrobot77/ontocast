@@ -50,7 +50,7 @@ It failed at the stage: {failure_stage}
 
 
 {failure_reason}
- 
+
 
 Please address ALL the issues outlined in the critique. We will be penalized :( for each unaddressed issue."""
 
@@ -68,7 +68,7 @@ Here is the document:
 ```
 {text}
 ```
-    
+
 
 {failure_instruction}
 

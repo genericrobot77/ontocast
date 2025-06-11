@@ -1,7 +1,9 @@
-from ontocast.stategraph import create_agent_graph
 import re
 from pathlib import Path
+
 import pygraphviz as pgv
+
+from ontocast.stategraph import create_agent_graph
 
 
 def update_mermaid_graph_in_markdown(file_path: str, new_graph: str):

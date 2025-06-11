@@ -1,8 +1,10 @@
 import logging
+
 from rdflib import Namespace
+
 from ontocast.onto import AgentState, FailureStages, RDFGraph
-from ontocast.toolbox import ToolBox
 from ontocast.tool.validate import validate_and_connect_chunk
+from ontocast.toolbox import ToolBox
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +23,7 @@ def _sublimate_ontology(state: AgentState):
 
     query_ontology = f"""
     PREFIX cd: <{state.current_chunk.namespace}>
-    
+
     SELECT ?s ?p ?o
     WHERE {{
     ?s ?p ?o .

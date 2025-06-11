@@ -1,14 +1,13 @@
-from .select_ontology import select_ontology
-from .render_ontology_triples import render_onto_triples
-from .render_facts import render_facts
+from .aggregate_facts import aggregate_serialize
+from .check_chunks import check_chunks_empty
+from .chunk_text import chunk_text
+from .convert_document import convert_document
 from .criticise_facts import criticise_facts
 from .criticise_ontology import criticise_ontology
-from .aggregate_facts import aggregate_serialize
+from .render_facts import render_facts
+from .render_ontology_triples import render_onto_triples
+from .select_ontology import select_ontology
 from .sublimate_ontology import sublimate_ontology
-from .chunk_text import chunk_text
-from .check_chunks import check_chunks_empty
-from .convert_document import convert_document
-
 
 __all__ = [
     "check_chunks_empty",

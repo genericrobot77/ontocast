@@ -1,14 +1,16 @@
-import pytest
 import os
-from ontocast.toolbox import init_toolbox, ToolBox
 from pathlib import Path
-from ontocast.onto import AgentState, RDFGraph, DEFAULT_DOMAIN
+
+import pytest
 from suthing import FileHandle
+
+from ontocast.onto import DEFAULT_DOMAIN, AgentState, RDFGraph
 from ontocast.tool import (
-    LLMTool,
     FilesystemTripleStoreManager,
+    LLMTool,
     OntologyManager,
 )
+from ontocast.toolbox import ToolBox, init_toolbox
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -23,7 +25,8 @@ def current_domain():
 
 @pytest.fixture
 def test_ontology():
-    return RDFGraph._from_turtle_str("""
+    return RDFGraph._from_turtle_str(
+        """
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
     @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -31,8 +34,11 @@ def test_ontology():
 
     ex:TestOntology rdf:type owl:Ontology ;
         rdfs:label "Test Domain Ontology" ;
-        rdfs:comment "An ontology for testing that covers basic concepts and relationships in a test domain. Used for validating ontology processing functionality." .
-    """)
+        rdfs:comment "An ontology for testing that covers basic concepts"""
+        """and relationships in a test domain. """
+        """Used for validating ontology processing functionality." .
+    """
+    )
 
 
 @pytest.fixture

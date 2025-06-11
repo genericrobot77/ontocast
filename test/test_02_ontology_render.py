@@ -1,8 +1,8 @@
 import pytest
 from packaging.version import Version
 
-from ontocast.agent import render_onto_triples, criticise_ontology
-from ontocast.onto import AgentState, Status, FailureStages
+from ontocast.agent import criticise_ontology, render_onto_triples
+from ontocast.onto import AgentState, FailureStages, Status
 
 
 def test_agent_text_to_ontology_fresh(

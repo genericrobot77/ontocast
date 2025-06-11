@@ -1,10 +1,10 @@
-from rdflib import URIRef, Literal
-from ontocast.onto import RDFGraph, PROV, Chunk
-from rdflib.namespace import RDF, RDFS
-from rapidfuzz import fuzz
-
 import logging
 
+from rapidfuzz import fuzz
+from rdflib import Literal, URIRef
+from rdflib.namespace import RDF, RDFS
+
+from ontocast.onto import PROV, Chunk, RDFGraph
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,8 @@ class ChunkRDFGraphAggregator:
                     aggregated_graph.add((new_subj, PROV.wasGeneratedBy, chunk_iri))
 
         logger.info(
-            f"Aggregated {len(chunks)} chunks into graph with {len(aggregated_graph)} triples"
+            f"Aggregated {len(chunks)} chunks into graph "
+            f"with {len(aggregated_graph)} triples"
         )
         return aggregated_graph
 
@@ -145,7 +146,11 @@ class EntityDisambiguator:
         return parts
 
     def normalize_uri(self, uri: URIRef, namespaces: dict) -> tuple[str, str]:
-        """Normalize a URI by expanding any prefixed names and return both full URI and local name"""
+        """
+        Normalize a URI by expanding any prefixed names
+        and return both full URI and local name
+
+        """
         uri_str = str(uri)
         for prefix, namespace in namespaces.items():
             if uri_str.startswith(f"{prefix}:"):
@@ -277,7 +282,8 @@ class EntityDisambiguator:
     def find_similar_predicates(
         self, predicates_with_info: dict[URIRef, dict]
     ) -> list[list[URIRef]]:
-        """Group similar predicates based on string similarity and domain/range compatibility"""
+        """Group similar predicates based on string similarity
+        and domain/range compatibility"""
         predicate_groups = []
         processed = set()
 

@@ -1,7 +1,8 @@
-import pathlib
-from docling.document_converter import DocumentConverter
-from typing import Optional
 import logging.config
+import pathlib
+from typing import Optional
+
+from docling.document_converter import DocumentConverter
 
 logger = logging.getLogger(__name__)
 

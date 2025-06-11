@@ -1,18 +1,19 @@
 import logging
 
-from ontocast.onto import AgentState, Ontology, FailureStages, ONTOLOGY_VOID_ID, Status
+from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
-from ontocast.toolbox import ToolBox
 
+from ontocast.onto import ONTOLOGY_VOID_ID, AgentState, FailureStages, Ontology, Status
 from ontocast.prompt.render_ontology import (
-    template_prompt,
-    ontology_instruction_update,
+    failure_instruction,
+    instructions,
     ontology_instruction_fresh,
+    ontology_instruction_update,
     specific_ontology_instruction_fresh,
     specific_ontology_instruction_update,
-    instructions,
-    failure_instruction,
+    template_prompt,
 )
+from ontocast.toolbox import ToolBox
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
     logger.info("Starting to render ontology triples")
     llm_tool = tools.llm
 
-    parser = llm_tool.get_parser(Ontology)
+    parser = PydanticOutputParser(pydantic_object=Ontology)
 
     logger.debug(f"Using domain: {state.current_domain}")
 

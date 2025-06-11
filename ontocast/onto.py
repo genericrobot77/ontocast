@@ -1,15 +1,15 @@
-from pydantic import BaseModel, Field, ConfigDict
-from rdflib import Graph, Namespace
-from typing import Optional, Any, Union
 import logging
-import pathlib
-from pydantic import GetCoreSchemaHandler
-from pydantic_core import core_schema
-from collections import defaultdict
 import os
-
+import pathlib
 import re
+from collections import defaultdict
 from enum import StrEnum
+from typing import Any, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler
+from pydantic_core import core_schema
+from rdflib import Graph, Namespace
+
 from ontocast.text_utils import render_text_hash
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,10 @@ class FailureStages(StrEnum):
 
     PARSE_TEXT_TO_ONTOLOGY_TRIPLES = "Failed to parse the text into ontology triples."
     PARSE_TEXT_TO_FACTS_TRIPLES = "Failed to parse the text into facts triples."
-    SUBLIMATE_ONTOLOGY = "The produced semantic could not be validated or separated into ontology and facts (technical issue)."
+    SUBLIMATE_ONTOLOGY = (
+        "The produced semantic could not be validated "
+        "or separated into ontology and facts (technical issue)."
+    )
 
 
 COMMON_PREFIXES = {
@@ -167,63 +170,82 @@ class RDFGraph(Graph):
 
 class OntologySelectorReport(BasePydanticModel):
     short_name: Optional[str] = Field(
-        description="A short name (identifier) for the ontology that could be used to represent the domain of the document, None if no ontology is suitable"
+        description="A short name (identifier) for the ontology "
+        "that could be used to represent "
+        "the domain of the document, None if no ontology is suitable"
     )
     present: bool = Field(
-        description="Whether an ontology that could represent the domain of the document is present in the list of ontologies"
+        description="Whether an ontology that could represent "
+        "the domain of the document is present in the list of ontologies"
     )
 
 
 class SemanticTriplesFactsReport(BaseModel):
     semantic_graph: RDFGraph = Field(
         default_factory=RDFGraph,
-        description="Semantic triples (facts) representing the document in turtle (ttl) format.",
+        description="Semantic triples (facts) representing "
+        "the document in turtle (ttl) format.",
     )
     ontology_relevance_score: Optional[float] = Field(
-        description="Score 0-100 for how relevant the ontology is to the document. 0 is the worst, 100 is the best."
+        description="Score 0-100 for how relevant "
+        "the ontology is to the document. "
+        "0 is the worst, 100 is the best."
     )
     triples_generation_score: Optional[float] = Field(
-        description="Score 0-100 for how well the facts extraction / triples generation was performed. 0 is the worst, 100 is the best."
+        description="Score 0-100 for how well "
+        "the facts extraction / triples generation was performed. "
+        "0 is the worst, 100 is the best."
     )
 
 
 class OntologyUpdateCritiqueReport(BaseModel):
     ontology_update_success: bool = Field(
-        description="True if the ontology update was performed successfully, False otherwise."
+        description="True if the ontology update "
+        "was performed successfully, False otherwise."
     )
     ontology_update_score: float = Field(
-        description="Score 0-100 for how well the update improves the original domain ontology of the document. 0 is the worst, 100 is the best."
+        description="Score 0-100 for how well the update improves "
+        "the original domain ontology of the document. "
+        "0 is the worst, 100 is the best."
     )
 
     ontology_update_critique_comment: Optional[str] = Field(
-        description="A very concrete explanation of why the ontology update is not satisfactory. The explanation should be very specific and detailed."
+        description="A concrete explanation of why "
+        "the ontology update is not satisfactory. "
+        "The explanation should be very specific and detailed."
     )
 
 
 class KGCritiqueReport(BaseModel):
     facts_graph_derivation_success: bool = Field(
-        description="True if the facts graph derivation was performed successfully, False otherwise."
+        description="True if the facts graph derivation "
+        "was performed successfully, False otherwise."
     )
     facts_graph_derivation_score: float = Field(
-        description="Score 0-100 for how well the triples of facts represent the original document. 0 is the worst, 100 is the best."
+        description="Score 0-100 for how well the triples of facts "
+        "represent the original document. 0 is the worst, 100 is the best."
     )
 
     facts_graph_derivation_critique_comment: Optional[str] = Field(
-        description="A very concrete explanation of why the semantic graph of facts derivation is not satisfactory. The explanation should be very specific and detailed."
+        description="A concrete explanation of why the semantic graph "
+        "of facts derivation is not satisfactory. "
+        "The explanation should be very specific and detailed."
     )
 
 
 class OntologyProperties(BaseModel):
     short_name: Optional[str] = Field(
         default=None,
-        description="A short name (identifier) for the ontology. It should be an abbreviation. Must be provided.",
+        description="A short name (identifier) for the ontology. "
+        "It should be an abbreviation. Must be provided.",
     )
     title: Optional[str] = Field(
         default=None, description="Ontology title. Must be provided."
     )
     description: Optional[str] = Field(
         default=None,
-        description="A concise description (3-4 sentences) of the ontology (domain, purpose, applicability, etc.)",
+        description="A concise description (3-4 sentences) of the ontology "
+        "(domain, purpose, applicability, etc.)",
     )
     version: Optional[str] = Field(
         description="Version of the ontology",
@@ -251,7 +273,8 @@ class Ontology(OntologyProperties):
 
     graph: RDFGraph = Field(
         default_factory=RDFGraph,
-        description="Semantic triples (abstract entities/relations) that define the ontology in turtle (ttl) format as a string.",
+        description="Semantic triples (abstract entities/relations) "
+        "that define the ontology in turtle (ttl) format as a string.",
     )
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -396,7 +419,9 @@ class AgentState(BasePydanticModel):
             graph=RDFGraph(),
             iri=ONTOLOGY_VOID_IRI,
         ),
-        description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
+        description="Ontology object that contain the semantic graph "
+        "as well as the description, name, short name, version, "
+        "and IRI of the ontology",
     )
 
     ontology_addendum: Ontology = Field(
@@ -407,7 +432,9 @@ class AgentState(BasePydanticModel):
             graph=RDFGraph(),
             iri=ONTOLOGY_VOID_IRI,
         ),
-        description="Ontology object that contain the semantic graph as well as the description, name, short name, version, and IRI of the ontology",
+        description="Ontology object that contain the semantic graph "
+        "as well as the description, name, short name, version, "
+        "and IRI of the ontology",
     )
     failure_stage: Optional[str] = None
     failure_reason: Optional[str] = None

@@ -1,10 +1,11 @@
-import sys
-import pathlib
-import click
-from ontocast.cli.util import crawl_directories, pdf2markdown
 import json
-
 import logging
+import pathlib
+import sys
+
+import click
+
+from ontocast.cli.util import crawl_directories, pdf2markdown
 
 logger = logging.getLogger(__name__)
 

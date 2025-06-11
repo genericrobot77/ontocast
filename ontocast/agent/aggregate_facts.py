@@ -1,7 +1,8 @@
 import logging
+
 from ontocast.onto import AgentState
-from ontocast.toolbox import ToolBox
 from ontocast.tool.validate import RDFGraphConnectivityValidator
+from ontocast.toolbox import ToolBox
 
 logger = logging.getLogger(__name__)
 

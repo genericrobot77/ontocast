@@ -1,12 +1,12 @@
+import pytest
+from rdflib import Literal, URIRef
+
+from ontocast.agent import check_chunks_empty, chunk_text, select_ontology
 from ontocast.onto import (
+    ONTOLOGY_VOID_ID,
     AgentState,
     Ontology,
-    ONTOLOGY_VOID_ID,
 )
-
-from ontocast.agent import select_ontology, chunk_text, check_chunks_empty
-from rdflib import URIRef, Literal
-import pytest
 
 
 def test_agent_state_json():

@@ -1,6 +1,8 @@
-from ontocast.onto import Ontology, RDFGraph, NULL_ONTOLOGY
-from .onto import Tool
 from pydantic import Field
+
+from ontocast.onto import NULL_ONTOLOGY, Ontology, RDFGraph
+
+from .onto import Tool
 
 
 class OntologyManager(Tool):

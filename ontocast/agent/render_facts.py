@@ -1,9 +1,13 @@
 import logging
 
-from ontocast.onto import AgentState, FailureStages, SemanticTriplesFactsReport, Status
+from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
+
+from ontocast.onto import AgentState, FailureStages, SemanticTriplesFactsReport, Status
 from ontocast.prompt.render_facts import (
     ontology_instruction,
+)
+from ontocast.prompt.render_facts import (
     template_prompt as template_prompt_str,
 )
 from ontocast.toolbox import ToolBox
@@ -15,7 +19,7 @@ def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
     logger.info("Starting to render facts")
     llm_tool = tools.llm
 
-    parser = llm_tool.get_parser(SemanticTriplesFactsReport)
+    parser = PydanticOutputParser(pydantic_object=SemanticTriplesFactsReport)
 
     ontology_str = state.current_ontology.graph.serialize(format="turtle")
 
@@ -43,7 +47,10 @@ def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
                     f"\n\nIt failed at the stage: {state.failure_stage}"
                 )
             failure_instruction += f"\n\n{state.failure_reason}"
-            failure_instruction += "\n\nPlease fix the errors and do your best to generate fact triples again."
+            failure_instruction += (
+                "\n\nPlease fix the errors "
+                "and do your best to generate fact triples again."
+            )
         else:
             failure_instruction = ""
 

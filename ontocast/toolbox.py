@@ -4,12 +4,12 @@ from typing import Optional
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
-from ontocast.onto import Ontology, RDFGraph, OntologyProperties
+from ontocast.onto import Ontology, OntologyProperties, RDFGraph
 from ontocast.tool import (
-    TripleStoreManager,
-    FilesystemTripleStoreManager,
-    ConverterTool,
     ChunkerTool,
+    ConverterTool,
+    FilesystemTripleStoreManager,
+    TripleStoreManager,
 )
 from ontocast.tool.aggregate import ChunkRDFGraphAggregator
 from ontocast.tool.llm import LLMTool

@@ -1,12 +1,11 @@
 import copy
 import re
-from typing import Optional, List, Tuple, cast, Iterable, Sequence, Any, Dict, Literal
+from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple, cast
 
 import numpy as np
 from langchain_community.utils.math import cosine_similarity
 from langchain_core.documents import BaseDocumentTransformer, Document
 from langchain_core.embeddings import Embeddings
-
 
 BreakpointThresholdType = Literal[
     "percentile", "standard_deviation", "interquartile", "gradient"

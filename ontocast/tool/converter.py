@@ -1,10 +1,12 @@
-from .onto import Tool
-from docling.document_converter import DocumentConverter
 from io import BytesIO
-from typing import Union, Dict, Any
+from typing import Any, Dict, Union
+
 from docling.datamodel.base_models import (
     DocumentStream,
 )
+from docling.document_converter import DocumentConverter
+
+from .onto import Tool
 
 
 class ConverterTool(Tool):

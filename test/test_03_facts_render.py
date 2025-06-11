@@ -1,5 +1,6 @@
 import pytest
-from ontocast.agent import render_facts, sublimate_ontology, criticise_facts
+
+from ontocast.agent import criticise_facts, render_facts, sublimate_ontology
 from ontocast.onto import AgentState, Status
 
 

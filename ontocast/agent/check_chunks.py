@@ -1,7 +1,7 @@
 import logging
-from ontocast.onto import AgentState
-from ontocast.onto import Status
 from collections import defaultdict
+
+from ontocast.onto import AgentState, Status
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +14,15 @@ def check_chunks_empty(state: AgentState) -> AgentState:
         state.node_visits = defaultdict(int)
         state.status = Status.FAILED
         logger.info(
-            "Chunk available, setting status to FAILED and proceeding to SELECT_ONTOLOGY"
+            "Chunk available, setting status to FAILED"
+            " and proceeding to SELECT_ONTOLOGY"
         )
     else:
         state.current_chunk = None
         state.status = Status.SUCCESS
         logger.info(
-            "No more chunks, setting status to SUCCESS and proceeding to AGGREGATE_FACTS"
+            "No more chunks, setting status to SUCCESS "
+            "and proceeding to AGGREGATE_FACTS"
         )
 
     return state

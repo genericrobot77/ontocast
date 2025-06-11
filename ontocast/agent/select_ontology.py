@@ -1,10 +1,17 @@
 import logging
-from ontocast.onto import AgentState, OntologySelectorReport, NULL_ONTOLOGY
+
+from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
+
+from ontocast.onto import (
+    NULL_ONTOLOGY,
+    AgentState,
+    FailureStages,
+    OntologySelectorReport,
+)
+from ontocast.prompt.select_ontology import template_prompt
 from ontocast.tool import OntologyManager
 from ontocast.toolbox import ToolBox
-from ontocast.prompt.select_ontology import template_prompt
-from ontocast.onto import FailureStages
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +22,7 @@ def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
     llm_tool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager
 
-    parser = llm_tool.get_parser(OntologySelectorReport)
+    parser = PydanticOutputParser(pydantic_object=OntologySelectorReport)
 
     if len(om_tool.ontologies) > 0:
         ontologies_desc = "\n\n".join([o.describe() for o in om_tool.ontologies])

@@ -1,6 +1,9 @@
 import logging
-from ontocast.onto import AgentState, FailureStages, KGCritiqueReport
+
+from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
+
+from ontocast.onto import AgentState, FailureStages, KGCritiqueReport
 from ontocast.prompt.criticise_facts import prompt as criticise_facts_prompt
 from ontocast.toolbox import ToolBox
 
@@ -11,7 +14,7 @@ def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
     logger.info("Criticize facts")
 
     llm_tool = tools.llm
-    parser = llm_tool.get_parser(KGCritiqueReport)
+    parser = PydanticOutputParser(pydantic_object=KGCritiqueReport)
 
     prompt = PromptTemplate(
         template=criticise_facts_prompt,
@@ -33,7 +36,8 @@ def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
     )
     critique: KGCritiqueReport = parser.parse(response.content)
     logger.debug(
-        f"Parsed critique report - Success: {critique.facts_graph_derivation_success}, Score: {critique.facts_graph_derivation_score}"
+        f"Parsed critique report - success: {critique.facts_graph_derivation_success}, "
+        f"score: {critique.facts_graph_derivation_score}"
     )
 
     if critique.facts_graph_derivation_success:

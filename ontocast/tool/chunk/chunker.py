@@ -1,11 +1,12 @@
-from pydantic import Field
-from langchain_huggingface import HuggingFaceEmbeddings
-from ontocast.tool.chunk.util import SemanticChunker
-import torch
-from typing import Literal
-from ontocast.tool.onto import Tool
-
 import logging
+from typing import Literal
+
+import torch
+from langchain_huggingface import HuggingFaceEmbeddings
+from pydantic import Field
+
+from ontocast.tool.chunk.util import SemanticChunker
+from ontocast.tool.onto import Tool
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,8 @@ class ChunkerTool(Tool):
             breakpoint_threshold_amount=self.breakpoint_threshold_amount,
             embeddings=self._model,
             min_chunk_size=self.min_chunk_size,
-            sentence_split_regex=r"(?:(?:\n{2,}(?=#+))|(?:\n{2,}(?=- ))|(?<=[a-z][.?!])\s+(?=\b[A-Z]\w{8,}\b)|(?<!#)(?=#+))",
+            sentence_split_regex=r"(?:(?:\n{2,}(?=#+))|(?:\n{2,}(?=- ))"
+            r"|(?<=[a-z][.?!])\s+(?=\b[A-Z]\w{8,}\b)|(?<!#)(?=#+))",
         )
 
         def recursive_chunking(docs, stop_flag=False):

@@ -1,9 +1,9 @@
 import logging
 import sys
-from ontocast.onto import AgentState, WorkflowNode, Status
 from functools import wraps
 from typing import Callable
 
+from ontocast.onto import AgentState, Status, WorkflowNode
 
 logger = logging.getLogger(__name__)
 

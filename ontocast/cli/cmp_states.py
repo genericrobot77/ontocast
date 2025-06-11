@@ -1,8 +1,10 @@
-import click
 import pathlib
-from ontocast.onto import AgentState
+
+import click
 from rich.console import Console
 from rich.table import Table
+
+from ontocast.onto import AgentState
 
 console = Console()
 
@@ -61,7 +63,8 @@ def main(directory: pathlib.Path, pattern: str):
     state_files = get_state_files(directory, pattern)
     if not state_files:
         console.print(
-            f"[red]No state files found matching pattern '{pattern}' in {directory}[/red]"
+            f"[red]No state files found matching "
+            f"pattern '{pattern}' in {directory}[/red]"
         )
         return
 

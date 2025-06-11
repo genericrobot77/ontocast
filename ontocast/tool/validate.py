@@ -1,13 +1,11 @@
+import logging
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import Set, Any, Optional
+from typing import Any, Optional, Set
 
-from rdflib import URIRef, RDF, RDFS, Literal
+from rdflib import RDF, RDFS, Literal, URIRef
 
-from ontocast.onto import Chunk, RDFGraph, PROV, SCHEMA
-
-import logging
-
+from ontocast.onto import PROV, SCHEMA, Chunk, RDFGraph
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +22,8 @@ def validate_and_connect_chunk(
         auto_connect: Whether to automatically connect disconnected graphs
 
     Returns:
-        Connected graph (original if already connected, or modified if auto_connect=True)
+        Connected graph (original if already connected,
+        or modified if auto_connect=True)
     """
 
     validator = RDFGraphConnectivityValidator(chunk.graph)
@@ -51,7 +50,8 @@ def validate_and_connect_chunk(
         new_validator = RDFGraphConnectivityValidator(final_graph)
         new_result = new_validator.validate_connectivity()
         logger.debug(
-            f"After connection - Components: {new_result['num_components']}, Triples: {len(final_graph)}"
+            "After connection: "
+            f"components: {new_result['num_components']}, triples: {len(final_graph)}"
         )
     chunk.graph = final_graph
     return chunk
@@ -183,7 +183,8 @@ class RDFGraphConnectivityValidator:
                             if subject_type and domain and subject_type != domain:
                                 result["domain_range_consistent"] = False
                                 result["domain_range_violations"].append(
-                                    f"Subject {s} of type {subject_type} used with predicate {pred} "
+                                    f"Subject {s} of type {subject_type} "
+                                    f"used with predicate {pred} "
                                     f"that requires domain {domain}"
                                 )
 
@@ -198,7 +199,8 @@ class RDFGraphConnectivityValidator:
                             if object_type and range_ and object_type != range_:
                                 result["domain_range_consistent"] = False
                                 result["domain_range_violations"].append(
-                                    f"Object {o} of type {object_type} used with predicate {pred} "
+                                    f"Object {o} of type {object_type} "
+                                    f"used with predicate {pred} "
                                     f"that requires range {range_}"
                                 )
 

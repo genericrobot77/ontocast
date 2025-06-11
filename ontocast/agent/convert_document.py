@@ -1,9 +1,10 @@
+import json
 import logging
+import pathlib
+from io import BytesIO
+
 from ontocast.onto import AgentState, Status
 from ontocast.toolbox import ToolBox
-import pathlib
-import json
-from io import BytesIO
 
 logger = logging.getLogger(__name__)
 

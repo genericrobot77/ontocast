@@ -1,5 +1,4 @@
-prompt_fresh = """        
-You are a helpful assistant that criticises a newly proposed ontology.
+prompt_fresh = """You are a helpful assistant that criticises a newly proposed ontology.
 You need to decide whether the updated ontology is sufficiently complete and comprehensive, also providing a score between 0 and 100.
 The ontology is considered complete and comprehensive if it captures the most important abstract classes and properties that are present explicitly or implicitly in the document.
 If is not not complete and comprehensive, provide a very concrete itemized explanation of why can be improved.
@@ -18,8 +17,7 @@ Here is the proposed ontology:
 {format_instructions}
 """
 
-prompt_update = """
-You are a helpful assistant that criticises an ontology update.
+prompt_update = """You are a helpful assistant that criticises an ontology update.
 You need to decide whether the updated ontology is sufficiently complete and comprehensive, also providing a score between 0 and 100.
 The ontology is considered complete and comprehensive if it captures the most important abstract classes and properties that are present explicitly or implicitly in the document.
 If is not not complete and comprehensive, provide a very concrete itemized explanation of why can be improved.

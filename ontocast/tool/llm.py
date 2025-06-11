@@ -1,17 +1,19 @@
-from langchain.output_parsers import PydanticOutputParser
-from langchain_openai import ChatOpenAI
-from langchain_core.language_models import BaseChatModel
-from typing import Type, TypeVar, Any
-from pydantic import BaseModel, Field
 import asyncio
-from typing import Optional
-from .onto import Tool
+from typing import Any, Optional, Type, TypeVar
 
+from langchain.output_parsers import PydanticOutputParser
+from langchain_core.language_models import BaseChatModel
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
+
+from .onto import Tool
 
 T = TypeVar("T", bound=BaseModel)
 
 
 class LLMTool(Tool):
+    provider: str = Field(default="openai")
     model: str = Field(default="gpt-4o-mini")
     api_key: Optional[str] = None
     base_url: Optional[str] = None
@@ -36,10 +38,21 @@ class LLMTool(Tool):
         return self
 
     async def setup(self):
-        self._llm = ChatOpenAI(
-            model=self.model,
-            temperature=self.temperature,
-        )
+        if self.provider == "openai":
+            self._llm = ChatOpenAI(
+                model=self.model,
+                temperature=self.temperature,
+                api_key=self.api_key,
+                base_url=self.base_url,
+            )
+        elif self.provider == "ollama":
+            self._llm = ChatOllama(
+                model=self.model,
+                temperature=self.temperature,
+                base_url=self.base_url,
+            )
+        else:
+            raise ValueError(f"Unsupported provider: {self.provider}")
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.llm.invoke(*args, **kwds)

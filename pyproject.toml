@@ -29,6 +29,7 @@ dependencies = [
   "langchain-core>=0.3.60",
   "langchain-experimental>=0.3.4",
   "langchain-huggingface>=0.2.0",
+  "langchain-ollama>=0.3.3",
   "langchain-openai>=0.3.17",
   "langchain>=0.3.25",
   "langgraph>=0.2.35",
@@ -59,3 +60,15 @@ packages = ["ontocast"]
 [tool.pyright]
 venv = ".venv"
 venvPath = "."
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.format]
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I001", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"ontocast/prompt/*.py" = ["E501"]
