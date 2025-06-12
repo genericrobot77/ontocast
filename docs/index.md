@@ -48,20 +48,10 @@ OPENAI_API_KEY=your_api_key_here
 ### Running the Server
 
 ```bash
-uv run serve --ontology-directory ./data/ontologies --working-directory working_dir --env-path .env 
+uv run serve --ontology-directory ontology_dir --working-directory working_dir --env-path .env 
 ```
 
-### Converting PDFs to Markdown
 
-```bash
-uv run pdfs-to-markdown --input-path data/pdf --output-path data/json [--prefix chem]
-```
-
-## Basic Example
-
-```
-
-```
 
 ## Project Structure
 

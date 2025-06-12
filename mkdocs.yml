@@ -1,4 +1,5 @@
-site_name: Agentic Onto Triplecast
+site_name: OntoCast
+site_description: A tool for converting documents into RDF graphs
 site_url: https://growgraph.github.io/ontocast
 repo_url: https://github.com/growgraph/ontocast
 repo_name: growgraph/ontocast
@@ -59,18 +60,11 @@ nav:
 -   User Guide:
     -   Core Concepts: user_guide/core_concepts.md
     -   Workflow: user_guide/workflow.md
-    -   Best Practices: user_guide/best_practices.md
--   API Reference:
-    -   Core: reference/core.md
-    -   Tools: reference/tools.md
-    -   Models: reference/models.md
 -   Examples:
     -   Basic Usage: examples/basic_usage.md
     -   Advanced Usage: examples/advanced_usage.md
--   Contributing:
-    -   Development Guide: contributing/development.md
-    -   Code Style: contributing/code_style.md
-    -   Testing: contributing/testing.md
+-   API Reference: reference/
+-   Contributing: contributing.md
 
 markdown_extensions:
 -   pymdownx.highlight:
