@@ -9,7 +9,7 @@ import click
 from dotenv import load_dotenv
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
-from robyn import Headers, Request, Response, Robyn
+from robyn import Headers, Request, Response, Robyn, jsonify
 
 from ontocast.cli.util import crawl_directories
 from ontocast.onto import AgentState
@@ -27,22 +27,35 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     async def process(request: Request):
         try:
             content_type = request.headers["content-type"]
-            logger.debug(f"{content_type}")
+            logger.debug(f"Content-Type: {content_type}")
+            logger.debug(f"Request headers: {request.headers}")
+            logger.debug(f"Request body: {request.body}")
 
             if content_type.startswith("application/json"):
-                data = await request.json()
-                if "text" not in data:
-                    return Response(
-                        status_code=400, description="'text' field is required in JSON"
-                    )
-                request.files = {"input.json": data}
+                data = request.body
+                # Convert string to bytes
+                bytes_data = data.encode("utf-8")
+                logger.debug(
+                    f"Parsed JSON data: {data}, bytes length: {len(bytes_data)}"
+                )
+                files = {"input.json": bytes_data}
             elif content_type.startswith("multipart/form-data"):
                 files = request.files
-                logger.debug(f"{files.keys()}")
+                logger.debug(f"Files: {files.keys()}")
+                logger.debug(f"Files-types: {[(k, type(v)) for k, v in files.items()]}")
                 if not files:
-                    return Response(status_code=400, description="No file provided")
+                    return Response(
+                        status_code=400,
+                        headers=Headers({"Content-Type": "application/json"}),
+                        description="No file provided",
+                    )
             else:
-                return Response(status_code=400, description="No data provided")
+                logger.debug(f"Unsupported content type: {content_type}")
+                return Response(
+                    status_code=400,
+                    headers=Headers({"Content-Type": "application/json"}),
+                    description="No data provided",
+                )
 
             state = AgentState(
                 files=files, max_visits=max_visits, max_chunks=head_chunks
@@ -54,21 +67,26 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                 state = chunk
 
             result = {
-                "facts": state.all_facts,
-                "ontology": state.final_ontology,
-                "status": state.status,
+                "facts": state["aggregated_facts"].serialize(format="turtle"),
+                "ontology": state["current_ontology"].graph.serialize(format="turtle"),
+                "status": state["status"],
             }
 
             return Response(
                 status_code=200,
-                headers=Headers({}),
-                response_type="json",
-                description=result,
+                headers=Headers({"Content-Type": "application/json"}),
+                description=jsonify(result),
             )
 
         except Exception as e:
             logger.error(f"Error processing document: {str(e)}")
-            return {"error": str(e)}, 500, {}
+            logger.error(f"Error type: {type(e)}")
+            logger.error("Error traceback:", exc_info=True)
+            return Response(
+                status_code=500,
+                headers=Headers({"Content-Type": "application/json"}),
+                description=f"error {e}",
+            )
 
     return app
 
@@ -83,31 +101,25 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 @click.option(
     "--working-directory", type=click.Path(path_type=pathlib.Path), required=True
 )
-@click.option("--llm-provider", type=str, default="openai")
-@click.option("--model-name", type=str, default="gpt-4o-mini")
-@click.option("--temperature", type=float, default=0.0)
+@click.option("--input-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option("--head-chunks", type=int, default=None)
 @click.option("--port", type=int, default=8999)
-@click.option("--logging-level", type=click.STRING)
-@click.option("--input-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option(
     "--max-visits",
     type=int,
     default=3,
     help="Maximum number of visits allowed per node",
 )
+@click.option("--logging-level", type=click.STRING)
 def run(
     env_path: pathlib.Path,
     ontology_directory: Optional[pathlib.Path],
     working_directory: pathlib.Path,
-    llm_provider: str,
-    model_name: str,
-    temperature: float,
+    input_path: Optional[pathlib.Path],
     port: int,
     head_chunks: Optional[int],
-    logging_level: Optional[str],
-    input_path: Optional[pathlib.Path],
     max_visits: int,
+    logging_level: Optional[str],
 ):
     if logging_level is not None:
         try:
@@ -119,6 +131,8 @@ def run(
 
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
+    llm_provider = os.getenv("LLM_PROVIDER", "openai")
+
     if llm_provider == "openai" and "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
 
@@ -129,10 +143,10 @@ def run(
     tools: ToolBox = ToolBox(
         llm_provider=llm_provider,
         llm_base_url=os.getenv("LLM_BASE_URL", None),
+        model_name=os.getenv("LLM_MODEL_NAME", "gpt-4o-mini"),
+        temperature=os.getenv("LLM_TEMPERATURE", 0.0),
         working_directory=working_directory,
         ontology_directory=ontology_directory,
-        model_name=model_name,
-        temperature=temperature,
     )
     init_toolbox(tools)
 
@@ -152,7 +166,7 @@ def run(
             for file_path in files:
                 try:
                     state = AgentState(
-                        files={file_path: None},
+                        files={file_path.as_posix(): file_path.read_bytes()},
                         max_visits=max_visits,
                         max_chunks=head_chunks,
                     )

@@ -130,7 +130,8 @@ class FilesystemTripleStoreManager(TripleStoreManager):
         if spec is None:
             fname = "current.ttl"
         elif isinstance(spec, str):
-            s = "_".join(spec.split("/")[-2:])
+            s = spec.split("/")[-2:]
+            s = "_".join([x for x in s if x])
             fname = f"facts_{s}.ttl"
         else:
             raise TypeError(f"string expected for spec {spec}")

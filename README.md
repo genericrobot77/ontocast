@@ -1,32 +1,36 @@
-# OntoCast: Agentic Ontology and Knowledge Graph co-generation <img src="https://raw.githubusercontent.com/ontocast/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
+# OntoCast <img src="https://raw.githubusercontent.com/growgraph/ontocast/refs/heads/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
 
-Agentic ontology assisted framework for semantic triple extraction from text/pdfs.
+### Agentic ontology assisted framework for semantic triple extraction from documents
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg) 
 [![pre-commit](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+## Overview
+
+OntoCast is a powerful framework that automatically extracts semantic triples from documents using an agentic approach. It combines ontology management with natural language processing to create structured knowledge from unstructured text.
+
 ## Features
 
-- Automated ontology selection and construction
-- Text-to-triples conversion for both ontologies and facts
-- Multi-stage validation and critique system
-- RDF-based knowledge graph storage
-- Configurable workflow with visit limits and error handling
+- **Automated Ontology Management**
+  - Intelligent ontology selection and construction
+  - Multi-stage validation and critique system
+  - Ontology sublimation and refinement
+
+- **Document Processing**
+  - Supports PDF, Markdown, and text documents
+  - Automated text chunking and processing
+  - Multi-stage validation pipeline
+
+- **Knowledge Graph Integration**
+  - RDF-based knowledge graph storage
+  - Triple extraction for both ontologies and facts
+  - Configurable workflow with visit limits
 
 ## Installation
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/growgraph/ontocast.git
-cd ontocast
-```
-
-2. Install dependencies using `uv`:
-```bash
-uv venv
-source .venv/bin/activate
-uv sync
+pip install graphcast
 ```
 
 ## Configuration
@@ -43,24 +47,35 @@ Paste your OPENAI key:
 OPENAI_API_KEY=your_api_key_here
 ```
 
-## Usage
-
 ### Running the Server
 
 ```bash
-uv run serve --ontology-directory ./data/ontologies --working-directory working_dir --env-path .env 
+uv run serve \
+    --ontology-directory ./data/ontologies \
+    --working-directory working_dir \
+    --env-path .env
 ```
 
-### Converting PDFs to Markdown
+### Processing Documents
 
+1. **Convert PDFs to Markdown** (Optional):
 ```bash
-uv run pdfs-to-markdown --input-path data/pdf --output-path data/json [--prefix chem]
+uv run pdfs-to-markdown \
+    --input-path data/pdf \
+    --output-path data/json \
+    [--prefix chem]
 ```
 
-## Basic Example
+2. **Process Documents via API**:
+```bash
+# Process a PDF file
+curl -X POST http://localhost:8999/process \
+    -F "file=@path/to/your/document.pdf"
 
-```
-
+# Process text content
+curl -X POST http://localhost:8999/process \
+    -H "Content-Type: application/json" \
+    -d '{"text": "Your document text here"}'
 ```
 
 ## Project Structure
@@ -78,28 +93,37 @@ src/
 
 The system follows a multi-stage workflow:
 
-1. Ontology Selection
-2. Text to Ontology Triples
-3. Ontology Critique
-4. Text to Facts
-5. Ontology Sublimation
-6. Facts Critique
-7. Knowledge Graph Storage
+1. **Document Preparation**
+   - [Optional] Convert to Markdown
+   - Text chunking
+
+2. **Ontology Processing**
+   - Ontology selection
+   - Text to ontology triples
+   - Ontology critique
+   - Ontology sublimation
+
+3. **Fact Extraction**
+   - Text to facts
+   - Facts critique
+   - Chunk KG aggregation
+   - Entity/Propety Disambiguation
+
+4. **Storage**
+   - Knowledge graph storage
+
+[<img src="docs/assets/graph.png" width="400"/>](graph.png)
+
+## Documentation
+
+Full documentation is available at: [growgraph.github.io/ontocast](https://growgraph.github.io/ontocast)
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
-
-[Your chosen license]
-
 ## Acknowledgments
 
 - Built with Python and RDFlib
 - Uses OpenAI's language models for semantic analysis
-
-### Agent graph
-
-<!-- ![SVG Image](graph.png|200) -->
-[<img src="docs/assets/graph.png" width="400"/>](graph.png)
+- Based on langchain/langgraph

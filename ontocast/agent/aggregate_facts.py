@@ -17,16 +17,16 @@ def aggregate_serialize(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that saves the knowledge graph."""
     tsm_tool = tools.triple_store_manager
 
-    aggregated_graph = tools.aggregator.aggregate_graphs(
+    state.aggregated_facts = tools.aggregator.aggregate_graphs(
         state.chunks_processed, state.doc_namespace
     )
     logger.info(
-        f"chunks proc: {len(state.chunks_processed)}"
-        f"facts graph: {len(aggregated_graph)} triples"
-        f"onto graphL {state.current_ontology} triples"
+        f"chunks proc: {len(state.chunks_processed)}\n"
+        f"facts graph: {len(state.aggregated_facts)} triples\n"
+        f"onto graph {len(state.current_ontology.graph)} triples"
     )
     tsm_tool.serialize_ontology(state.current_ontology)
-    if len(aggregated_graph) > 0:
-        tsm_tool.serialize_facts(aggregated_graph, spec=state.doc_namespace)
+    if len(state.aggregated_facts) > 0:
+        tsm_tool.serialize_facts(state.aggregated_facts, spec=state.doc_namespace)
 
     return state

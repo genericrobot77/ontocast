@@ -480,12 +480,10 @@ class Chunk(BaseModel):
     hid: str = Field(description="An almost unique (hash) id for the chunk")
     doc_iri: str = Field(description="IRI of parent doc")
     graph: Optional[RDFGraph] = Field(
-        description="RDF triples representing the facts from the current document",
+        description="RDF triples representing the facts from a document chunk",
         default_factory=RDFGraph,
     )
-    processed: bool = Field(
-        default=False, description="Whether chunk has been processed"
-    )
+    processed: bool = Field(default=False, description="Was the chunk processed?")
 
     @property
     def iri(self):
@@ -539,7 +537,7 @@ class AgentState(BasePydanticModel):
         description="An almost unique hash / id for the parent document of the chunk",
         default=None,
     )
-    files: dict[str, bytes] | dict[pathlib.Path, None] = Field(
+    files: dict[str, bytes] = Field(
         default_factory=lambda: dict(), description="Files to process"
     )
     current_chunk: Optional[Chunk] = Field(
@@ -562,6 +560,11 @@ class AgentState(BasePydanticModel):
         description="Ontology object that contain the semantic graph "
         "as well as the description, name, short name, version, "
         "and IRI of the ontology",
+    )
+    aggregated_facts: Optional[RDFGraph] = Field(
+        description="RDF triples representing aggregated facts "
+        "from the current document",
+        default_factory=RDFGraph,
     )
     ontology_addendum: Ontology = Field(
         default_factory=lambda: Ontology(
