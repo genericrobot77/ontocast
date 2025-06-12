@@ -1,0 +1,3 @@
+# `ontocast.prompt`
+
+::: ontocast.prompt

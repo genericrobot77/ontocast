@@ -4,10 +4,10 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix fca: <https://growgraph.dev/fcaont#> .
+@prefix fca: <https://example.com/fcaont#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-<https://growgraph.dev/fcaont#> a owl:Ontology ;
+<https://example.com/fcaont#> a owl:Ontology ;
     rdfs:label "French (Supreme) Court of Appeal Ontology" ;
     dcterms:created "2024-12-18" ;
     owl:versionInfo "3.0" ;

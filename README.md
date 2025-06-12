@@ -1,11 +1,10 @@
-# Agentic Ontology Triplecast
+# OntoCast: Agentic Ontology and Knowledge Graph co-generation <img src="https://raw.githubusercontent.com/ontocast/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
 
 Agentic ontology assisted framework for semantic triple extraction from text/pdfs.
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg) 
-[![pre-commit](https://github.com/growgraph/agentic-onto-triplecast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/agentic-onto-triplecast/actions/workflows/pre-commit.yml)
+[![pre-commit](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-<!-- [![DOI](https://zenodo.org/badge/259046250.svg)](https://zenodo.org/badge/latestdoi/259046250) -->
 
 ## Features
 
@@ -19,8 +18,8 @@ Agentic ontology assisted framework for semantic triple extraction from text/pdf
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/growgraph/agentic-onto-triplecast.git
-cd agentic-onto-triplecast
+git clone https://github.com/growgraph/ontocast.git
+cd ontocast
 ```
 
 2. Install dependencies using `uv`:
@@ -49,7 +48,7 @@ OPENAI_API_KEY=your_api_key_here
 ### Running the Server
 
 ```bash
-uv run serve --env-path .env --ontology-path ./data/ontologies --working-directory working_dir
+uv run serve --ontology-directory ./data/ontologies --working-directory working_dir --env-path .env 
 ```
 
 ### Converting PDFs to Markdown
@@ -78,6 +77,7 @@ src/
 ## Workflow
 
 The system follows a multi-stage workflow:
+
 1. Ontology Selection
 2. Text to Ontology Triples
 3. Ontology Critique
@@ -102,4 +102,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ### Agent graph
 
 <!-- ![SVG Image](graph.png|200) -->
-[<img src="static/img/graph.png" width="400"/>](graph.png)
+[<img src="docs/assets/graph.png" width="400"/>](graph.png)

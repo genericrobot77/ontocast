@@ -4,7 +4,6 @@ requires = ["hatchling"]
 
 [dependency-groups]
 dev = [
-  "langchain-core>=0.3.49",
   "pre-commit>=4.2.0",
   "pygraphviz>=1.14",
   "pytest-dotenv>=0.5.2",
@@ -13,38 +12,64 @@ dev = [
   "requests>=2.32.3",
   "ruff>=0.11.2"
 ]
+docs = [
+  "mkdocs-gen-files>=0.5.0",
+  "mkdocs-glightbox>=0.4.0",
+  "mkdocs-jupyter>=0.25.1",
+  "mkdocs-literate-nav>=0.6.2",
+  "mkdocs-material>=9.6.14",
+  "mkdocs>=1.6.1",
+  "mkdocstrings[python]>=0.29.1"
+]
 
 [project]
 dependencies = [
   "asyncio>=3.4.3",
-  "docling>=0.1.0",
-  "langchain-community>=0.3.20",
-  "langchain-mcp-adapters>=0.0.7",
-  "langchain-openai>=0.3.12",
-  "langchain>=0.3.22",
-  "langgraph>=0.3.21",
-  "mcp>=1.6.0",
+  "click>=8.1.8",
+  "docling>=2.32.0",
+  "langchain-core>=0.3.60",
+  "langchain-experimental>=0.3.4",
+  "langchain-huggingface>=0.2.0",
+  "langchain-ollama>=0.3.3",
+  "langchain-openai>=0.3.17",
+  "langchain>=0.3.25",
+  "langgraph>=0.2.35",
   "owlready2>=0.47",
+  "rapidfuzz>=3.13.0",
   "rdflib>=7.1.4",
   "rich>=14.0.0",
-  "robyn>=0.53.0",
-  "suthing>=0.3.0"
+  "robyn>=0.66.2",
+  "sentence-transformers>=4.1.0",
+  "simsimd>=6.2.1",
+  "suthing>=0.4.1"
 ]
-description = "Add your description here"
-name = "agentic-onto-triple-cast"
+description = "Agentic ontology and knowledge graph co-generation"
+name = "ontocast"
 readme = "README.md"
 requires-python = ">=3.12"
 version = "0.1.0"
 
 [project.scripts]
-cmp-states = "src.cli.cmp_states:main"
-pdfs-to-markdown = "src.cli.pdfs_to_markdown:main"
-plot-graph = "src.cli.plot_graph:main"
-serve = "src.cli.serve:run"
+cmp-states = "ontocast.cli.cmp_states:main"
+pdfs-to-markdown = "ontocast.cli.pdfs_to_markdown:main"
+plot-graph = "ontocast.cli.plot_graph:main"
+serve = "ontocast.cli.serve:run"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
+packages = ["ontocast"]
 
 [tool.pyright]
 venv = ".venv"
 venvPath = "."
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.format]
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I001", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"ontocast/prompt/*.py" = ["E501"]

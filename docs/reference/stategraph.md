@@ -1,0 +1,3 @@
+# `ontocast.stategraph`
+
+::: ontocast.stategraph
