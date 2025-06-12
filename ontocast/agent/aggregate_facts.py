@@ -1,3 +1,10 @@
+"""Fact aggregation agent for OntoCast.
+
+This module provides functionality for aggregating and serializing facts from
+multiple chunks into a single RDF graph, handling entity and predicate
+disambiguation.
+"""
+
 import logging
 
 from ontocast.onto import AgentState

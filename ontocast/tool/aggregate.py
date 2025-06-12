@@ -1,3 +1,10 @@
+"""Graph aggregation tools for OntoCast.
+
+This module provides functionality for aggregating and disambiguating RDF graphs
+from multiple chunks, handling entity and predicate disambiguation, and ensuring
+consistent namespace usage across the aggregated graph.
+"""
+
 import logging
 
 from rapidfuzz import fuzz
@@ -10,19 +17,38 @@ logger = logging.getLogger(__name__)
 
 
 class ChunkRDFGraphAggregator:
-    """Main class for aggregating and disambiguating chunk graphs"""
+    """Main class for aggregating and disambiguating chunk graphs.
+
+    This class provides functionality for combining RDF graphs from multiple chunks
+    while handling entity and predicate disambiguation. It ensures consistent
+    namespace usage and creates canonical URIs for similar entities and predicates.
+
+    Attributes:
+        disambiguator: Entity disambiguator instance for handling entity similarity.
+    """
 
     def __init__(self, similarity_threshold: float = 85.0):
+        """Initialize the chunk RDF graph aggregator.
+
+        Args:
+            similarity_threshold: Threshold for considering entities similar
+                (default: 85.0).
+        """
         self.disambiguator = EntityDisambiguator(similarity_threshold)
 
     def aggregate_graphs(self, chunks: list[Chunk], doc_namespace) -> RDFGraph:
-        """
-        Aggregate multiple chunk graphs with entity and predicate disambiguation
+        """Aggregate multiple chunk graphs with entity and predicate disambiguation.
+
+        This method combines multiple chunk graphs into a single graph while
+        handling entity and predicate disambiguation. It creates canonical URIs
+        for similar entities and predicates, and ensures consistent namespace usage.
+
         Args:
-            chunks: list[Chunk]
-            doc_namespace: The document IRI to use as base for canonical URIs
+            chunks: List of chunks to aggregate.
+            doc_namespace: The document IRI to use as base for canonical URIs.
+
         Returns:
-            Aggregated graph with disambiguated entities and predicates
+            RDFGraph: Aggregated graph with disambiguated entities and predicates.
         """
         logger.info(f"Aggregating {len(chunks)} chunks for document {doc_namespace}")
         aggregated_graph = RDFGraph()
@@ -133,23 +159,48 @@ class ChunkRDFGraphAggregator:
 
 
 class EntityDisambiguator:
-    """Disambiguate and aggregate entities across multiple chunk graphs"""
+    """Disambiguate and aggregate entities across multiple chunk graphs.
+
+    This class provides functionality for identifying and resolving similar
+    entities across different chunks of text, using string similarity and
+    semantic information.
+
+    Attributes:
+        similarity_threshold: Threshold for considering entities similar.
+    """
 
     def __init__(self, similarity_threshold: float = 85.0):
+        """Initialize the entity disambiguator.
+
+        Args:
+            similarity_threshold: Threshold for considering entities similar
+                (default: 85.0).
+        """
         self.similarity_threshold = similarity_threshold
 
     def get_local_name(self, uri: URIRef) -> str:
-        """Extract local name from URI, handling both / and # separators"""
+        """Extract local name from URI, handling both / and # separators.
+
+        Args:
+            uri: The URI to process.
+
+        Returns:
+            str: The local name part of the URI.
+        """
         uri_str = str(uri)
         # Try to get the part after the last / or #
         parts = uri_str.split("/")[-1].split("#")[-1]
         return parts
 
     def normalize_uri(self, uri: URIRef, namespaces: dict) -> tuple[str, str]:
-        """
-        Normalize a URI by expanding any prefixed names
-        and return both full URI and local name
+        """Normalize a URI by expanding any prefixed names.
 
+        Args:
+            uri: The URI to normalize.
+            namespaces: Dictionary of namespace prefixes to URIs.
+
+        Returns:
+            tuple[str, str]: The full URI and local name.
         """
         uri_str = str(uri)
         for prefix, namespace in namespaces.items():
@@ -159,7 +210,15 @@ class EntityDisambiguator:
         return uri_str, self.get_local_name(uri)
 
     def extract_entity_labels(self, graph: RDFGraph) -> dict[URIRef, dict]:
-        """Extract labels for entities from graph, including their local names"""
+        """Extract labels for entities from graph, including their local names.
+
+        Args:
+            graph: The RDF graph to process.
+
+        Returns:
+            dict[URIRef, dict]: Dictionary mapping entity URIs to their labels and
+                local names.
+        """
         labels = {}
         namespaces = dict(graph.namespaces())
 
@@ -182,7 +241,15 @@ class EntityDisambiguator:
     def find_similar_entities(
         self, entities_with_labels: dict[URIRef, dict]
     ) -> list[list[URIRef]]:
-        """Group similar entities based on string similarity and local names"""
+        """Group similar entities based on string similarity and local names.
+
+        Args:
+            entities_with_labels: Dictionary mapping entity URIs to their labels
+                and local names.
+
+        Returns:
+            list[list[URIRef]]: Groups of similar entities.
+        """
         entity_groups = []
         processed = set()
 
@@ -223,14 +290,29 @@ class EntityDisambiguator:
     def create_canonical_iri(
         self, similar_entities: list[URIRef], doc_namespace: str
     ) -> URIRef:
-        """Create a canonical URI for a group of similar entities"""
+        """Create a canonical URI for a group of similar entities.
+
+        Args:
+            similar_entities: List of similar entity URIs.
+            doc_namespace: The document namespace to use.
+
+        Returns:
+            URIRef: The canonical URI for the group.
+        """
         # Use the entity with the most complete information
         # For now, just use the first entity's local name
         local_name = self.get_local_name(similar_entities[0])
         return URIRef(f"{doc_namespace}{local_name}")
 
     def extract_predicate_info(self, graph: RDFGraph) -> dict[URIRef, dict]:
-        """Extract predicate information including labels, domains, and ranges"""
+        """Extract predicate information including labels, domains, and ranges.
+
+        Args:
+            graph: The RDF graph to process.
+
+        Returns:
+            dict[URIRef, dict]: Dictionary mapping predicate URIs to their metadata.
+        """
         predicate_info = {}
         namespaces = dict(graph.namespaces())
 
@@ -283,7 +365,14 @@ class EntityDisambiguator:
         self, predicates_with_info: dict[URIRef, dict]
     ) -> list[list[URIRef]]:
         """Group similar predicates based on string similarity
-        and domain/range compatibility"""
+                and domain/range compatibility.
+
+        Args:
+            predicates_with_info: Dictionary mapping predicate URIs to their metadata.
+
+        Returns:
+            list[list[URIRef]]: Groups of similar predicates.
+        """
         predicate_groups = []
         processed = set()
 
@@ -336,7 +425,16 @@ class EntityDisambiguator:
         doc_namespace: str,
         predicate_info: dict[URIRef, dict],
     ) -> URIRef:
-        """Create a canonical URI for a group of similar predicates"""
+        """Create a canonical URI for a group of similar predicates.
+
+        Args:
+            similar_predicates: List of similar predicate URIs.
+            doc_namespace: The document namespace to use.
+            predicate_info: Dictionary mapping predicate URIs to their metadata.
+
+        Returns:
+            URIRef: The canonical URI for the group.
+        """
         # Use the predicate with the most complete information
         best_pred = max(
             similar_predicates,

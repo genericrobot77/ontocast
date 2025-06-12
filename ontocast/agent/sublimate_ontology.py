@@ -1,3 +1,10 @@
+"""Ontology sublimation agent for OntoCast.
+
+This module provides functionality for refining and enhancing ontologies through
+a process of sublimation, which involves improving the structure, consistency,
+and expressiveness of the ontological knowledge.
+"""
+
 import logging
 
 from rdflib import Namespace

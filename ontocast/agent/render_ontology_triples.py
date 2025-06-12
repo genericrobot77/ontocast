@@ -1,3 +1,10 @@
+"""Ontology triple rendering agent for OntoCast.
+
+This module provides functionality for rendering RDF triples from ontologies into
+human-readable formats, making the ontological knowledge more accessible and
+understandable.
+"""
+
 import logging
 
 from langchain.output_parsers import PydanticOutputParser
@@ -19,6 +26,19 @@ logger = logging.getLogger(__name__)
 
 
 def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
+    """Render ontology triples into a human-readable format.
+
+    This function takes the triples from the current ontology and renders them
+    into a more accessible format, making the ontological knowledge easier to
+    understand.
+
+    Args:
+        state: The current agent state containing the ontology to render.
+        tools: The toolbox instance providing utility functions.
+
+    Returns:
+        AgentState: Updated state with rendered triples.
+    """
     logger.info("Starting to render ontology triples")
     llm_tool = tools.llm
 

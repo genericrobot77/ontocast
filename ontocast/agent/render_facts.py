@@ -1,3 +1,10 @@
+"""Fact rendering agent for OntoCast.
+
+This module provides functionality for rendering facts from RDF graphs into
+human-readable formats, making the extracted knowledge more accessible and
+understandable.
+"""
+
 import logging
 
 from langchain.output_parsers import PydanticOutputParser
@@ -16,6 +23,18 @@ logger = logging.getLogger(__name__)
 
 
 def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
+    """Render facts from the current chunk into a human-readable format.
+
+    This function takes the facts in the current chunk and renders them into a
+    more accessible format, making the extracted knowledge easier to understand.
+
+    Args:
+        state: The current agent state containing the chunk to render.
+        tools: The toolbox instance providing utility functions.
+
+    Returns:
+        AgentState: Updated state with rendered facts.
+    """
     logger.info("Starting to render facts")
     llm_tool = tools.llm
 

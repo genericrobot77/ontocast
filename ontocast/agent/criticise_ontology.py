@@ -1,3 +1,10 @@
+"""Ontology criticism agent for OntoCast.
+
+This module provides functionality for analyzing and validating ontologies,
+ensuring their structural integrity, consistency, and alignment with domain
+requirements.
+"""
+
 import logging
 
 from langchain.output_parsers import PydanticOutputParser
@@ -18,6 +25,19 @@ logger = logging.getLogger(__name__)
 
 
 def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
+    """Analyze and validate the current ontology.
+
+    This function performs a critical analysis of the ontology in the current
+    state, checking for structural integrity, consistency, and alignment with
+    domain requirements.
+
+    Args:
+        state: The current agent state containing the ontology to analyze.
+        tools: The toolbox instance providing utility functions.
+
+    Returns:
+        AgentState: Updated state with analysis results.
+    """
     logger.info("Criticize ontology")
     llm_tool: LLMTool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager

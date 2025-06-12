@@ -1,3 +1,9 @@
+"""Document conversion agent for OntoCast.
+
+This module provides functionality for converting various document formats into
+structured data that can be processed by the OntoCast system.
+"""
+
 import json
 import logging
 import pathlib
@@ -10,6 +16,18 @@ logger = logging.getLogger(__name__)
 
 
 def convert_document(state: AgentState, tools: ToolBox) -> AgentState:
+    """Convert a document into structured data.
+
+    This function takes a document and converts it into a structured format that
+    can be processed by the OntoCast system.
+
+    Args:
+        state: The current agent state containing the document to convert.
+        tools: The toolbox instance providing utility functions.
+
+    Returns:
+        AgentState: Updated state with converted document data.
+    """
     logger.debug("Converting documents. NB: processing only one file")
 
     state.status = Status.SUCCESS

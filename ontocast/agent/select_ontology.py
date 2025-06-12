@@ -1,3 +1,10 @@
+"""Ontology selection agent for OntoCast.
+
+This module provides functionality for selecting appropriate ontologies based on
+the content of text chunks, ensuring that the chosen ontology best matches the
+domain and requirements of the text.
+"""
+
 import logging
 
 from langchain.output_parsers import PydanticOutputParser
@@ -17,7 +24,18 @@ logger = logging.getLogger(__name__)
 
 
 def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
-    """Create a node that selects the most appropriate ontology for the input text."""
+    """Select an appropriate ontology for the current chunk.
+
+    This function analyzes the current chunk and selects the most appropriate
+    ontology based on its content and requirements.
+
+    Args:
+        state: The current agent state containing the chunk to process.
+        tools: The toolbox instance providing utility functions.
+
+    Returns:
+        AgentState: Updated state with selected ontology.
+    """
     logger.info("Selecting ontology")
     llm_tool = tools.llm
     om_tool: OntologyManager = tools.ontology_manager

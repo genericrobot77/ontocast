@@ -1,3 +1,9 @@
+"""Fact criticism agent for OntoCast.
+
+This module provides functionality for analyzing and validating facts extracted
+from text chunks, ensuring their consistency and correctness.
+"""
+
 import logging
 
 from langchain.output_parsers import PydanticOutputParser
@@ -11,6 +17,22 @@ logger = logging.getLogger(__name__)
 
 
 def criticise_facts(state: AgentState, tools: ToolBox) -> AgentState:
+    """Analyze and validate facts in the current chunk.
+
+    This function performs a critical analysis of the facts in the current chunk,
+    checking for consistency, correctness, and potential issues.
+
+    Args:
+        state: The current agent state containing the chunk to analyze.
+        tools: The toolbox instance providing utility functions.
+
+    Returns:
+        AgentState: Updated state with analysis results.
+    """
+    if not state.current_chunk:
+        logger.warning("No current chunk to analyze")
+        return state
+
     logger.info("Criticize facts")
 
     llm_tool = tools.llm
