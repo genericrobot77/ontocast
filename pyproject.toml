@@ -47,7 +47,7 @@ description = "Agentic ontology and knowledge graph co-generation"
 name = "ontocast"
 readme = "README.md"
 requires-python = ">=3.12"
-version = "0.1.0"
+version = "0.1.1"
 
 [project.scripts]
 cmp-states = "ontocast.cli.cmp_states:main"
@@ -73,3 +73,6 @@ select = ["E", "F", "I001", "W"]
 
 [tool.ruff.lint.per-file-ignores]
 "ontocast/prompt/*.py" = ["E501"]
+
+[tool.uv]
+default-groups = ["docs"]
