@@ -1,3 +1,9 @@
+"""Validation tools for OntoCast.
+
+This module provides functionality for validating RDF graphs and chunks,
+including connectivity validation and graph structure verification.
+"""
+
 import logging
 from collections import defaultdict, deque
 from copy import deepcopy
@@ -14,18 +20,18 @@ def validate_and_connect_chunk(
     chunk: Chunk,
     auto_connect: bool = True,
 ) -> Chunk:
-    """
-    Utility function to validate and optionally connect a chunk graph
+    """Validate and optionally connect a chunk graph.
+
+    This function validates the connectivity of a chunk's RDF graph and
+    optionally connects any disconnected components.
 
     Args:
-        chunk: The RDF graph to validate
-        auto_connect: Whether to automatically connect disconnected graphs
+        chunk: The chunk containing the RDF graph to validate.
+        auto_connect: Whether to automatically connect disconnected graphs.
 
     Returns:
-        Connected graph (original if already connected,
-        or modified if auto_connect=True)
+        Chunk: The chunk with a validated and optionally connected graph.
     """
-
     validator = RDFGraphConnectivityValidator(chunk.graph)
 
     result = validator.validate_connectivity()
@@ -58,13 +64,30 @@ def validate_and_connect_chunk(
 
 
 class RDFGraphConnectivityValidator:
-    """Validates that entities within a chunk graph are connected"""
+    """Validator for RDF graph connectivity.
+
+    This class provides functionality for validating and ensuring connectivity
+    in RDF graphs, including finding connected components and adding bridging
+    relationships.
+
+    Attributes:
+        graph: The RDF graph to validate.
+    """
 
     def __init__(self, graph: RDFGraph):
+        """Initialize the validator.
+
+        Args:
+            graph: The RDF graph to validate.
+        """
         self.graph = graph
 
     def get_all_entities(self) -> Set[URIRef]:
-        """Extract all unique entities (subjects and objects) from the graph"""
+        """Extract all unique entities from the graph.
+
+        Returns:
+            Set[URIRef]: Set of all unique entity URIs in the graph.
+        """
         entities = set()
 
         for subj, _, obj in self.graph:
@@ -76,7 +99,11 @@ class RDFGraphConnectivityValidator:
         return entities
 
     def build_adjacency_graph(self) -> dict[URIRef, Set[URIRef]]:
-        """Build an adjacency representation of the RDF graph"""
+        """Build an adjacency representation of the RDF graph.
+
+        Returns:
+            dict[URIRef, Set[URIRef]]: Dictionary mapping entities to their neighbors.
+        """
         adjacency = defaultdict(set)
 
         for subj, _, obj in self.graph:
@@ -87,7 +114,11 @@ class RDFGraphConnectivityValidator:
         return adjacency
 
     def find_connected_components(self) -> list[Set[URIRef]]:
-        """Find all connected components using BFS"""
+        """Find all connected components in the graph using BFS.
+
+        Returns:
+            list[Set[URIRef]]: List of sets, each containing entities in a component.
+        """
         entities = self.get_all_entities()
         adjacency = self.build_adjacency_graph()
         visited = set()
@@ -115,9 +146,10 @@ class RDFGraphConnectivityValidator:
         return components
 
     def validate_predicates(self) -> dict[str, Any]:
-        """
-        Validate predicate consistency and required properties
-        Returns dict with validation results
+        """Validate predicate consistency and required properties.
+
+        Returns:
+            dict[str, Any]: Dictionary containing validation results and statistics.
         """
         result = {
             "has_required_properties": True,
@@ -207,9 +239,11 @@ class RDFGraphConnectivityValidator:
         return result
 
     def validate_connectivity(self) -> dict[str, Any]:
-        """
-        Validate graph connectivity and return detailed results
-        Returns dict with connectivity info and isolated entities
+        """Validate graph connectivity and return detailed results.
+
+        Returns:
+            dict[str, Any]: Dictionary containing connectivity information and
+                validation results.
         """
         components = self.find_connected_components()
         entities = self.get_all_entities()
@@ -238,13 +272,13 @@ class RDFGraphConnectivityValidator:
         return result
 
     def make_graph_connected(self, chunk_iri) -> RDFGraph:
-        """
-        Make a disconnected graph connected by adding bridging relationships
+        """Make a disconnected graph connected by adding bridging relationships.
 
         Args:
+            chunk_iri: The IRI of the chunk to use for the hub entity.
 
         Returns:
-            New connected graph
+            RDFGraph: A new connected graph.
         """
         components = self.find_connected_components()
 
@@ -271,12 +305,20 @@ class RDFGraphConnectivityValidator:
     def _connect_via_chunk_hub(
         self, graph: RDFGraph, components: list[Set[URIRef]], chunk_iri
     ) -> RDFGraph:
-        """Connect components by creating a chunk hub entity"""
+        """Connect components by creating a chunk hub entity.
+
+        Args:
+            graph: The graph to modify.
+            components: List of connected components to connect.
+            chunk_iri: The IRI to use for the hub entity.
+
+        Returns:
+            RDFGraph: The modified graph with connected components.
+        """
         # Create or use existing chunk URI
         hub_uri = URIRef(chunk_iri)
 
         # Add hub entity metadata
-
         graph.add((hub_uri, RDF.type, SCHEMA.TextDigitalDocument))
         graph.add((hub_uri, RDFS.label, Literal("Document chunk")))
 
@@ -294,7 +336,15 @@ class RDFGraphConnectivityValidator:
     def _choose_representative_entity(
         self, component: Set[URIRef], graph: RDFGraph
     ) -> Optional[URIRef]:
-        """Choose the best representative entity from a component"""
+        """Choose the best representative entity from a component.
+
+        Args:
+            component: Set of entities in the component.
+            graph: The RDF graph containing the entities.
+
+        Returns:
+            Optional[URIRef]: The chosen representative entity, or None if empty.
+        """
         if not component:
             return None
 

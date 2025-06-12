@@ -1,3 +1,9 @@
+"""Document conversion tools for OntoCast.
+
+This module provides functionality for converting various document formats
+into structured data that can be processed by the OntoCast system.
+"""
+
 from io import BytesIO
 from typing import Any, Dict, Union
 
@@ -10,24 +16,37 @@ from .onto import Tool
 
 
 class ConverterTool(Tool):
+    """Tool for converting documents to structured data.
+
+    This class provides functionality for converting various document formats
+    into structured data that can be processed by the OntoCast system.
+
+    Attributes:
+        supported_extensions: Set of supported file extensions.
+    """
+
     supported_extensions: set[str] = {".pdf", ".ppt", ".pptx"}
 
     def __init__(
         self,
         **kwargs,
     ):
+        """Initialize the converter tool.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class.
+        """
         super().__init__(**kwargs)
         self._converter = DocumentConverter()
 
     def __call__(self, file_input: Union[BytesIO, str]) -> Dict[str, Any]:
-        """
-        Convert a file to markdown text.
+        """Convert a document to structured data.
 
         Args:
-            file_input: Either a BytesIO object or a string containing the file content
+            file_input: The input file as either a BytesIO object or file path.
 
         Returns:
-            Dict containing the converted text
+            Dict[str, Any]: The converted document data.
         """
         if isinstance(file_input, BytesIO):
             ds = DocumentStream(name="doc", stream=file_input)

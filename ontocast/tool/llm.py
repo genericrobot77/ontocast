@@ -1,3 +1,10 @@
+"""Language Model (LLM) integration tool for OntoCast.
+
+This module provides integration with various language models through LangChain,
+supporting both OpenAI and Ollama providers. It enables text generation and
+structured data extraction capabilities.
+"""
+
 import asyncio
 from typing import Any, Optional, Type, TypeVar
 
@@ -13,6 +20,20 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class LLMTool(Tool):
+    """Tool for interacting with language models.
+
+    This class provides a unified interface for working with different language model
+    providers (OpenAI, Ollama) through LangChain. It supports both synchronous and
+    asynchronous operations.
+
+    Attributes:
+        provider: The LLM provider to use (default: "openai").
+        model: The specific model to use (default: "gpt-4o-mini").
+        api_key: Optional API key for the provider.
+        base_url: Optional base URL for the provider.
+        temperature: Temperature parameter for generation (default: 0.1).
+    """
+
     provider: str = Field(default="openai")
     model: str = Field(default="gpt-4o-mini")
     api_key: Optional[str] = None
@@ -23,21 +44,47 @@ class LLMTool(Tool):
         self,
         **kwargs,
     ):
+        """Initialize the LLM tool.
+
+        Args:
+            **kwargs: Additional keyword arguments passed to the parent class.
+        """
         super().__init__(**kwargs)
         self._llm = None
 
     @classmethod
     def create(cls, **kwargs):
+        """Create a new LLM tool instance synchronously.
+
+        Args:
+            **kwargs: Keyword arguments for initialization.
+
+        Returns:
+            LLMTool: A new instance of the LLM tool.
+        """
         return asyncio.run(cls.acreate(**kwargs))
 
     @classmethod
     async def acreate(cls, **kwargs):
+        """Create a new LLM tool instance asynchronously.
+
+        Args:
+            **kwargs: Keyword arguments for initialization.
+
+        Returns:
+            LLMTool: A new instance of the LLM tool.
+        """
         self = cls.__new__(cls)
         self.__init__(**kwargs)
         await self.setup()
         return self
 
     async def setup(self):
+        """Set up the language model based on the configured provider.
+
+        Raises:
+            ValueError: If the provider is not supported.
+        """
         if self.provider == "openai":
             self._llm = ChatOpenAI(
                 model=self.model,
@@ -51,11 +98,27 @@ class LLMTool(Tool):
             raise ValueError(f"Unsupported provider: {self.provider}")
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
+        """Call the language model directly.
+
+        Args:
+            *args: Positional arguments passed to the LLM.
+            **kwds: Keyword arguments passed to the LLM.
+
+        Returns:
+            Any: The LLM's response.
+        """
         return self.llm.invoke(*args, **kwds)
 
     @property
     def llm(self) -> BaseChatModel:
-        """Access to the LangChain ChatOpenAI instance"""
+        """Get the underlying language model instance.
+
+        Returns:
+            BaseChatModel: The configured language model.
+
+        Raises:
+            RuntimeError: If the LLM has not been properly initialized.
+        """
         if self._llm is None:
             raise RuntimeError(
                 "LLM resource not properly initialized. Call setup() first."
@@ -63,11 +126,29 @@ class LLMTool(Tool):
         return self._llm
 
     async def complete(self, prompt: str, **kwargs) -> Any:
+        """Generate a completion for the given prompt.
+
+        Args:
+            prompt: The input prompt for generation.
+            **kwargs: Additional keyword arguments for generation.
+
+        Returns:
+            Any: The generated completion.
+        """
         response = await self.llm.ainvoke(prompt)
         return response.content
 
     async def extract(self, prompt: str, output_schema: Type[T], **kwargs) -> T:
-        """Extract structured data according to schema"""
+        """Extract structured data from the prompt according to a schema.
+
+        Args:
+            prompt: The input prompt for extraction.
+            output_schema: The Pydantic model class defining the output structure.
+            **kwargs: Additional keyword arguments for extraction.
+
+        Returns:
+            T: The extracted data conforming to the output schema.
+        """
         parser = PydanticOutputParser(pydantic_object=output_schema)
         format_instructions = parser.get_format_instructions()
 
