@@ -23,8 +23,37 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     app = Robyn(__file__)
     workflow: CompiledStateGraph = create_agent_graph(tools)
 
+    @app.get("/health")
+    async def health_check():
+        """MCP health check endpoint."""
+        return Response(
+            status_code=200,
+            headers=Headers({"Content-Type": "application/json"}),
+            description=jsonify({"status": "healthy"}),
+        )
+
+    @app.get("/info")
+    async def info():
+        """MCP info endpoint."""
+        return Response(
+            status_code=200,
+            headers=Headers({"Content-Type": "application/json"}),
+            description=jsonify(
+                {
+                    "name": "ontocast",
+                    "version": "0.1.1",
+                    "description": "Agentic ontology assisted framework "
+                    "for semantic triple extraction",
+                    "capabilities": ["text-to-triples", "ontology-extraction"],
+                    "input_types": ["text", "json", "pdf", "markdown"],
+                    "output_types": ["turtle", "json"],
+                }
+            ),
+        )
+
     @app.post("/process")
     async def process(request: Request):
+        """MCP process endpoint."""
         try:
             content_type = request.headers["content-type"]
             logger.debug(f"Content-Type: {content_type}")
@@ -66,10 +95,19 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
             ):
                 state = chunk
 
+            # Format response according to MCP specification
             result = {
-                "facts": state["aggregated_facts"].serialize(format="turtle"),
-                "ontology": state["current_ontology"].graph.serialize(format="turtle"),
-                "status": state["status"],
+                "status": "success",
+                "data": {
+                    "facts": state["aggregated_facts"].serialize(format="turtle"),
+                    "ontology": state["current_ontology"].graph.serialize(
+                        format="turtle"
+                    ),
+                },
+                "metadata": {
+                    "status": state["status"],
+                    "chunks_processed": len(state.get("chunks", [])),
+                },
             }
 
             return Response(
@@ -85,7 +123,13 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
             return Response(
                 status_code=500,
                 headers=Headers({"Content-Type": "application/json"}),
-                description=f"error {e}",
+                description=jsonify(
+                    {
+                        "status": "error",
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    }
+                ),
             )
 
     return app
@@ -183,7 +227,7 @@ def run(
         asyncio.run(process_files())
     else:
         app = create_app(tools, head_chunks, max_visits=max_visits)
-        logger.info(f"Starting server on port {port}")
+        logger.info(f"Starting MCP server on port {port}")
         app.start(port=port)
 
 
