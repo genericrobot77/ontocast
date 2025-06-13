@@ -9,6 +9,7 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler
 from pydantic_core import core_schema
 from rdflib import Graph, Namespace
+from rdflib.namespace import NamespaceManager
 
 from ontocast.text_utils import render_text_hash
 
@@ -217,6 +218,104 @@ class RDFGraph(Graph):
         """Create a new RDFGraph instance."""
         instance = super().__new__(cls)
         return instance
+
+    def sanitize_prefixes_namespaces(self):
+        """
+        Rematches prefixes in an RDFLib graph to correct namespaces when a namespace
+        with the same URI exists. Handles cases where prefixes might not be bound
+        as namespaces.
+
+        Args:
+            self (RDFGraph): The RDFLib graph to process
+
+        Returns:
+           RDFGraph: The graph with corrected prefix-namespace mappings
+        """
+        # Get the namespace manager
+        ns_manager = self.namespace_manager
+
+        # Collect all current prefix-URI mappings
+        current_prefixes = dict(ns_manager.namespaces())
+
+        # Group URIs by their string representation to find duplicates
+        uri_to_prefixes = defaultdict(list)
+        for prefix, uri in current_prefixes.items():
+            uri_to_prefixes[str(uri)].append((prefix, uri))
+
+        # Find the "canonical" namespace objects for each URI
+        # (the actual Namespace objects that might be registered)
+        canonical_namespaces = {}
+
+        # Check if any of the URIs correspond to well-known namespaces
+        # by trying to create Namespace objects and seeing if they're already registered
+        for uri_str, prefix_uri_pairs in uri_to_prefixes.items():
+            # Try to find if there's already a proper Namespace object for this URI
+            namespace_candidates = []
+
+            for prefix, uri_obj in prefix_uri_pairs:
+                # Check if this is already a proper Namespace object
+                if isinstance(uri_obj, Namespace):
+                    namespace_candidates.append(uri_obj)
+                else:
+                    # Try to create a Namespace and see if it matches existing ones
+                    try:
+                        ns = Namespace(uri_str)
+                        namespace_candidates.append(ns)
+                    except:
+                        continue
+
+            # Use the first valid namespace candidate as canonical
+            if namespace_candidates:
+                canonical_namespaces[uri_str] = namespace_candidates[0]
+
+        # Now rebuild the namespace manager with corrected mappings
+        # Clear existing bindings first
+        new_ns_manager = NamespaceManager(self)
+
+        # Track which prefixes we want to keep/reassign
+        final_mappings = {}
+
+        for uri_str, prefix_uri_pairs in uri_to_prefixes.items():
+            if len(prefix_uri_pairs) == 1:
+                # No duplicates, keep as-is but ensure we use canonical namespace
+                prefix, _ = prefix_uri_pairs[0]
+                canonical_ns = canonical_namespaces.get(uri_str)
+                if canonical_ns:
+                    final_mappings[prefix] = canonical_ns
+                else:
+                    # Fallback to creating a new Namespace
+                    final_mappings[prefix] = Namespace(uri_str)
+            else:
+                # Multiple prefixes for same URI - need to decide which to keep
+                # Priority: 1) Proper Namespace objects,
+                #           2) Shorter prefixes,
+                #           3) Alphabetical
+                prefix_uri_pairs.sort(
+                    key=lambda x: (
+                        not isinstance(x[1], Namespace),  # Namespace objects first
+                        len(x[0]),  # Shorter prefixes next
+                        x[0],  # Alphabetical order
+                    )
+                )
+
+                # Keep the best prefix, map others to it if needed
+                best_prefix, _ = prefix_uri_pairs[0]
+                canonical_ns = canonical_namespaces.get(uri_str, Namespace(uri_str))
+                final_mappings[best_prefix] = canonical_ns
+
+                other_prefixes = [p for p, _ in prefix_uri_pairs[1:]]
+                if other_prefixes:
+                    logger.debug(
+                        f"Consolidating prefixes {other_prefixes} "
+                        f"-> '{best_prefix}' for URI: {uri_str}"
+                    )
+
+        # Apply the final mappings
+        for prefix, namespace in final_mappings.items():
+            new_ns_manager.bind(prefix, namespace, override=True)
+
+        # Replace the graph's namespace manager
+        self.namespace_manager = new_ns_manager
 
 
 class OntologySelectorReport(BasePydanticModel):
@@ -502,6 +601,10 @@ class Chunk(BaseModel):
             str: The chunk namespace.
         """
         return iri2namespace(self.iri, ontology=False)
+
+    def sanitize(self):
+        self.graph.sanitize_prefixes_namespaces()
+        return self
 
 
 class AgentState(BasePydanticModel):

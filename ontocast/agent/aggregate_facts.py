@@ -17,6 +17,9 @@ def aggregate_serialize(state: AgentState, tools: ToolBox) -> AgentState:
     """Create a node that saves the knowledge graph."""
     tsm_tool = tools.triple_store_manager
 
+    for c in state.chunks_processed:
+        c.sanitize()
+
     state.aggregated_facts = tools.aggregator.aggregate_graphs(
         state.chunks_processed, state.doc_namespace
     )

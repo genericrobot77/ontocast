@@ -65,9 +65,27 @@ class ChunkRDFGraphAggregator:
         if not doc_namespace.endswith(("/", "#")):
             doc_namespace = doc_namespace + "/"
 
-        # Bind document namespace for the aggregated graph
+        # Collect all namespaces from all chunks
+        all_namespaces = {}
+        for chunk in chunks:
+            for prefix, uri in chunk.graph.namespaces():
+                if prefix not in all_namespaces:
+                    all_namespaces[prefix] = uri
+                elif all_namespaces[prefix] != uri:
+                    # If same prefix but different URI, create a new prefix
+                    new_prefix = f"{prefix}_{len(all_namespaces)}"
+                    all_namespaces[new_prefix] = uri
+
+        # Bind all namespaces to the aggregated graph
+        for prefix, uri in all_namespaces.items():
+            aggregated_graph.bind(prefix, uri)
         aggregated_graph.bind("prov", PROV)
         aggregated_graph.bind("cd", doc_namespace)
+
+        # Create a mapping of URIs to their canonical form
+        uri_mapping = {}
+        for prefix, uri in all_namespaces.items():
+            uri_mapping[uri] = uri  # Preserve external namespaces
 
         # Collect all entities and their labels across chunks
         all_entities_with_labels = {}
@@ -198,6 +216,10 @@ class ChunkRDFGraphAggregator:
 
             # Add triples with entity and predicate disambiguation
             for subj, pred, obj in chunk.graph:
+                # Skip if the subject is the chunk IRI itself
+                if subj == chunk_iri:
+                    continue
+
                 # Map entities and predicates to canonical URIs
                 new_subj = entity_mapping.get(subj, subj)
                 new_pred = predicate_mapping.get(pred, pred)

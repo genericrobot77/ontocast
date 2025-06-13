@@ -100,6 +100,8 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
         )
 
         state.ontology_addendum = parser.parse(response.content)
+        state.ontology_addendum.graph.sanitize_prefixes_namespaces()
+
         logger.info(
             f"Ontology addendum has {len(state.ontology_addendum.graph)} triples."
         )

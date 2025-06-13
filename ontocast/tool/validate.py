@@ -317,10 +317,11 @@ class RDFGraphConnectivityValidator:
         """
         # Create or use existing chunk URI
         hub_uri = URIRef(chunk_iri)
+        hub_id = hub_uri.split("/")[-1]
 
         # Add hub entity metadata
         graph.add((hub_uri, RDF.type, SCHEMA.TextDigitalDocument))
-        graph.add((hub_uri, RDFS.label, Literal("Document chunk")))
+        graph.add((hub_uri, RDFS.label, Literal(f"Chunk {hub_id}")))
 
         # Connect hub to one representative entity from each component
         for i, component in enumerate(components):
