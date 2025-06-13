@@ -255,7 +255,7 @@ class ChunkRDFGraphAggregator:
     ) -> None:
         """Add metadata for canonical entities and predicates."""
 
-        # Add metadata for canonical entities
+        # Process mapped entities (those that had similar counterparts)
         canonical_to_originals = defaultdict(list)
         for original, canonical in entity_mapping.items():
             canonical_to_originals[canonical].append(original)
@@ -275,10 +275,30 @@ class ChunkRDFGraphAggregator:
             for type_uri in all_types:
                 graph.add((canonical, RDF.type, type_uri))
 
-        # Add metadata for canonical predicates
+        # Process unique entities (those that didn't have similar counterparts)
+        processed_entities = set(entity_mapping.keys())
+
+        # Get all unique entities from both labels and types
+        all_entities = set(entity_labels.keys()) | set(entity_types.keys())
+
+        for entity in all_entities:
+            if entity not in processed_entities:
+                # Add label if available
+                if entity in entity_labels and entity_labels[entity].get("label"):
+                    graph.add(
+                        (entity, RDFS.label, Literal(entity_labels[entity]["label"]))
+                    )
+                # Add type information
+                if entity in entity_types:
+                    for type_uri in entity_types[entity]:
+                        graph.add((entity, RDF.type, type_uri))
+
+        # Process mapped predicates (those that had similar counterparts)
         canonical_pred_to_originals = defaultdict(list)
         for original, canonical in predicate_mapping.items():
-            canonical_pred_to_originals[canonical].append(original)
+            # Only process predicates that use our document namespace
+            if str(canonical).startswith(graph.namespace_manager.store.namespace("cd")):
+                canonical_pred_to_originals[canonical].append(original)
 
         for canonical, originals in canonical_pred_to_originals.items():
             # Merge the best information from all original predicates
@@ -296,6 +316,23 @@ class ChunkRDFGraphAggregator:
                 graph.add((canonical, RDFS.range, merged_info["range"]))
             if merged_info.get("is_explicit_property"):
                 graph.add((canonical, RDF.type, RDF.Property))
+
+        # Process unique predicates (those that didn't have similar counterparts)
+        processed_predicates = set(predicate_mapping.keys())
+        for predicate, info in predicate_info.items():
+            # Only process predicates that use our document namespace
+            if str(predicate).startswith(graph.namespace_manager.store.namespace("cd")):
+                if predicate not in processed_predicates:
+                    if info.get("label"):
+                        graph.add((predicate, RDFS.label, Literal(info["label"])))
+                    if info.get("comment"):
+                        graph.add((predicate, RDFS.comment, Literal(info["comment"])))
+                    if info.get("domain"):
+                        graph.add((predicate, RDFS.domain, info["domain"]))
+                    if info.get("range"):
+                        graph.add((predicate, RDFS.range, info["range"]))
+                    if info.get("is_explicit_property"):
+                        graph.add((predicate, RDF.type, RDF.Property))
 
     def _get_best_label(self, label_dicts: List[Dict]) -> Optional[str]:
         """Get the best label from a list of label dictionaries."""

@@ -53,14 +53,14 @@ def connected_chunks(sample_chunks):
     return connected_chunks
 
 
-# def test_validation(sample_chunks):
-#     gs = []
-#     for chunk in sample_chunks:
-#         chunk = chunk.sanitize()
-#         new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
-#         gs += [new_chunk]
-#
-#     assert [len(x.graph) for x in gs] == [10, 10]
+def test_validation(sample_chunks):
+    gs = []
+    for chunk in sample_chunks:
+        chunk.sanitize()
+        new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
+        gs += [new_chunk]
+
+    assert [len(x.graph) for x in gs] == [10, 10]
 
 
 def test_aggregation(doc_id, connected_chunks, current_domain):
@@ -76,7 +76,7 @@ def test_aggregation(doc_id, connected_chunks, current_domain):
     connectivity_result = RDFGraphConnectivityValidator(
         aggregated_graph
     ).validate_connectivity()
-    assert len(aggregated_graph) == 23
+    assert len(aggregated_graph) == 24
     assert connectivity_result["num_components"] == 1
 
 

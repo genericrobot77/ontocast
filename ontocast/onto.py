@@ -80,7 +80,7 @@ COMMON_PREFIXES = {
 }
 
 PROV = Namespace("http://www.w3.org/ns/prov#")
-SCHEMA = Namespace("http://schema.org/")
+SCHEMA = Namespace("https://schema.org/")
 
 PREFIX_PATTERN = re.compile(r"@prefix\s+(\w+):\s+<[^>]+>\s+\.")
 
@@ -316,6 +316,47 @@ class RDFGraph(Graph):
 
         # Replace the graph's namespace manager
         self.namespace_manager = new_ns_manager
+
+    def unbind_chunk_namespaces(self, chunk_pattern="/chunk/") -> "RDFGraph":
+        """
+        Unbinds namespace prefixes that point to URIs containing a chunk pattern.
+        Returns a new graph with chunk namespaces dereferenced (expanded to full URIs).
+
+        Args:
+            chunk_pattern (str): The pattern to look for in URIs (default: "/chunk/")
+
+        Returns:
+            RDFGraph: New graph with chunk-related namespaces unbound
+        """
+        current_prefixes = dict(self.namespace_manager.namespaces())
+
+        # Find prefixes that point to URIs containing the chunk pattern
+        chunk_prefixes = []
+        for prefix, uri in current_prefixes.items():
+            uri_str = str(uri)
+            if chunk_pattern in uri_str:
+                chunk_prefixes.append((prefix, uri_str))
+
+        # Create new graph
+        new_graph = RDFGraph()
+
+        # Copy all triples (URIs are already expanded internally)
+        for triple in self:
+            new_graph.add(triple)
+
+        # Bind only non-chunk namespace prefixes to the new graph
+        for prefix, uri in current_prefixes.items():
+            uri_str = str(uri)
+            if chunk_pattern not in uri_str:
+                new_graph.bind(prefix, uri)
+
+        # Log what was removed
+        if chunk_prefixes:
+            logger.debug(f"Unbound {len(chunk_prefixes)} chunk-related namespace(s):")
+            for prefix, uri in chunk_prefixes:
+                logger.debug(f"  - '{prefix}': {uri}")
+
+        return new_graph
 
 
 class OntologySelectorReport(BasePydanticModel):
@@ -603,8 +644,8 @@ class Chunk(BaseModel):
         return iri2namespace(self.iri, ontology=False)
 
     def sanitize(self):
+        self.graph = self.graph.unbind_chunk_namespaces()
         self.graph.sanitize_prefixes_namespaces()
-        return self
 
 
 class AgentState(BasePydanticModel):
