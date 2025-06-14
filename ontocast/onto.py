@@ -156,6 +156,50 @@ class RDFGraph(Graph):
             ),
         )
 
+    def __add__(self, other: Union["RDFGraph", Graph]) -> "RDFGraph":
+        """Addition operator for RDFGraph instances.
+
+        Merges the RDF graphs while maintaining the RDFGraph type.
+
+        Args:
+            other: The graph to add to this one.
+
+        Returns:
+            RDFGraph: A new RDFGraph containing the merged triples.
+        """
+        # Create a new RDFGraph instance
+        result = RDFGraph()
+
+        # Copy all triples from both graphs
+        for triple in self:
+            result.add(triple)
+        for triple in other:
+            result.add(triple)
+
+        # Copy namespace bindings
+        for prefix, uri in self.namespaces():
+            result.bind(prefix, uri)
+        for prefix, uri in other.namespaces():
+            result.bind(prefix, uri)
+
+        return result
+
+    def __iadd__(self, other: Union["RDFGraph", Graph]) -> "RDFGraph":
+        """In-place addition operator for RDFGraph instances.
+
+        Merges the RDF graphs while maintaining the RDFGraph type.
+
+        Args:
+            other: The graph to add to this one.
+
+        Returns:
+            RDFGraph: self after modification.
+        """
+        # Call parent's __iadd__ to merge the graphs
+        super().__iadd__(other)
+        # Return self to maintain RDFGraph type
+        return self
+
     @staticmethod
     def _ensure_prefixes(turtle_str: str) -> str:
         """Ensure all common prefixes are declared in the Turtle string.

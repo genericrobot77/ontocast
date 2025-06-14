@@ -147,7 +147,6 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 )
 @click.option("--input-path", type=click.Path(path_type=pathlib.Path), default=None)
 @click.option("--head-chunks", type=int, default=None)
-@click.option("--port", type=int, default=8999)
 @click.option(
     "--max-visits",
     type=int,
@@ -160,7 +159,6 @@ def run(
     ontology_directory: Optional[pathlib.Path],
     working_directory: pathlib.Path,
     input_path: Optional[pathlib.Path],
-    port: int,
     head_chunks: Optional[int],
     max_visits: int,
     logging_level: Optional[str],
@@ -176,6 +174,7 @@ def run(
     _ = load_dotenv(dotenv_path=env_path.expanduser())
 
     llm_provider = os.getenv("LLM_PROVIDER", "openai")
+    port = os.getenv("PORT", 8999)
 
     if llm_provider == "openai" and "OPENAI_API_KEY" not in os.environ:
         raise ValueError("OPENAI_API_KEY environment variable is not set")
@@ -227,7 +226,7 @@ def run(
         asyncio.run(process_files())
     else:
         app = create_app(tools, head_chunks, max_visits=max_visits)
-        logger.info(f"Starting MCP server on port {port}")
+        logger.info(f"Starting MCP-ready server on port {port}")
         app.start(port=port)
 
 

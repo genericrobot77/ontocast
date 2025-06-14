@@ -58,11 +58,10 @@ nav:
     -   Quick Start: getting_started/quickstart.md
     -   Configuration: getting_started/configuration.md
 -   User Guide:
-    -   Core Concepts: user_guide/core_concepts.md
+    -   Core Concepts: user_guide/concepts.md
     -   Workflow: user_guide/workflow.md
 -   Examples:
     -   Basic Usage: examples/basic_usage.md
-    -   Advanced Usage: examples/advanced_usage.md
 -   API Reference: reference/
 -   Contributing: contributing.md
 

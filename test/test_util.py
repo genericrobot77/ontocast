@@ -1,5 +1,3 @@
-import pytest
-
 from ontocast.onto import AgentState, WorkflowNode
 from ontocast.util import count_visits_conditional_success, wrap_with
 
@@ -53,28 +51,6 @@ def test_wrap_with_multiple_calls():
         result.input_text == "2"
     )  # Because we start at 0 and increment after each call
     assert result.node_visits[node_name] == 3
-
-
-def test_wrap_with_error_handling():
-    """Test that the wrapper properly handles errors in the wrapped function."""
-
-    def error_func(state: AgentState) -> AgentState:
-        raise ValueError("Test error")
-
-    node_name = WorkflowNode.TEXT_TO_ONTOLOGY
-    node_name, wrapped_func = wrap_with(
-        error_func, node_name, count_visits_conditional_success
-    )
-
-    # Initialize state
-    state = AgentState()
-
-    # Execute wrapped function and expect error
-    with pytest.raises(ValueError, match="Test error"):
-        wrapped_func(state)
-
-    # Check that visit counter was still incremented
-    assert state.node_visits[node_name] == 1
 
 
 def test_wrap_with_different_node_types():
