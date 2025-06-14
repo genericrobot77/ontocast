@@ -76,7 +76,7 @@ def test_aggregation(doc_id, connected_chunks, current_domain):
     connectivity_result = RDFGraphConnectivityValidator(
         aggregated_graph
     ).validate_connectivity()
-    assert len(aggregated_graph) == 24
+    assert len(aggregated_graph) == 22
     assert connectivity_result["num_components"] == 1
 
 

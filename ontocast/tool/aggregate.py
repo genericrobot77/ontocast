@@ -474,13 +474,8 @@ class EntityDisambiguator:
                     uri_ref = URIRef(full_uri)
                     if uri_ref not in labels:
                         labels[uri_ref] = {
-                            "label": local_name,
                             "local_name": local_name,
-                            "comment": None,
                         }
-                    elif labels[uri_ref]["label"] is None:
-                        labels[uri_ref]["label"] = local_name
-
         return labels
 
     def find_similar_entities(
@@ -539,8 +534,8 @@ class EntityDisambiguator:
                     continue
 
                 # Label similarity check
-                label1 = info1["label"].lower() if info1["label"] else ""
-                label2 = info2["label"].lower() if info2["label"] else ""
+                label1 = info1["label"].lower() if "label" in info1 else ""
+                label2 = info2["label"].lower() if "label" in info2 else ""
 
                 if label1 and label2:
                     similarity = fuzz.ratio(label1, label2)
@@ -578,6 +573,7 @@ class EntityDisambiguator:
             URIRef: The canonical URI for the group.
         """
         # Choose the entity with the best label (longest, most descriptive)
+
         best_entity = max(
             similar_entities,
             key=lambda e: len(entity_labels.get(e, {}).get("label", "")),
@@ -681,12 +677,6 @@ class EntityDisambiguator:
                     predicate_info[norm_subj]["domain"] = obj
                 elif pred == RDFS.range and norm_subj in predicate_info:
                     predicate_info[norm_subj]["range"] = obj
-
-        # For predicates without labels, use local name
-        for pred in predicate_info:
-            if not predicate_info[pred]["label"]:
-                predicate_info[pred]["label"] = predicate_info[pred]["local_name"]
-
         return predicate_info
 
     def find_similar_predicates(
