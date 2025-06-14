@@ -1,3 +1,5 @@
+"""Test validation and aggregation functionality."""
+
 import pytest
 from rdflib import Literal, URIRef
 from rdflib.namespace import FOAF, RDF, RDFS, SKOS
@@ -11,6 +13,15 @@ from ontocast.tool.validate import (
 
 
 def create_sample_chunk_graph(current_domain, chunk_id: str) -> Chunk:
+    """Create a sample chunk graph for testing.
+
+    Args:
+        current_domain: The domain to use for URIs.
+        chunk_id: The chunk identifier.
+
+    Returns:
+        Chunk: A sample chunk with a graph.
+    """
     g = RDFGraph()
 
     ttl = f"""
@@ -31,11 +42,13 @@ def create_sample_chunk_graph(current_domain, chunk_id: str) -> Chunk:
 
 @pytest.fixture
 def doc_id():
+    """Fixture for document ID."""
     return "123"
 
 
 @pytest.fixture
 def sample_chunks(current_domain):
+    """Fixture for sample chunks."""
     ids = ["abc123", "def456"]
     sample_chunks = [
         create_sample_chunk_graph(chunk_id=i, current_domain=current_domain)
@@ -46,6 +59,7 @@ def sample_chunks(current_domain):
 
 @pytest.fixture
 def connected_chunks(sample_chunks):
+    """Fixture for connected chunks."""
     connected_chunks = []
     for chunk in sample_chunks:
         new_chunk = validate_and_connect_chunk(chunk, auto_connect=True)
@@ -54,6 +68,7 @@ def connected_chunks(sample_chunks):
 
 
 def test_validation(sample_chunks):
+    """Test basic validation functionality."""
     gs = []
     for chunk in sample_chunks:
         chunk.sanitize()
@@ -64,6 +79,7 @@ def test_validation(sample_chunks):
 
 
 def test_aggregation(doc_id, connected_chunks, current_domain):
+    """Test graph aggregation functionality."""
     # Aggregate graphs (now using connected versions)
     aggregator = ChunkRDFGraphAggregator()
     for chunk in connected_chunks:
@@ -81,7 +97,14 @@ def test_aggregation(doc_id, connected_chunks, current_domain):
 
 
 def create_test_chunks_basic_similarity(current_domain):
-    """Test basic entity and predicate similarity detection."""
+    """Test basic entity and predicate similarity detection.
+
+    Args:
+        current_domain: The domain to use for URIs.
+
+    Returns:
+        tuple: List of chunks and document IRI.
+    """
     chunks = []
 
     # Chunk 1: Person entities with similar names
@@ -150,7 +173,14 @@ def create_test_chunks_basic_similarity(current_domain):
 
 
 def create_test_chunks_predicate_disambiguation(current_domain):
-    """Test predicate disambiguation with similar properties."""
+    """Test predicate disambiguation with similar properties.
+
+    Args:
+        current_domain: The domain to use for URIs.
+
+    Returns:
+        tuple: List of chunks and document IRI.
+    """
     chunks = []
 
     # Chunk 1: Various relationship predicates
@@ -224,7 +254,14 @@ def create_test_chunks_predicate_disambiguation(current_domain):
 
 
 def create_test_chunks_edge_cases(current_domain):
-    """Test edge cases: exact matches, no labels, special characters."""
+    """Test edge cases: exact matches, no labels, special characters.
+
+    Args:
+        current_domain: The domain to use for URIs.
+
+    Returns:
+        tuple: List of chunks and document IRI.
+    """
     chunks = []
 
     # Chunk 1: Entities without labels (using local names)
@@ -281,7 +318,14 @@ def create_test_chunks_edge_cases(current_domain):
 
 
 def create_test_chunks_type_disambiguation(current_domain):
-    """Test type-based disambiguation."""
+    """Test type-based disambiguation.
+
+    Args:
+        current_domain: The domain to use for URIs.
+
+    Returns:
+        tuple: List of chunks and document IRI.
+    """
     chunks = []
 
     # Chunk 1: Person named "Apple"
@@ -333,7 +377,14 @@ def create_test_chunks_type_disambiguation(current_domain):
 
 
 def create_test_chunks_large_scale(current_domain):
-    """Test performance with larger number of entities and relationships."""
+    """Test performance with larger number of entities and relationships.
+
+    Args:
+        current_domain: The domain to use for URIs.
+
+    Returns:
+        tuple: List of chunks and document IRI.
+    """
     chunks = []
     doc_iri = f"{current_domain}/doc/test5"
 
@@ -394,7 +445,14 @@ def create_test_chunks_large_scale(current_domain):
 
 
 def create_test_chunks_complex_predicates(current_domain):
-    """Test complex predicate scenarios with inheritance and similar meanings."""
+    """Test complex predicate scenarios with inheritance and similar meanings.
+
+    Args:
+        current_domain: The domain to use for URIs.
+
+    Returns:
+        tuple: List of chunks and document IRI.
+    """
     chunks = []
 
     # Chunk 1: Family relationships

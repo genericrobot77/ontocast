@@ -7,6 +7,7 @@ consistent namespace usage across the aggregated graph.
 
 import logging
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Tuple
 
 from rapidfuzz import fuzz
@@ -16,6 +17,28 @@ from rdflib.namespace import RDF, RDFS
 from ontocast.onto import PROV, Chunk, RDFGraph
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EntityMetadata:
+    """Metadata for an entity in the graph."""
+
+    local_name: str
+    label: Optional[str] = None
+    comment: Optional[str] = None
+    types: Set[URIRef] = field(default_factory=set)
+
+
+@dataclass
+class PredicateMetadata:
+    """Metadata for a predicate in the graph."""
+
+    local_name: str
+    label: Optional[str] = None
+    comment: Optional[str] = None
+    domain: Optional[URIRef] = None
+    range: Optional[URIRef] = None
+    is_explicit_property: bool = False
 
 
 class ChunkRDFGraphAggregator:
@@ -35,10 +58,10 @@ class ChunkRDFGraphAggregator:
         """Initialize the chunk RDF graph aggregator.
 
         Args:
-            similarity_threshold: Threshold for considering
-                                        entities similar (default: 85.0).
-            semantic_threshold: Higher threshold
-                                        for semantic similarity (default: 90.0).
+            similarity_threshold: Threshold for considering entities similar
+                (default: 85.0).
+            semantic_threshold: Higher threshold for semantic similarity
+                (default: 90.0).
         """
         self.disambiguator = EntityDisambiguator(
             similarity_threshold, semantic_threshold
@@ -88,11 +111,11 @@ class ChunkRDFGraphAggregator:
             uri_mapping[uri] = uri  # Preserve external namespaces
 
         # Collect all entities and their labels across chunks
-        all_entities_with_labels = {}
+        all_entities_with_labels: Dict[URIRef, EntityMetadata] = {}
         chunk_entity_mapping = {}
 
         # Collect all predicates and their info across chunks
-        all_predicates_with_info = {}
+        all_predicates_with_info: Dict[URIRef, PredicateMetadata] = {}
         chunk_predicate_mapping = {}
 
         # Track entity-type relationships for better disambiguation
@@ -129,19 +152,24 @@ class ChunkRDFGraphAggregator:
                     # Merge info, preferring non-None values and more complete data
                     existing_info = all_predicates_with_info[pred]
                     for key in ["label", "comment", "domain", "range"]:
-                        if existing_info[key] is None and info[key] is not None:
-                            existing_info[key] = info[key]
+                        if (
+                            getattr(existing_info, key) is None
+                            and getattr(info, key) is not None
+                        ):
+                            setattr(existing_info, key, getattr(info, key))
                         elif (
-                            existing_info[key] is not None
-                            and info[key] is not None
-                            and len(str(info[key])) > len(str(existing_info[key]))
+                            getattr(existing_info, key) is not None
+                            and getattr(info, key) is not None
+                            and isinstance(getattr(info, key), str)
+                            and len(str(getattr(info, key)))
+                            > len(str(getattr(existing_info, key)))
                         ):
                             # Prefer longer, more descriptive values
-                            existing_info[key] = info[key]
+                            setattr(existing_info, key, getattr(info, key))
 
                     # If either source has explicit property declaration, keep it
-                    if info["is_explicit_property"]:
-                        existing_info["is_explicit_property"] = True
+                    if info.is_explicit_property:
+                        existing_info.is_explicit_property = True
 
         # Enhanced similarity detection with type information
         similar_entity_groups = self.disambiguator.find_similar_entities(
@@ -249,12 +277,11 @@ class ChunkRDFGraphAggregator:
         graph: RDFGraph,
         entity_mapping: Dict[URIRef, URIRef],
         predicate_mapping: Dict[URIRef, URIRef],
-        entity_labels: Dict[URIRef, Dict],
-        predicate_info: Dict[URIRef, Dict],
+        entity_labels: Dict[URIRef, EntityMetadata],
+        predicate_info: Dict[URIRef, PredicateMetadata],
         entity_types: Dict[URIRef, Set[URIRef]],
     ) -> None:
         """Add metadata for canonical entities and predicates."""
-
         # Process mapped entities (those that had similar counterparts)
         canonical_to_originals = defaultdict(list)
         for original, canonical in entity_mapping.items():
@@ -263,7 +290,7 @@ class ChunkRDFGraphAggregator:
         for canonical, originals in canonical_to_originals.items():
             # Use the best label from the group
             best_label = self._get_best_label(
-                [entity_labels.get(orig, {}) for orig in originals]
+                [entity_labels.get(orig) for orig in originals]
             )
             if best_label:
                 graph.add((canonical, RDFS.label, Literal(best_label)))
@@ -284,9 +311,9 @@ class ChunkRDFGraphAggregator:
         for entity in all_entities:
             if entity not in processed_entities:
                 # Add label if available
-                if entity in entity_labels and entity_labels[entity].get("label"):
+                if entity in entity_labels and entity_labels[entity].label is not None:
                     graph.add(
-                        (entity, RDFS.label, Literal(entity_labels[entity]["label"]))
+                        (entity, RDFS.label, Literal(entity_labels[entity].label))
                     )
                 # Add type information
                 if entity in entity_types:
@@ -303,18 +330,18 @@ class ChunkRDFGraphAggregator:
         for canonical, originals in canonical_pred_to_originals.items():
             # Merge the best information from all original predicates
             merged_info = self._merge_predicate_info(
-                [predicate_info.get(orig, {}) for orig in originals]
+                [predicate_info.get(orig) for orig in originals]
             )
 
-            if merged_info.get("label"):
-                graph.add((canonical, RDFS.label, Literal(merged_info["label"])))
-            if merged_info.get("comment"):
-                graph.add((canonical, RDFS.comment, Literal(merged_info["comment"])))
-            if merged_info.get("domain"):
-                graph.add((canonical, RDFS.domain, merged_info["domain"]))
-            if merged_info.get("range"):
-                graph.add((canonical, RDFS.range, merged_info["range"]))
-            if merged_info.get("is_explicit_property"):
+            if merged_info.label:
+                graph.add((canonical, RDFS.label, Literal(merged_info.label)))
+            if merged_info.comment:
+                graph.add((canonical, RDFS.comment, Literal(merged_info.comment)))
+            if merged_info.domain:
+                graph.add((canonical, RDFS.domain, merged_info.domain))
+            if merged_info.range:
+                graph.add((canonical, RDFS.range, merged_info.range))
+            if merged_info.is_explicit_property:
                 graph.add((canonical, RDF.type, RDF.Property))
 
         # Process unique predicates (those that didn't have similar counterparts)
@@ -323,50 +350,50 @@ class ChunkRDFGraphAggregator:
             # Only process predicates that use our document namespace
             if str(predicate).startswith(graph.namespace_manager.store.namespace("cd")):
                 if predicate not in processed_predicates:
-                    if info.get("label"):
-                        graph.add((predicate, RDFS.label, Literal(info["label"])))
-                    if info.get("comment"):
-                        graph.add((predicate, RDFS.comment, Literal(info["comment"])))
-                    if info.get("domain"):
-                        graph.add((predicate, RDFS.domain, info["domain"]))
-                    if info.get("range"):
-                        graph.add((predicate, RDFS.range, info["range"]))
-                    if info.get("is_explicit_property"):
+                    if info.label:
+                        graph.add((predicate, RDFS.label, Literal(info.label)))
+                    if info.comment:
+                        graph.add((predicate, RDFS.comment, Literal(info.comment)))
+                    if info.domain:
+                        graph.add((predicate, RDFS.domain, info.domain))
+                    if info.range:
+                        graph.add((predicate, RDFS.range, info.range))
+                    if info.is_explicit_property:
                         graph.add((predicate, RDF.type, RDF.Property))
 
-    def _get_best_label(self, label_dicts: List[Dict]) -> Optional[str]:
+    def _get_best_label(
+        self, label_dicts: List[Optional[EntityMetadata]]
+    ) -> Optional[str]:
         """Get the best label from a list of label dictionaries."""
-        labels = [d.get("label", "") for d in label_dicts if d.get("label")]
+        labels = [d.label for d in label_dicts if d is not None and d.label is not None]
         if not labels:
             return None
         # Return the longest, most descriptive label
         return max(labels, key=len)
 
-    def _merge_predicate_info(self, info_dicts: List[Dict]) -> Dict:
+    def _merge_predicate_info(
+        self, info_dicts: List[Optional[PredicateMetadata]]
+    ) -> PredicateMetadata:
         """Merge predicate information from multiple sources."""
-        merged = {
-            "label": None,
-            "comment": None,
-            "domain": None,
-            "range": None,
-            "is_explicit_property": False,
-        }
+        merged = PredicateMetadata(local_name="", is_explicit_property=False)
 
         for info in info_dicts:
-            if not info:
+            if info is None:
                 continue
             for key in ["label", "comment", "domain", "range"]:
-                if merged[key] is None and info.get(key) is not None:
-                    merged[key] = info[key]
+                current_value = getattr(merged, key)
+                new_value = getattr(info, key)
+                if current_value is None and new_value is not None:
+                    setattr(merged, key, new_value)
                 elif (
-                    merged[key] is not None
-                    and info.get(key) is not None
-                    and isinstance(info[key], str)
-                    and len(info[key]) > len(str(merged[key]))
+                    current_value is not None
+                    and new_value is not None
+                    and isinstance(new_value, str)
+                    and len(new_value) > len(str(current_value))
                 ):
-                    merged[key] = info[key]
-            if info.get("is_explicit_property"):
-                merged["is_explicit_property"] = True
+                    setattr(merged, key, new_value)
+            if info.is_explicit_property:
+                merged.is_explicit_property = True
 
         return merged
 
@@ -389,10 +416,10 @@ class EntityDisambiguator:
         """Initialize the entity disambiguator.
 
         Args:
-            similarity_threshold: Threshold for considering entities
-                                                            similar (default: 85.0).
-            semantic_threshold: Higher threshold for semantic
-                                                            similarity (default: 90.0).
+            similarity_threshold: Threshold for considering entities similar
+                (default: 85.0).
+            semantic_threshold: Higher threshold for semantic similarity
+                (default: 90.0).
         """
         self.similarity_threshold = similarity_threshold
         self.semantic_threshold = semantic_threshold
@@ -432,15 +459,15 @@ class EntityDisambiguator:
                 return full_uri, self.get_local_name(URIRef(full_uri))
         return uri_str, self.get_local_name(uri)
 
-    def extract_entity_labels(self, graph: RDFGraph) -> Dict[URIRef, Dict]:
+    def extract_entity_labels(self, graph: RDFGraph) -> Dict[URIRef, EntityMetadata]:
         """Extract labels for entities from graph, including their local names.
 
         Args:
             graph: The RDF graph to process.
 
         Returns:
-            Dict[URIRef, Dict]: Dictionary mapping entity URIs to their labels and
-                local names.
+            Dict[URIRef, EntityMetadata]: Dictionary mapping entity URIs to their
+                metadata.
         """
         labels = {}
         namespaces = dict(graph.namespaces())
@@ -455,16 +482,12 @@ class EntityDisambiguator:
                 full_uri, local_name = self.normalize_uri(subj, namespaces)
                 uri_ref = URIRef(full_uri)
                 if uri_ref not in labels:
-                    labels[uri_ref] = {
-                        "label": None,
-                        "local_name": local_name,
-                        "comment": None,
-                    }
+                    labels[uri_ref] = EntityMetadata(local_name=local_name)
 
                 if pred == RDFS.label:
-                    labels[uri_ref]["label"] = str(obj)
+                    labels[uri_ref].label = str(obj)
                 elif pred == RDFS.comment:
-                    labels[uri_ref]["comment"] = str(obj)
+                    labels[uri_ref].comment = str(obj)
 
         # Second pass: collect all entities and use local name as fallback
         for subj, pred, obj in graph:
@@ -473,21 +496,18 @@ class EntityDisambiguator:
                     full_uri, local_name = self.normalize_uri(entity, namespaces)
                     uri_ref = URIRef(full_uri)
                     if uri_ref not in labels:
-                        labels[uri_ref] = {
-                            "local_name": local_name,
-                        }
+                        labels[uri_ref] = EntityMetadata(local_name=local_name)
         return labels
 
     def find_similar_entities(
         self,
-        entities_with_labels: Dict[URIRef, Dict],
+        entities_with_labels: Dict[URIRef, EntityMetadata],
         entity_types: Dict[URIRef, Set[URIRef]] = None,
     ) -> List[List[URIRef]]:
         """Group similar entities based on string similarity, local names, and types.
 
         Args:
-            entities_with_labels: Dictionary mapping entity URIs to their labels
-                and local names.
+            entities_with_labels: Dictionary mapping entity URIs to their metadata.
             entity_types: Optional dictionary mapping entities to their types.
 
         Returns:
@@ -528,14 +548,14 @@ class EntityDisambiguator:
                     continue
 
                 # Exact local name match (highest priority)
-                if info1["local_name"].lower() == info2["local_name"].lower():
+                if info1.local_name.lower() == info2.local_name.lower():
                     similar_group.append(entity2)
                     processed.add(entity2)
                     continue
 
                 # Label similarity check
-                label1 = info1["label"].lower() if "label" in info1 else ""
-                label2 = info2["label"].lower() if "label" in info2 else ""
+                label1 = info1.label.lower() if info1.label is not None else ""
+                label2 = info2.label.lower() if info2.label is not None else ""
 
                 if label1 and label2:
                     similarity = fuzz.ratio(label1, label2)
@@ -560,27 +580,30 @@ class EntityDisambiguator:
         self,
         similar_entities: List[URIRef],
         doc_namespace: str,
-        entity_labels: Dict[URIRef, Dict],
+        entity_labels: Dict[URIRef, EntityMetadata],
     ) -> URIRef:
         """Create a canonical URI for a group of similar entities.
 
         Args:
             similar_entities: List of similar entity URIs.
             doc_namespace: The document namespace to use.
-            entity_labels: Dictionary mapping entities to their label information.
+            entity_labels: Dictionary mapping entities to their metadata.
 
         Returns:
             URIRef: The canonical URI for the group.
         """
         # Choose the entity with the best label (longest, most descriptive)
-
         best_entity = max(
             similar_entities,
-            key=lambda e: len(entity_labels.get(e, {}).get("label", "")),
+            key=lambda e: len(
+                entity_labels.get(e, EntityMetadata(local_name="")).label or ""
+            ),
         )
 
-        best_info = entity_labels.get(best_entity, {})
-        local_name = best_info.get("local_name", self.get_local_name(best_entity))
+        best_info = entity_labels.get(
+            best_entity, EntityMetadata(local_name=self.get_local_name(best_entity))
+        )
+        local_name = best_info.local_name
 
         # Clean the local name for use in URI
         clean_local_name = self._clean_local_name(local_name)
@@ -590,7 +613,7 @@ class EntityDisambiguator:
         self,
         similar_predicates: List[URIRef],
         doc_namespace: str,
-        predicate_info: Dict[URIRef, Dict],
+        predicate_info: Dict[URIRef, PredicateMetadata],
     ) -> URIRef:
         """Create a canonical URI for a group of similar predicates.
 
@@ -606,13 +629,22 @@ class EntityDisambiguator:
         best_pred = max(
             similar_predicates,
             key=lambda p: sum(
-                1 for v in predicate_info.get(p, {}).values() if v is not None
+                1
+                for v in [
+                    predicate_info.get(p, PredicateMetadata(local_name="")).label,
+                    predicate_info.get(p, PredicateMetadata(local_name="")).comment,
+                    predicate_info.get(p, PredicateMetadata(local_name="")).domain,
+                    predicate_info.get(p, PredicateMetadata(local_name="")).range,
+                ]
+                if v is not None
             ),
         )
 
         # Create new canonical URI in document namespace
-        best_info = predicate_info.get(best_pred, {})
-        local_name = best_info.get("local_name", self.get_local_name(best_pred))
+        best_info = predicate_info.get(
+            best_pred, PredicateMetadata(local_name=self.get_local_name(best_pred))
+        )
+        local_name = best_info.local_name
 
         # Clean the local name for use in URI
         clean_local_name = self._clean_local_name(local_name)
@@ -631,14 +663,17 @@ class EntityDisambiguator:
         cleaned = cleaned.strip("_")
         return cleaned or "entity"  # Fallback if empty
 
-    def extract_predicate_info(self, graph: RDFGraph) -> Dict[URIRef, Dict]:
+    def extract_predicate_info(
+        self, graph: RDFGraph
+    ) -> Dict[URIRef, PredicateMetadata]:
         """Extract predicate information including labels, domains, and ranges.
 
         Args:
             graph: The RDF graph to process.
 
         Returns:
-            Dict[URIRef, Dict]: Dictionary mapping predicate URIs to their metadata.
+            Dict[URIRef, PredicateMetadata]: Dictionary mapping predicate URIs to
+                their metadata.
         """
         predicate_info = {}
         namespaces = dict(graph.namespaces())
@@ -649,14 +684,7 @@ class EntityDisambiguator:
                 full_uri, local_name = self.normalize_uri(pred, namespaces)
                 uri_ref = URIRef(full_uri)
                 if uri_ref not in predicate_info:
-                    predicate_info[uri_ref] = {
-                        "label": None,
-                        "comment": None,
-                        "domain": None,
-                        "range": None,
-                        "is_explicit_property": False,
-                        "local_name": local_name,
-                    }
+                    predicate_info[uri_ref] = PredicateMetadata(local_name=local_name)
 
         # Second pass: collect metadata for predicates
         for subj, pred, obj in graph:
@@ -666,24 +694,24 @@ class EntityDisambiguator:
 
                 if pred == RDF.type and obj == RDF.Property:
                     if norm_subj in predicate_info:
-                        predicate_info[norm_subj]["is_explicit_property"] = True
+                        predicate_info[norm_subj].is_explicit_property = True
                 elif pred in [RDFS.label, RDFS.comment] and isinstance(obj, Literal):
                     if norm_subj in predicate_info:
                         if pred == RDFS.label:
-                            predicate_info[norm_subj]["label"] = str(obj)
+                            predicate_info[norm_subj].label = str(obj)
                         else:
-                            predicate_info[norm_subj]["comment"] = str(obj)
+                            predicate_info[norm_subj].comment = str(obj)
                 elif pred == RDFS.domain and norm_subj in predicate_info:
-                    predicate_info[norm_subj]["domain"] = obj
+                    predicate_info[norm_subj].domain = obj
                 elif pred == RDFS.range and norm_subj in predicate_info:
-                    predicate_info[norm_subj]["range"] = obj
+                    predicate_info[norm_subj].range = obj
         return predicate_info
 
     def find_similar_predicates(
-        self, predicates_with_info: Dict[URIRef, Dict]
+        self, predicates_with_info: Dict[URIRef, PredicateMetadata]
     ) -> List[List[URIRef]]:
-        """Group similar predicates based on string similarity
-                                    and domain/range compatibility.
+        """Group similar predicates based on string similarity and domain/range
+        compatibility.
 
         Args:
             predicates_with_info: Dictionary mapping predicate URIs to their metadata.
@@ -710,7 +738,7 @@ class EntityDisambiguator:
                 info2 = predicates_with_info[pred_b]
 
                 # Exact local name match
-                if info1["local_name"].lower() == info2["local_name"].lower():
+                if info1.local_name.lower() == info2.local_name.lower():
                     # Still check domain/range compatibility for exact matches
                     if self._check_domain_range_compatibility(info1, info2):
                         similar_group.append(pred_b)
@@ -718,9 +746,9 @@ class EntityDisambiguator:
                     continue
 
                 # Check label similarity
-                if info1["label"] and info2["label"]:
+                if info1.label is not None and info2.label is not None:
                     label_similarity = fuzz.ratio(
-                        info1["label"].lower(), info2["label"].lower()
+                        info1.label.lower(), info2.label.lower()
                     )
 
                     # Check domain/range compatibility
@@ -740,17 +768,15 @@ class EntityDisambiguator:
 
         return predicate_groups
 
-    def _check_domain_range_compatibility(self, info1: Dict, info2: Dict) -> bool:
+    def _check_domain_range_compatibility(
+        self, info1: PredicateMetadata, info2: PredicateMetadata
+    ) -> bool:
         """Check if two predicates have compatible domains and ranges."""
         # Compatible if they match or one is None (not specified)
         domain_compatible = (
-            info1["domain"] == info2["domain"]
-            or info1["domain"] is None
-            or info2["domain"] is None
+            info1.domain == info2.domain or info1.domain is None or info2.domain is None
         )
         range_compatible = (
-            info1["range"] == info2["range"]
-            or info1["range"] is None
-            or info2["range"] is None
+            info1.range == info2.range or info1.range is None or info2.range is None
         )
         return domain_compatible and range_compatible
