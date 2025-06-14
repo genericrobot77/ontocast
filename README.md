@@ -30,7 +30,7 @@ OntoCast is a powerful framework that automatically extracts semantic triples fr
 ## Installation
 
 ```bash
-pip install graphcast
+pip install ontocast
 ```
 
 ## Configuration
@@ -42,41 +42,31 @@ Create a `.env` file with your OpenAI API key:
 cp .env.example .env
 ```
 
-Paste your OPENAI key:
-```bash
-OPENAI_API_KEY=your_api_key_here
-```
 
 ### Running the Server
 
 ```bash
 uv run serve \
-    --ontology-directory ./data/ontologies \
-    --working-directory working_dir \
-    --env-path .env
+    --ontology-directory ONTOLOGY_DIR \
+    --working-directory WORKING_DIR \
 ```
 
-### Processing Documents
+### Processing Documents via API
 
-1. **Convert PDFs to Markdown** (Optional):
-```bash
-uv run pdfs-to-markdown \
-    --input-path data/pdf \
-    --output-path data/json \
-    [--prefix chem]
-```
-
-2. **Process Documents via API**:
+1. **Process Documents via API**:
 ```bash
 # Process a PDF file
-curl -X POST http://localhost:8999/process \
-    -F "file=@path/to/your/document.pdf"
+curl -X POST http://url:port/process -F "file=@data/pdf/sample.pdf"
+
+curl -X POST http://url:port/process -F "file=@test2/sample.json"
 
 # Process text content
 curl -X POST http://localhost:8999/process \
     -H "Content-Type: application/json" \
     -d '{"text": "Your document text here"}'
 ```
+
+NB: json documents are expected to contain text in `text` field
 
 ## Project Structure
 
@@ -101,15 +91,17 @@ The system follows a multi-stage workflow:
    - Ontology selection
    - Text to ontology triples
    - Ontology critique
-   - Ontology sublimation
 
 3. **Fact Extraction**
    - Text to facts
    - Facts critique
+   - Ontology sublimation
+
+4. **Chunk Normalization
    - Chunk KG aggregation
    - Entity/Propety Disambiguation
 
-4. **Storage**
+5. **Storage**
    - Knowledge graph storage
 
 [<img src="docs/assets/graph.png" width="400"/>](graph.png)
@@ -125,5 +117,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Acknowledgments
 
 - Built with Python and RDFlib
+- Uses docling for pdf/pptx conversion
 - Uses OpenAI's language models for semantic analysis
-- Based on langchain/langgraph
+- Uses langchain/langgraph
