@@ -81,6 +81,14 @@ uv run serve \
 - recursion_limit is calculated based on max_visits * estimated_chunks, the estimated number of chunks is taken to be 30 or otherwise fetched from `.env` (vie `ESTIMATED_CHUNKS`)   
 - default 8999 is used default port
 
+
+### Docker
+
+To build docker
+```sh
+docker buildx build -t growgraph/ontocast:0.1.1 . 2>&1 | tee build.log
+```
+
 ## Project Structure
 
 ```
