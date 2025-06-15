@@ -24,9 +24,6 @@ class TripleStoreManager(Tool):
     This class defines the interface for triple store management operations,
     including fetching and storing ontologies and their graphs.
 
-    Attributes:
-        working_directory: Path to the working directory for storing data.
-        ontology_path: Optional path to the ontology directory.
     """
 
     def __init__(self, **kwargs):
@@ -130,7 +127,8 @@ class FilesystemTripleStoreManager(TripleStoreManager):
         if spec is None:
             fname = "current.ttl"
         elif isinstance(spec, str):
-            s = "_".join(spec.split("/")[-2:])
+            s = spec.split("/")[-2:]
+            s = "_".join([x for x in s if x])
             fname = f"facts_{s}.ttl"
         else:
             raise TypeError(f"string expected for spec {spec}")

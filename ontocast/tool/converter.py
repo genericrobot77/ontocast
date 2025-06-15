@@ -39,7 +39,7 @@ class ConverterTool(Tool):
         super().__init__(**kwargs)
         self._converter = DocumentConverter()
 
-    def __call__(self, file_input: Union[BytesIO, str]) -> Dict[str, Any]:
+    def __call__(self, file_input: Union[bytes, str]) -> Dict[str, Any]:
         """Convert a document to structured data.
 
         Args:
@@ -48,8 +48,8 @@ class ConverterTool(Tool):
         Returns:
             Dict[str, Any]: The converted document data.
         """
-        if isinstance(file_input, BytesIO):
-            ds = DocumentStream(name="doc", stream=file_input)
+        if isinstance(file_input, bytes):
+            ds = DocumentStream(name="doc", stream=BytesIO(file_input))
             result = self._converter.convert(ds)
             doc = result.document.export_to_markdown()
             return {"text": doc}

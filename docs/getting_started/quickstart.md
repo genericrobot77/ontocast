@@ -5,84 +5,71 @@ This guide will help you get started with OntoCast quickly. We'll walk through a
 ## Prerequisites
 
 - OntoCast installed (see [Installation](installation.md))
-- A sample document to process (e.g., a Markdown file)
+- A sample document to process (e.g., a pdf or a markdown file)
 
 ## Basic Example
 
-### 1. Start the Server
-
-First, start the OntoCast server:
+### Query the Server
 
 ```bash
-uv run serve \
-    --working-directory ~/work/tmp/cwd \
+curl -X POST http://url:port/process -F "file=@sample.pdf"
+
+curl -X POST http://url:port/process -F "file=@sample.json"
+```
+
+`url` would be `localhost` for a locally running server, default port is 8999
+
+### Running a Server
+
+To start an OntoCast server:
+
+```bash
+serve \
+    --working-directory WORKING_DIR \
+    --ontology-directory ONTOLOGY_DIR \
     --logging-level info \
-    --head-chunks 2 \
-    --ontology-directory data/ontologies \
     --max-visits 2
 ```
 
-### 2. Prepare a Sample Document
+- `ONTOLOGY_DIR` is expected to contain ontologies in `turtle` format.
+- `--max-visits` specifies the number of visits per decision node, e.g. `render_onto_triples` or `criticise_facts`
+- for testing, you may use an optional parameter `--head-chunks` to process only `head_chunks` number of chunks
+- LLM setting are provided via `.env`
 
-Create a simple Markdown file named `sample.md`:
+```sh
+# Domain configuration (used for URI generation) 
+CURRENT_DOMAIN=https://example.com
+PORT=8999
+LLM_TEMPERATURE=0.1
 
-```markdown
-# Sample Document
+# openai flavor
+# OpenAI API Key (required for LLM functionality)
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your-api-key-here
 
-This is a sample document about a person named John Doe.
+# ollama flavor
+# BASE URL (if using ollama)
+LLM_BASE_URL=ollama-base-url
+LLM_PROVIDER=ollama
+LLM_MODEL_NAME=granite3.3```
 
-John Doe is a software engineer who works at Example Corp.
-He specializes in Python development and has 10 years of experience.
+### Receive Results
+
+After processing, the ontology and the facts graph are returned in turtle format
+
+```json
+{
+    "data": {
+        "facts": "# facts in turtle format",
+        "ontology": "# ontology in turtle format"
+    }
+  ...
+}
 ```
-
-### 3. Process the Document
-
-Send the document to the server for processing:
-
-```bash
-curl -X POST http://localhost:8000/process \
-    -H "Content-Type: application/json" \
-    -d '{
-        "file_path": "sample.md",
-        "format": "md"
-    }'
-```
-
-### 4. View the Results
-
-After processing, you can view the extracted information:
-
-```bash
-# Get the RDF graph
-curl -X GET http://localhost:8000/graph/{document_id}
-
-# Get the triples
-curl -X GET http://localhost:8000/triples/{document_id}
-```
-
-## Expected Output
-
-The server will return an RDF graph containing information about John Doe, including:
-
-- Person entity
-- Job role
-- Company
-- Skills
-- Experience
-
-## Understanding the Results
-
-The processed document is converted into an RDF graph with:
-
-1. **Entities**: People, organizations, concepts
-2. **Properties**: Relationships between entities
-3. **Values**: Specific information about entities
 
 ## Next Steps
 
 Now that you've processed your first document, you can:
 
 1. Try processing different types of documents (PDF, Word)
-2. Explore the [Basic Usage](examples/basic_usage.md) guide
-3. Learn about [Configuration](configuration.md) options
-4. Check the [API Reference](reference/core.md) for more details 
+2. Check the [API Reference](../reference/onto.md) for more details 

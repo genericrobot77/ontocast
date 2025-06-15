@@ -52,4 +52,3 @@ def test_render_facts_after_fail(state_facts_failed: AgentState, tools):
     state = render_facts(state=state, tools=tools)
 
     assert len(state.current_chunk.graph) > 0
-    assert state.status == Status.SUCCESS

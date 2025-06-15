@@ -1,22 +1,41 @@
+# ─── builder stage ───────────────────────────────────────────────────────────
 FROM python:3.12-slim-bullseye AS builder
 
-RUN apt update -y && apt upgrade -y && apt install curl git -y
-RUN curl -LsSf https://astral.sh/uv/0.6.15/install.sh | sh
+RUN apt update -y \
+ && apt install -y curl git \
+ && curl -LsSf https://astral.sh/uv/0.7.11/install.sh | sh \
+ && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="${PATH}:/root/.local/bin"
-RUN --mount=type=ssh ssh -T git@github.com || true
-
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN touch README.md
-COPY src ./src
 
-RUN mkdir -p -m 0700 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
-RUN --mount=type=ssh uv venv -v
-RUN --mount=type=ssh uv sync --no-group dev -v
+# uv creates a venv and installs deps
+RUN --mount=type=ssh uv sync --no-group dev --no-group docs -v
 
-COPY run ./run
+COPY ontocast ./ontocast
 COPY README.md ./
 
-CMD sh -c 'uv run python serve --env-path .env --ontology-path ./data/ontologies --working-directory ./cwd'
+# ─── runtime stage ────────────────────────────────────────────────────────────
+FROM python:3.12-slim-bullseye AS runtime
+
+LABEL org.opencontainers.image.title="ontocast-mcp-server" \
+      org.opencontainers.image.version="0.1.1" \
+      org.opencontainers.image.description="Ontology‑assisted semantic triple extractor (MCP‑compatible)"
+
+# Create non-root user
+RUN groupadd -r ontocast && useradd -r -g ontocast ontocast
+USER ontocast
+
+WORKDIR /app
+COPY --from=builder /app /app
+
+# Expose & healthcheck
+EXPOSE 8999
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8999/health || exit 1
+
+ENTRYPOINT ["uv", "run", "python", "serve"]
+CMD ["--env-path", ".env", "--ontology-path", "./data/ontologies", "--working-directory", "./cwd"]

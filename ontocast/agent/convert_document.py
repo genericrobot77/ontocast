@@ -7,7 +7,6 @@ structured data that can be processed by the OntoCast system.
 import json
 import logging
 import pathlib
-from io import BytesIO
 
 from ontocast.onto import AgentState, Status
 from ontocast.toolbox import ToolBox
@@ -35,22 +34,24 @@ def convert_document(state: AgentState, tools: ToolBox) -> AgentState:
     for filename, file_content in files.items():
         file_extension = pathlib.Path(filename).suffix.lower()
 
-        if file_content is None:
-            try:
-                with open(filename, "rb") as f:
-                    file_content = f.read()
-                if file_extension == ".json":
-                    file_content = json.loads(file_content)
-            except Exception as e:
-                logger.error(f"Failed to load file {filename}: {str(e)}")
-                state.status = Status.FAILED
-                return state
-
+        # if file_content is None:
+        #     try:
+        #         with open(filename, "rb") as f:
+        #             file_content = f.read()
+        #         if file_extension == ".json":
+        #             file_content = json.loads(file_content)
+        #     except Exception as e:
+        #         logger.error(f"Failed to load file {filename}: {str(e)}")
+        #         state.status = Status.FAILED
+        #         return state
+        logger.debug(f"file ext: {file_extension}, {filename}")
         if file_extension in tools.converter.supported_extensions:
-            supported_file = BytesIO(file_content)
-            result = tools.converter(supported_file)
+            logger.debug("will apply convert :")
+            result = tools.converter(file_content)
         elif file_extension == ".json":
-            result = file_content
+            result = json.loads(file_content.decode("utf-8"))
+        elif file_extension == ".txt":
+            result = {"text": json.loads(file_content.decode("utf-8"))}
         else:
             state.status = Status.FAILED
             return state

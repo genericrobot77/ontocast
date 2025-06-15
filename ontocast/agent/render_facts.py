@@ -85,7 +85,9 @@ def render_facts(state: AgentState, tools: ToolBox) -> AgentState:
         )
 
         proj = parser.parse(response.content)
-        state.current_chunk.graph += proj.semantic_graph
+        proj.semantic_graph.sanitize_prefixes_namespaces()
+        if state.current_chunk.graph is not None:
+            state.current_chunk.graph += proj.semantic_graph
 
         state.clear_failure()
         return state

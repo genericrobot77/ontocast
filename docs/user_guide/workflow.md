@@ -86,6 +86,4 @@ The workflow can be configured through command-line parameters:
 
 ## Next Steps
 
-- Explore [Advanced Usage](../examples/advanced_usage.md)
-- Learn about [Configuration Options](../getting_started/configuration.md)
-- Check [API Reference](../reference/index.md) 
+- Check [API Reference](../reference/onto.md) 
