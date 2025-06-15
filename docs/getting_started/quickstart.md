@@ -70,6 +70,4 @@ After processing, the ontology and the facts graph are returned in turtle format
 Now that you've processed your first document, you can:
 
 1. Try processing different types of documents (PDF, Word)
-2. Explore the [Basic Usage](examples/basic_usage.md) guide
-3. Learn about [Configuration](configuration.md) options
-4. Check the [API Reference](reference/core.md) for more details 
+2. Check the [API Reference](../reference/onto.md) for more details 

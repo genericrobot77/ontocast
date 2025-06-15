@@ -23,6 +23,4 @@ pip install ontocast
 After installation, you can:
 
 1. Read the [Quick Start](quickstart.md) guide
-2. Configure OntoCast in the [Configuration](configuration.md) guide
-3. Explore [Basic Usage](../examples/basic_usage.md) examples
-4. Check the [API Reference](../reference/index.md) for detailed documentation 
+3. Check the [API Reference](../reference/onto.md) for detailed documentation 

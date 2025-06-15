@@ -56,12 +56,9 @@ nav:
 -   Getting Started:
     -   Installation: getting_started/installation.md
     -   Quick Start: getting_started/quickstart.md
-    -   Configuration: getting_started/configuration.md
 -   User Guide:
     -   Core Concepts: user_guide/concepts.md
-    -   Workflow: user_guide/workflow.md
--   Examples:
-    -   Basic Usage: examples/basic_usage.md
+#    -   Workflow: user_guide/workflow.md
 -   API Reference: reference/
 -   Contributing: contributing.md
 
@@ -70,6 +67,9 @@ markdown_extensions:
         anchor_linenums: true
         line_spans: __span
         pygments_lang_class: true
+- def_list
+- pymdownx.tasklist:
+    custom_checkbox: true
 -   pymdownx.inlinehilite
 -   pymdownx.snippets
 -   pymdownx.superfences

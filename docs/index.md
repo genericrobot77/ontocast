@@ -84,27 +84,27 @@ src/
 The system follows a multi-stage workflow:
 
 1. **Document Preparation**
-   - [Optional] Convert to Markdown
-   - Text chunking
+   1. [Optional] Convert to Markdown
+   2. Text chunking
 
 2. **Ontology Processing**
-   - Ontology selection
-   - Text to ontology triples
-   - Ontology critique
+   1. Ontology selection
+   2. Text to ontology triples
+   3. Ontology critique
 
 3. **Fact Extraction**
-   - Text to facts
-   - Facts critique
-   - Ontology sublimation
+   1. Text to facts
+   2. Facts critique
+   3. Ontology sublimation
 
 4. **Chunk Normalization
-   - Chunk KG aggregation
-   - Entity/Propety Disambiguation
+   1. Chunk KG aggregation
+   2. Entity/Property Disambiguation
 
 5. **Storage**
-   - Knowledge graph storage
+   1. Save ontology and knowledge graph of facts 
 
-[<img src="docs/assets/graph.png" width="400"/>](graph.png)
+[<img src="assets/graph.png" width="400"/>](graph.png)
 
 ## Documentation
 
