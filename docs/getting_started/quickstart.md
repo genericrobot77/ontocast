@@ -5,17 +5,19 @@ This guide will help you get started with OntoCast quickly. We'll walk through a
 ## Prerequisites
 
 - OntoCast installed (see [Installation](installation.md))
-- A sample document to process (e.g., a Markdown file)
+- A sample document to process (e.g., a pdf or a markdown file)
 
 ## Basic Example
 
 ### Query the Server
 
 ```bash
-curl -X POST http://url:port/process -F "file=@data/pdf/sample.pdf"
+curl -X POST http://url:port/process -F "file=@sample.pdf"
 
-curl -X POST http://url:port/process -F "file=@test2/sample.json"
+curl -X POST http://url:port/process -F "file=@sample.json"
 ```
+
+`url` would be `localhost` for a locally running server, default port is 8999
 
 ### Running a Server
 

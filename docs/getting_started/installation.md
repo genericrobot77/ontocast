@@ -13,6 +13,8 @@ This guide will help you install OntoCast and its dependencies.
 uv add ontocast
 ```
 
+or
+
 
 ```bash
 pip install ontocast

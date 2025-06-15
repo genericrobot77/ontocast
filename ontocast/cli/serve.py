@@ -19,9 +19,32 @@ from ontocast.toolbox import ToolBox, init_toolbox
 logger = logging.getLogger(__name__)
 
 
+def calculate_recursion_limit(
+    max_visits: int, head_chunks: Optional[int] = None
+) -> int:
+    """Calculate the recursion limit based on max_visits and head_chunks.
+
+    Args:
+        max_visits: Maximum number of visits allowed per node
+        head_chunks: Optional maximum number of chunks to process
+
+    Returns:
+        int: Calculated recursion limit
+    """
+    base_recursion_limit = int(os.getenv("RECURSION_LIMIT", 1000))
+    estimated_chunks = int(os.getenv("ESTIMATED_CHUNKS", 30))
+    if head_chunks is not None:
+        # If we know the number of chunks, calculate exact limit
+        return max(base_recursion_limit, max_visits * head_chunks * 10)
+    else:
+        # If we don't know chunks, use a conservative estimate
+        return max(base_recursion_limit, max_visits * estimated_chunks * 10)
+
+
 def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: int = 3):
     app = Robyn(__file__)
     workflow: CompiledStateGraph = create_agent_graph(tools)
+    recursion_limit = calculate_recursion_limit(max_visits, head_chunks)
 
     @app.get("/health")
     async def health_check():
@@ -91,7 +114,9 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
             )
 
             async for chunk in workflow.astream(
-                state, stream_mode="values", config=RunnableConfig(recursion_limit=100)
+                state,
+                stream_mode="values",
+                config=RunnableConfig(recursion_limit=recursion_limit),
             ):
                 state = chunk
 
@@ -205,6 +230,8 @@ def run(
             )
         )
 
+        recursion_limit = calculate_recursion_limit(max_visits, head_chunks)
+
         async def process_files():
             for file_path in files:
                 try:
@@ -216,7 +243,7 @@ def run(
                     async for _ in workflow.astream(
                         state,
                         stream_mode="values",
-                        config=RunnableConfig(recursion_limit=50),
+                        config=RunnableConfig(recursion_limit=recursion_limit),
                     ):
                         pass
 

@@ -18,7 +18,7 @@ OntoCast is a powerful framework that automatically extracts semantic triples fr
   - Ontology sublimation and refinement
 
 - **Document Processing**
-  - Supports PDF, Markdown, and text documents
+  - Supports PDF, markdown, and text documents
   - Automated text chunking and processing
   - Multi-stage validation pipeline
 
@@ -26,6 +26,7 @@ OntoCast is a powerful framework that automatically extracts semantic triples fr
   - RDF-based knowledge graph storage
   - Triple extraction for both ontologies and facts
   - Configurable workflow with visit limits
+  - Chunk aggregation preserving fact lineage
 
 ## Installation
 
@@ -53,7 +54,6 @@ uv run serve \
 
 ### Processing Documents via API
 
-1. **Process Documents via API**:
 ```bash
 # Process a PDF file
 curl -X POST http://url:port/process -F "file=@data/pdf/sample.pdf"
@@ -66,7 +66,20 @@ curl -X POST http://localhost:8999/process \
     -d '{"text": "Your document text here"}'
 ```
 
-NB: json documents are expected to contain text in `text` field
+### Processing Filesystem Documents
+
+```bash
+uv run serve \
+    --ontology-directory ONTOLOGY_DIR \
+    --working-directory WORKING_DIR \
+    --input-path DOCUMENT_DIR
+```
+
+
+### NB
+- json documents are expected to contain text in `text` field
+- recursion_limit is calculated based on max_visits * estimated_chunks, the estimated number of chunks is taken to be 30 or otherwise fetched from `.env` (vie `ESTIMATED_CHUNKS`)   
+- default 8999 is used default port
 
 ## Project Structure
 
@@ -84,7 +97,9 @@ src/
 The system follows a multi-stage workflow:
 
 1. **Document Preparation**
+    
    - [Optional] Convert to Markdown
+ 
    - Text chunking
 
 2. **Ontology Processing**
@@ -109,6 +124,13 @@ The system follows a multi-stage workflow:
 ## Documentation
 
 Full documentation is available at: [growgraph.github.io/ontocast](https://growgraph.github.io/ontocast)
+
+
+## Roadmap
+
+1. Add a triple store for serialization/ontology management
+2. Replace graph to text by a symbolic graph interface (agent tools for working with triples) 
+
 
 ## Contributing
 
