@@ -12,7 +12,6 @@
 
 OntoCast is a powerful framework that automatically extracts semantic triples from documents using an agentic approach. It combines ontology management with natural language processing to create structured knowledge from unstructured text.
 
-
 ## Key Features
 
 - **Ontology-Guided Extraction**: Uses ontologies to guide the extraction process and ensure semantic consistency
@@ -22,27 +21,30 @@ OntoCast is a powerful framework that automatically extracts semantic triples fr
 - **MCP Compatibility**: Fully compatible with the Model Control Protocol (MCP) specification, providing standardized endpoints for health checks, info, and document processing
 - **RDF Output**: Generates standardized RDF/Turtle output
 
-
-- **Automated Ontology Management**
-  - Intelligent ontology selection and construction
-  - Multi-stage validation and critique system
-  - Ontology sublimation and refinement
+### Extraction Steps
 
 - **Document Processing**
-  - Supports PDF, markdown, and text documents
-  - Automated text chunking and processing
-  - Multi-stage validation pipeline
+    - Supports PDF, markdown, and text documents
+    - Automated text chunking and processing
+
+- 
+- **Automated Ontology Management**
+    - Intelligent ontology selection and construction
+    - Multi-stage validation and critique system
+    - Ontology sublimation and refinement
 
 - **Knowledge Graph Integration**
-  - RDF-based knowledge graph storage
-  - Triple extraction for both ontologies and facts
-  - Configurable workflow with visit limits
-  - Chunk aggregation preserving fact lineage
+    - RDF-based knowledge graph storage
+    - Triple extraction for both ontologies and facts
+    - Configurable workflow with visit limits
+    - Chunk aggregation preserving fact lineage
 
 
 ## Installation
 
-```bash
+```sh
+uv add ontocast 
+# or
 pip install ontocast
 ```
 
@@ -61,7 +63,7 @@ cp .env.example .env
 ```bash
 uv run serve \
     --ontology-directory ONTOLOGY_DIR \
-    --working-directory WORKING_DIR \
+    --working-directory WORKING_DIR
 ```
 
 
@@ -134,7 +136,10 @@ src/
 
 ## Workflow
 
-The system follows a multi-stage workflow:
+The extraction follows a multi-stage workflow:
+
+<img src="https://github.com/growgraph/ontocast/blob/main/docs/assets/graph.png?raw=True" alt="Workflow diagram" width="350" style="float: right; margin-left: 20px;"/>
+
 
 1. **Document Preparation**
     - [Optional] Convert to Markdown
@@ -157,7 +162,7 @@ The system follows a multi-stage workflow:
 5. **Storage**
     - Knowledge graph storage
 
-[<img src="assets/graph.png" width="400"/>](graph.png)
+
 
 ## Documentation
 
@@ -178,10 +183,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - Uses RDFlib for semantic triple management
 - Uses docling for pdf/pptx conversion
-- Uses OpenAI's / Ollama language models for semantic analysis
+- Uses OpenAI language models / open models served via Ollama for fact extraction
 - Uses langchain/langgraph
-
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
