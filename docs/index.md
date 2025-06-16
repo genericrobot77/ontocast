@@ -12,7 +12,16 @@
 
 OntoCast is a powerful framework that automatically extracts semantic triples from documents using an agentic approach. It combines ontology management with natural language processing to create structured knowledge from unstructured text.
 
-## Features
+
+## Key Features
+
+- **Ontology-Guided Extraction**: Uses ontologies to guide the extraction process and ensure semantic consistency
+- **Entity Disambiguation**: Resolves entity and property references across chunks
+- **Multi-Format Support**: Handles various input formats including text, JSON, PDF, and Markdown
+- **Semantic Chunking**: Intelligent text chunking based on semantic similarity
+- **MCP Compatibility**: Fully compatible with the Model Control Protocol (MCP) specification, providing standardized endpoints for health checks, info, and document processing
+- **RDF Output**: Generates standardized RDF/Turtle output
+
 
 - **Automated Ontology Management**
   - Intelligent ontology selection and construction
@@ -29,6 +38,7 @@ OntoCast is a powerful framework that automatically extracts semantic triples fr
   - Triple extraction for both ontologies and facts
   - Configurable workflow with visit limits
   - Chunk aggregation preserving fact lineage
+
 
 ## Installation
 
@@ -54,7 +64,19 @@ uv run serve \
     --working-directory WORKING_DIR \
 ```
 
-### Processing Documents via API
+
+### Process Endpoint
+
+The `/process` endpoint accepts:
+- `application/json`: JSON data
+- `multipart/form-data`: File uploads
+
+And returns:
+- `application/json`: Processing results including:
+  - Extracted facts in Turtle format
+  - Generated ontology in Turtle format
+  - Processing metadata
+
 
 ```bash
 # Process a PDF file
@@ -67,6 +89,14 @@ curl -X POST http://localhost:8999/process \
     -H "Content-Type: application/json" \
     -d '{"text": "Your document text here"}'
 ```
+
+## MCP Endpoints
+
+OntoCast implements the following MCP-compatible endpoints:
+
+- `GET /health`: Health check endpoint
+- `GET /info`: Service information endpoint
+- `POST /process`: Document processing endpoint
 
 ### Processing Filesystem Documents
 
@@ -146,7 +176,12 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Acknowledgments
 
-- Built with Python and RDFlib
+- Uses RDFlib for semantic triple management
 - Uses docling for pdf/pptx conversion
-- Uses OpenAI's language models for semantic analysis
+- Uses OpenAI's / Ollama language models for semantic analysis
 - Uses langchain/langgraph
+
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

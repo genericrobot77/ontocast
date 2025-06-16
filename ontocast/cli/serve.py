@@ -49,11 +49,35 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     @app.get("/health")
     async def health_check():
         """MCP health check endpoint."""
-        return Response(
-            status_code=200,
-            headers=Headers({"Content-Type": "application/json"}),
-            description=jsonify({"status": "healthy"}),
-        )
+        try:
+            # Check if LLM is available
+            if tools.llm is None:
+                return Response(
+                    status_code=503,
+                    headers=Headers({"Content-Type": "application/json"}),
+                    description=jsonify(
+                        {"status": "unhealthy", "error": "LLM not initialized"}
+                    ),
+                )
+
+            return Response(
+                status_code=200,
+                headers=Headers({"Content-Type": "application/json"}),
+                description=jsonify(
+                    {
+                        "status": "healthy",
+                        "version": "0.1.1",
+                        "llm_provider": tools.llm_provider,
+                    }
+                ),
+            )
+        except Exception as e:
+            logger.error(f"Health check failed: {str(e)}")
+            return Response(
+                status_code=503,
+                headers=Headers({"Content-Type": "application/json"}),
+                description=jsonify({"status": "unhealthy", "error": str(e)}),
+            )
 
     @app.get("/info")
     async def info():
@@ -70,6 +94,8 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                     "capabilities": ["text-to-triples", "ontology-extraction"],
                     "input_types": ["text", "json", "pdf", "markdown"],
                     "output_types": ["turtle", "json"],
+                    "llm_provider": tools.llm.provider,
+                    "model_name": tools.llm.model,
                 }
             ),
         )
@@ -78,7 +104,7 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     async def process(request: Request):
         """MCP process endpoint."""
         try:
-            content_type = request.headers["content-type"]
+            content_type = request.headers.get("content-type", "")
             logger.debug(f"Content-Type: {content_type}")
             logger.debug(f"Request headers: {request.headers}")
             logger.debug(f"Request body: {request.body}")
@@ -99,14 +125,26 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                     return Response(
                         status_code=400,
                         headers=Headers({"Content-Type": "application/json"}),
-                        description="No file provided",
+                        description=jsonify(
+                            {
+                                "status": "error",
+                                "error": "No file provided",
+                                "error_type": "ValidationError",
+                            }
+                        ),
                     )
             else:
                 logger.debug(f"Unsupported content type: {content_type}")
                 return Response(
                     status_code=400,
                     headers=Headers({"Content-Type": "application/json"}),
-                    description="No data provided",
+                    description=jsonify(
+                        {
+                            "status": "error",
+                            "error": f"Unsupported content type: {content_type}",
+                            "error_type": "ValidationError",
+                        }
+                    ),
                 )
 
             state = AgentState(
@@ -131,7 +169,8 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                 },
                 "metadata": {
                     "status": state["status"],
-                    "chunks_processed": len(state.get("chunks", [])),
+                    "chunks_processed": len(state.get("chunks_processed", [])),
+                    "chunks_remaining": len(state.get("chunks", [])),
                 },
             }
 
@@ -153,6 +192,12 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                         "status": "error",
                         "error": str(e),
                         "error_type": type(e).__name__,
+                        "error_details": {
+                            "stage": state.get("failure_stage", "unknown"),
+                            "reason": state.get("failure_reason", "unknown"),
+                        }
+                        if hasattr(state, "failure_stage")
+                        else None,
                     }
                 ),
             )
