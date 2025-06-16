@@ -127,7 +127,7 @@ The system follows a multi-stage workflow:
 5. **Storage**
     - Knowledge graph storage
 
-[<img src="assets/graph.png" width="400"/>](graph.png)
+[<img src="https://github.com/growgraph/ontocast/blob/main/docs/assets/graph.png?raw=True" width="400"/>](graph.png)
 
 ## Documentation
 
