@@ -6,7 +6,6 @@ including connectivity validation and graph structure verification.
 
 import logging
 from collections import defaultdict, deque
-from copy import deepcopy
 from typing import Any, Optional, Set
 
 from rdflib import RDF, RDFS, Literal, URIRef
@@ -32,6 +31,17 @@ def validate_and_connect_chunk(
     Returns:
         Chunk: The chunk with a validated and optionally connected graph.
     """
+
+    # Ensure an RDFGraph instance
+    if not isinstance(chunk.graph, RDFGraph):
+        logger.warning("received an redflib.Graph rather than RDFGraph")
+        new_graph = RDFGraph()
+        for triple in chunk.graph:
+            new_graph.add(triple)
+        for prefix, namespace in chunk.graph.namespaces():
+            new_graph.bind(prefix, namespace)
+        chunk.graph = new_graph
+
     validator = RDFGraphConnectivityValidator(chunk.graph)
 
     result = validator.validate_connectivity()
@@ -47,18 +57,17 @@ def validate_and_connect_chunk(
             f"Isolated entities: {[str(e) for e in result['isolated_entities']]}"
         )
 
-    final_graph = deepcopy(chunk.graph)
+    # Create a new RDFGraph instance instead of using deepcopy
+    final_graph = RDFGraph()
+    for triple in chunk.graph:
+        final_graph.add(triple)
+    # Copy namespace bindings
+    for prefix, namespace in chunk.graph.namespaces():
+        final_graph.bind(prefix, namespace)
 
     if not result["is_fully_connected"] and auto_connect:
-        final_graph = validator.make_graph_connected(chunk_iri=chunk.iri)
+        final_graph = validator.make_graph_connected(chunk.iri)
 
-        # Re-validate
-        new_validator = RDFGraphConnectivityValidator(final_graph)
-        new_result = new_validator.validate_connectivity()
-        logger.debug(
-            "After connection: "
-            f"components: {new_result['num_components']}, triples: {len(final_graph)}"
-        )
     chunk.graph = final_graph
     return chunk
 

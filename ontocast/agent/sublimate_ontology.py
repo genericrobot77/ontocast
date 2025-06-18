@@ -97,6 +97,16 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
 
         om_tool.update_ontology(state.current_ontology.short_name, graph_onto_addendum)
 
+        # Ensure graph_facts is an RDFGraph instance
+        if not isinstance(graph_facts, RDFGraph):
+            logger.warning("received an redflib.Graph rather than RDFGraph")
+            new_graph = RDFGraph()
+            for triple in graph_facts:
+                new_graph.add(triple)
+            for prefix, namespace in graph_facts.namespaces():
+                new_graph.bind(prefix, namespace)
+            graph_facts = new_graph
+
         state.current_chunk.graph = graph_facts
         state.current_chunk = validate_and_connect_chunk(
             state.current_chunk,
