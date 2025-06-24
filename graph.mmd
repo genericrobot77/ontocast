@@ -15,7 +15,7 @@ config:
     primaryTextColor: '#372237'
 ---
 graph TD;
-	__start__([<p>__start__</p>]):::first
+	__start__([<p>Doc Incoming</p>]):::first
 	Convert_to_Markdown(Convert to Markdown)
 	Chunk_Text(Chunk Text)
 	Select_Ontology(Select Ontology)
@@ -26,7 +26,7 @@ graph TD;
 	Criticise_Facts(Criticise Facts)
 	Chunks_Empty_(Chunks Empty?)
 	Aggregate_Facts(Aggregate Facts)
-	__end__([<p>__end__</p>]):::last
+	__end__([<p>Serialize Ont/Facts</p>]):::last
 	Aggregate_Facts --> __end__;
 	Chunk_Text --> Chunks_Empty_;
 	Convert_to_Markdown --> Chunk_Text;
