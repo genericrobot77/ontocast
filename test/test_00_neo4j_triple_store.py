@@ -8,8 +8,6 @@ pytestmark = pytest.mark.usefixtures("neo4j_triple_store_manager")
 def test_neo4j_triple_store_roundtrip(neo4j_triple_store_manager, test_ontology):
     manager = neo4j_triple_store_manager
     ontology = Ontology(graph=test_ontology)
-
-    ontology = Ontology(graph=test_ontology, ontology_id="bla")
     # Store ontology
     manager.serialize_ontology(ontology)
     # Fetch ontologies
