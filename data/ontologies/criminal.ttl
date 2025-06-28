@@ -11,6 +11,7 @@
     rdfs:label "French (Supreme) Court of Appeal Ontology" ;
     dcterms:created "2024-12-18" ;
     owl:versionInfo "3.0" ;
+    dcterms:description "An ontology for Criminal Cases at French (Supreme) Court of Appeal" ;
     dcterms:license "https://creativecommons.org/licenses/by/4.0/" .
 
 
