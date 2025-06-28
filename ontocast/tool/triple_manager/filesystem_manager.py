@@ -19,7 +19,7 @@ class FilesystemTripleStoreManager(TripleStoreManager):
         ontology_path: Optional path to the ontology directory.
     """
 
-    working_directory: pathlib.Path
+    working_directory: Optional[pathlib.Path]
     ontology_path: Optional[pathlib.Path]
 
     def __init__(self, **kwargs):
@@ -54,10 +54,11 @@ class FilesystemTripleStoreManager(TripleStoreManager):
             o: The ontology to store.
             **kwargs: Additional keyword arguments for serialization.
         """
-        fname = f"ontology_{o.ontology_id}_{o.version}"
-        o.graph.serialize(
-            format="turtle", destination=self.working_directory / f"{fname}.ttl"
-        )
+        if self.working_directory is not None:
+            fname = f"ontology_{o.ontology_id}_{o.version}"
+            o.graph.serialize(
+                format="turtle", destination=self.working_directory / f"{fname}.ttl"
+            )
 
     def serialize_facts(self, g: Graph, **kwargs):
         """Store a graph in the filesystem.
@@ -76,5 +77,6 @@ class FilesystemTripleStoreManager(TripleStoreManager):
             fname = f"facts_{s}.ttl"
         else:
             raise TypeError(f"string expected for spec {spec}")
-        filename = self.working_directory / fname
-        g.serialize(format="turtle", destination=filename)
+        if self.working_directory is not None:
+            filename = self.working_directory / fname
+            g.serialize(format="turtle", destination=filename)

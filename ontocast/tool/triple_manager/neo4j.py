@@ -5,9 +5,9 @@ abstract interfaces and filesystem-based implementations.
 """
 
 import logging
+from typing import Optional
 
-from rdflib import Graph
-from rdflib.namespace import DC, DCTERMS, OWL, RDF, RDFS
+from rdflib.namespace import OWL, RDF
 
 from ontocast.tool.triple_manager.core import TripleStoreManager
 
@@ -18,7 +18,7 @@ except ImportError:
 
 from pydantic import Field
 
-from ontocast.onto import Ontology, derive_ontology_id
+from ontocast.onto import Ontology, RDFGraph, derive_ontology_id
 
 logger = logging.getLogger(__name__)
 
@@ -167,90 +167,40 @@ class Neo4jTripleStoreManager(TripleStoreManager):
         with self._driver.session() as session:
             try:
                 # First, try to get explicitly stored ontology metadata
-                ontology_metadata = self._fetch_ontology_metadata(session)
+                ontology_iris = self._fetch_ontology_iris(session)
 
-                # Get all known namespaces
-                namespaces = self._get_ontology_namespaces(session)
-
-                # If we have explicit ontology metadata, use it
-                if ontology_metadata:
-                    for ont_meta in ontology_metadata:
+                if ontology_iris:
+                    for ont_iri in ontology_iris:
                         ontology = self._reconstruct_ontology_from_metadata(
-                            session, ont_meta, namespaces
+                            session, ont_iri
                         )
                         if ontology:
                             ontologies.append(ontology)
-                else:
-                    # Fallback: group by namespace and create ontologies
-                    ontologies = self._group_by_namespace_and_create_ontologies(
-                        session, namespaces
-                    )
-
-                # If still no ontologies found, create a combined one
-                if not ontologies:
-                    fallback_ontology = self._create_fallback_ontology(session)
-                    if fallback_ontology:
-                        ontologies.append(fallback_ontology)
 
             except Exception as e:
                 logger.error(f"Error in fetch_ontologies: {e}")
-                # Last resort fallback
-                fallback_ontology = self._create_fallback_ontology(session)
-                if fallback_ontology:
-                    ontologies.append(fallback_ontology)
 
         logger.info(f"Successfully loaded {len(ontologies)} ontologies")
         return ontologies
 
-    def _fetch_ontology_metadata(self, session) -> list[dict]:
+    def _fetch_ontology_iris(self, session) -> list[str]:
         """Fetch explicit ontology metadata."""
         result = session.run(f"""
             MATCH (o)-[:`{str(RDF.type)}`]->(t:Resource {{ uri: "{str(OWL.Ontology)}" }})
             WHERE o.uri IS NOT NULL
             RETURN
-              o.uri AS iri,
-              coalesce(
-                o.title,
-                o.`{str(DCTERMS.title)}`,
-                o.`{str(DC.title)}`
-              ) AS title,
-              coalesce(
-                o.description,
-                o.`{str(DCTERMS.description)}`,
-                o.`{str(DC.description)}`
-              ) AS description,
-              coalesce(
-                o.`{str(RDFS.label)}`
-              ) AS label,
-              coalesce(
-                o.version,
-                o.versionInfo,
-                o.`{str(OWL.versionInfo)}`
-              ) AS version,
-              labels(o) AS labels
+              o.uri AS iri
         """)
 
-        metadata = []
+        iris = []
         for record in result:
-            iri = record.get("iri")
-            if iri:
-                metadata.append(
-                    {
-                        "iri": iri,
-                        "title": record.get("title") or "",
-                        "description": record.get("description") or "",
-                        "version": record.get("version") or "",
-                        "labels": record.get("labels", []),
-                    }
-                )
+            iri = record.get("iri", None)
+            iris += [iri]
+        iris = [iri for iri in iris if iri is not None]
+        return iris
 
-        return metadata
-
-    def _reconstruct_ontology_from_metadata(
-        self, session, ont_meta: dict, namespaces: dict
-    ) -> Ontology:
+    def _reconstruct_ontology_from_metadata(self, session, iri) -> Optional[Ontology]:
         """Reconstruct an ontology from its metadata and related entities."""
-        iri = ont_meta["iri"]
         namespace_uri, _ = self._extract_namespace_prefix(iri)
 
         logger.debug(f"Reconstructing ontology: {iri} with namespace: {namespace_uri}")
@@ -258,39 +208,63 @@ class Neo4jTripleStoreManager(TripleStoreManager):
         # Fallback to n10s export for this namespace
         graph = self._export_namespace_via_n10s(session, namespace_uri)
         if graph and len(graph) > 0:
-            return self._create_ontology_object(iri, ont_meta, graph)
+            return self._create_ontology_object(iri, iri, graph)
 
-    def _export_namespace_via_n10s(self, session, namespace_uri: str) -> Graph:
+    def _export_namespace_via_n10s(
+        self, session, namespace_uri: str
+    ) -> Optional[RDFGraph]:
         """Export entities belonging to a namespace using n10s."""
         try:
-            # Get all entities in this namespace
             result = session.run(
-                """
-                MATCH (n)
-                WHERE n.uri STARTS WITH $namespace
-                WITH collect(id(n)) as nodeIds
+                f"""
                 CALL n10s.rdf.export.cypher(
-                    'MATCH (n)-[r]->(m) WHERE id(n) IN $nodeIds OR id(m) IN $nodeIds RETURN n,r,m',
-                    {format: 'Turtle', params: {nodeIds: nodeIds}}
+                    'MATCH (n)-[r]->(m) WHERE n.uri STARTS WITH "{namespace_uri}" RETURN n,r,m',
+                    {{format: 'Turtle'}}
                 )
-                YIELD rdf
-                RETURN rdf
-            """,
-                namespace=namespace_uri,
+                YIELD subject, predicate, object, isLiteral, literalType, literalLang
+                RETURN subject, predicate, object, isLiteral, literalType, literalLang
+                """
             )
 
-            combined_ttl = ""
-            for record in result:
-                if record["rdf"]:
-                    combined_ttl += record["rdf"] + "\n"
+            # Process into Turtle format
+            turtle_lines = []
 
-            if combined_ttl.strip():
-                graph = Graph()
-                graph.parse(data=combined_ttl, format="turtle")
+            for record in result:
+                subj = record["subject"]
+                pred = record["predicate"]
+                obj = record["object"]
+                is_literal = record["isLiteral"]
+                literal_type = record["literalType"]
+                literal_lang = record["literalLang"]
+
+                # Format object
+                if is_literal:
+                    # Escape special characters in literals
+                    obj = obj.replace('"', r"\"")
+                    obj_str = f'"{obj}"'
+
+                    # Add datatype or language tag if present
+                    if literal_lang:
+                        obj_str += f"@{literal_lang}"
+                    elif literal_type:
+                        obj_str += f"^^<{literal_type}>"
+                else:
+                    obj_str = f"<{obj}>"
+
+                # Format triple
+                turtle_lines.append(f"<{subj}> <{pred}> {obj_str} .")
+
+            # Combine into single string
+            turtle_string = "\n".join(turtle_lines)
+
+            if turtle_string.strip():
+                graph = RDFGraph()
+                graph.parse(data=turtle_string, format="turtle")
                 logger.debug(
                     f"Exported {len(graph)} triples via n10s for namespace {namespace_uri}"
                 )
                 return graph
+            return None
 
         except Exception as e:
             logger.debug(
@@ -299,101 +273,12 @@ class Neo4jTripleStoreManager(TripleStoreManager):
 
         return None
 
-    def _group_by_namespace_and_create_ontologies(
-        self, session, namespaces: dict
-    ) -> list[Ontology]:
-        """Group entities by namespace and create ontologies."""
-        ontologies = []
-
-        # Get all unique namespace prefixes from URIs
-        result = session.run("""
-            MATCH (n)
-            WHERE n.uri IS NOT NULL
-            WITH distinct split(n.uri, '#')[0] + '#' as namespace
-            WHERE size(namespace) > 10
-            RETURN namespace
-            UNION
-            MATCH (n)
-            WHERE n.uri IS NOT NULL AND NOT n.uri CONTAINS '#'
-            WITH distinct reverse(split(reverse(n.uri), '/')[1..]) as parts
-            RETURN reduce(s = 'http', part IN parts | s + '/' + part) + '/' as namespace
-        """)
-
-        found_namespaces = set()
-        for record in result:
-            ns = record["namespace"]
-            if ns:
-                found_namespaces.add(ns)
-
-        for namespace in found_namespaces:
-            graph = self._export_namespace_via_n10s(session, namespace)
-            if graph and len(graph) > 0:
-                ontology_id = derive_ontology_id(namespace)
-                ontology = Ontology(
-                    graph=graph,
-                    iri=namespace.rstrip("#/"),
-                    ontology_id=ontology_id,
-                    title=f"Ontology for {ontology_id}",
-                    description=f"Auto-generated ontology for namespace {namespace}",
-                    version="1.0",
-                )
-                ontologies.append(ontology)
-                logger.debug(
-                    f"Created ontology for namespace {namespace} with {len(graph)} triples"
-                )
-
-        return ontologies
-
-    def _create_fallback_ontology(self, session) -> Ontology:
-        """Create a fallback ontology with all available data."""
-        try:
-            logger.debug("Creating fallback ontology with all data")
-
-            # Fallback to n10s export
-            result = session.run("""
-                CALL n10s.rdf.export.cypher('MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 5000', {format: 'Turtle'})
-                YIELD rdf
-                RETURN rdf
-            """)
-
-            combined_ttl = ""
-            for record in result:
-                if record["rdf"]:
-                    combined_ttl += record["rdf"] + "\n"
-
-            if combined_ttl.strip():
-                graph = Graph()
-                graph.parse(data=combined_ttl, format="turtle")
-                logger.debug(
-                    f"Created fallback ontology from n10s export with {len(graph)} triples"
-                )
-                return Ontology(
-                    graph=graph,
-                    iri="http://example.org/combined-ontology",
-                    ontology_id="combined",
-                    title="Combined Ontology Data",
-                    description="All RDF data from Neo4j (from n10s export)",
-                    version="1.0",
-                )
-
-        except Exception as e:
-            logger.error(f"Fallback ontology creation failed: {e}")
-
-        return None
-
     def _create_ontology_object(
-        self, iri: str, metadata: dict, graph: Graph
+        self, iri: str, metadata: dict, graph: RDFGraph
     ) -> Ontology:
         """Create an Ontology object from IRI, metadata, and graph."""
         ontology_id = derive_ontology_id(iri)
-        return Ontology(
-            graph=graph,
-            iri=iri,
-            ontology_id=ontology_id,
-            title=metadata.get("title") or ontology_id,
-            description=metadata.get("description") or "",
-            version=metadata.get("version") or "1.0",
-        )
+        return Ontology(graph=graph, iri=iri, ontology_id=ontology_id)
 
     def serialize_ontology(self, o: Ontology, **kwargs):
         """Serialize an ontology to Neo4j with both n10s and raw triple storage."""
@@ -406,12 +291,9 @@ class Neo4jTripleStoreManager(TripleStoreManager):
             )
             summary = result.single()
 
-            # Store ontology metadata
-            self._store_ontology_metadata(session, o)
-
         return summary
 
-    def serialize_facts(self, g: Graph, **kwargs):
+    def serialize_facts(self, g: RDFGraph, **kwargs):
         """Serialize facts (RDF graph) to Neo4j."""
         turtle_data = g.serialize(format="turtle")
 
@@ -423,23 +305,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
             summary = result.single()
 
         return summary
-
-    def _store_ontology_metadata(self, session, ontology: Ontology):
-        """Store ontology metadata for better retrieval."""
-        session.run(
-            """
-            MERGE (o:Ontology {uri: $iri})
-            SET o.title = $title,
-                o.description = $description,
-                o.version = $version,
-                o.ontology_id = $ontology_id
-        """,
-            iri=ontology.iri,
-            title=ontology.title,
-            description=ontology.description,
-            version=ontology.version,
-            ontology_id=ontology.ontology_id,
-        )
 
     def close(self):
         """Close the Neo4j driver connection."""

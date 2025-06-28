@@ -78,7 +78,16 @@ class ToolBox:
             temperature=temperature,
             base_url=llm_base_url,
         )
-        # Triple store manager selection
+
+        # Filesystem manager for initial ontology loading (if ontology_directory provided)
+        self.filesystem_manager: Optional[FilesystemTripleStoreManager] = None
+        if ontology_directory:
+            self.filesystem_manager = FilesystemTripleStoreManager(
+                working_directory=working_directory,
+                ontology_path=ontology_directory,
+            )
+
+        # Main triple store manager - always use Neo4j if available, otherwise filesystem
         if neo4j_uri and neo4j_auth:
             self.triple_store_manager: TripleStoreManager = Neo4jTripleStoreManager(
                 uri=neo4j_uri, auth=neo4j_auth
@@ -100,11 +109,20 @@ def init_toolbox(toolbox: ToolBox):
     """Initialize the toolbox with ontologies and their properties.
 
     This function fetches ontologies from the triple store and updates
-    their properties using the LLM tool.
+    their properties using the LLM tool. If a filesystem manager is available
+    for initial loading, it will be used to load ontologies from files first.
 
     Args:
         toolbox: The ToolBox instance to initialize.
     """
+    # If we have a filesystem manager, use it to load initial ontologies
+    if toolbox.filesystem_manager:
+        initial_ontologies = toolbox.filesystem_manager.fetch_ontologies()
+        # Store these ontologies in the main triple store manager
+        for ontology in initial_ontologies:
+            toolbox.triple_store_manager.serialize_ontology(ontology)
+
+    # Now fetch ontologies from the main triple store manager
     toolbox.ontology_manager.ontologies = (
         toolbox.triple_store_manager.fetch_ontologies()
     )
