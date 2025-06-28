@@ -6,7 +6,8 @@ abstract interfaces and filesystem-based implementations.
 
 import logging
 
-from rdflib import BNode, Graph, Literal, URIRef
+from rdflib import Graph
+from rdflib.namespace import DC, DCTERMS, OWL, RDF, RDFS
 
 from ontocast.tool.triple_manager.core import TripleStoreManager
 
@@ -32,7 +33,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
         uri: Neo4j connection URI
         auth: Neo4j authentication tuple (user, password)
         clean: If True, delete all nodes in the database on init (default: False)
-        preserve_triples: If True, store raw triples alongside n10s representation (default: True)
     """
 
     uri: str = Field(..., description="Neo4j connection URI")
@@ -40,12 +40,9 @@ class Neo4jTripleStoreManager(TripleStoreManager):
     clean: bool = Field(
         default=False, description="If True, clean the database on init."
     )
-    preserve_triples: bool = Field(
-        default=True, description="Store raw triples for faithful reconstruction"
-    )
     _driver = None  # private attribute, not a pydantic field
 
-    def __init__(self, uri, auth, clean=False, preserve_triples=True, **kwargs):
+    def __init__(self, uri, auth, clean=False, **kwargs):
         if isinstance(auth, str):
             if "/" in auth:
                 user, password = auth.split("/", 1)
@@ -59,7 +56,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
             uri=uri,
             auth=auth_tuple,
             clean=clean,
-            preserve_triples=preserve_triples,
             **kwargs,
         )
 
@@ -89,7 +85,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
             result = session.run("CALL n10s.graphconfig.show()")
             if result.single():
                 logger.debug("n10s already configured")
-                return
         except:
             pass
 
@@ -101,7 +96,7 @@ class Neo4jTripleStoreManager(TripleStoreManager):
                     typesToLabels: false,
                     keepLangTag: false,
                     keepCustomDataTypes: true,
-                    handleRDFTypes: "RELS"
+                    handleRDFTypes: "NODES"
                 })
             """)
             logger.debug("n10s configuration initialized")
@@ -113,9 +108,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
         constraints = [
             "CREATE CONSTRAINT n10s_unique_uri IF NOT EXISTS FOR (r:Resource) REQUIRE r.uri IS UNIQUE",
             "CREATE CONSTRAINT ontology_iri_unique IF NOT EXISTS FOR (o:Ontology) REQUIRE o.uri IS UNIQUE",
-            "CREATE INDEX triple_subject IF NOT EXISTS FOR (t:Triple) ON (t.subject)",
-            "CREATE INDEX triple_predicate IF NOT EXISTS FOR (t:Triple) ON (t.predicate)",
-            "CREATE INDEX triple_object IF NOT EXISTS FOR (t:Triple) ON (t.object)",
             "CREATE INDEX namespace_prefix IF NOT EXISTS FOR (ns:Namespace) ON (ns.prefix)",
         ]
 
@@ -212,32 +204,30 @@ class Neo4jTripleStoreManager(TripleStoreManager):
 
     def _fetch_ontology_metadata(self, session) -> list[dict]:
         """Fetch explicit ontology metadata."""
-        result = session.run("""
-            MATCH (o)
-            WHERE o.uri IS NOT NULL AND
-                  (o:Ontology OR
-                   o.`http://www.w3.org/1999/02/22-rdf-syntax-ns#type` == `http://www.w3.org/2002/07/owl#Ontology`)
-            RETURN o.uri as iri,
-                   coalesce(
-                       o.title,
-                       o.`http://purl.org/dc/terms/title`,
-                       o.`http://purl.org/dc/elements/1.1/title`,
-                   ) as title,
-                   coalesce(
-                       o.description,
-                       o.`http://purl.org/dc/terms/description`,
-                       o.`http://purl.org/dc/elements/1.1/description`,
-                       o.`http://www.w3.org/2000/01/rdf-schema#comment`
-                   ) as description,
-                   coalesce(
-                       o.`http://www.w3.org/2000/01/rdf-schema#label`
-                   ) as label,
-                   coalesce(
-                       o.version,
-                       o.versionInfo,
-                       o.`http://www.w3.org/2002/07/owl#versionInfo`
-                   ) as version,
-                   labels(o) as labels
+        result = session.run(f"""
+            MATCH (o)-[:`{str(RDF.type)}`]->(t:Resource {{ uri: "{str(OWL.Ontology)}" }})
+            WHERE o.uri IS NOT NULL
+            RETURN
+              o.uri AS iri,
+              coalesce(
+                o.title,
+                o.`{str(DCTERMS.title)}`,
+                o.`{str(DC.title)}`
+              ) AS title,
+              coalesce(
+                o.description,
+                o.`{str(DCTERMS.description)}`,
+                o.`{str(DC.description)}`
+              ) AS description,
+              coalesce(
+                o.`{str(RDFS.label)}`
+              ) AS label,
+              coalesce(
+                o.version,
+                o.versionInfo,
+                o.`{str(OWL.versionInfo)}`
+              ) AS version,
+              labels(o) AS labels
         """)
 
         metadata = []
@@ -265,60 +255,10 @@ class Neo4jTripleStoreManager(TripleStoreManager):
 
         logger.debug(f"Reconstructing ontology: {iri} with namespace: {namespace_uri}")
 
-        # Try to use stored triples first
-        if self.preserve_triples:
-            graph = self._reconstruct_from_stored_triples(session, namespace_uri)
-            if graph and len(graph) > 0:
-                return self._create_ontology_object(iri, ont_meta, graph)
-
         # Fallback to n10s export for this namespace
         graph = self._export_namespace_via_n10s(session, namespace_uri)
         if graph and len(graph) > 0:
             return self._create_ontology_object(iri, ont_meta, graph)
-
-        return None
-
-    def _reconstruct_from_stored_triples(self, session, namespace_uri: str) -> Graph:
-        """Reconstruct RDF graph from stored raw triples."""
-        try:
-            result = session.run(
-                """
-                MATCH (t:Triple)
-                WHERE t.subject STARTS WITH $namespace OR
-                      t.predicate STARTS WITH $namespace OR
-                      t.object STARTS WITH $namespace
-                RETURN t.subject as subject, t.predicate as predicate, t.object as object, t.datatype as datatype
-            """,
-                namespace=namespace_uri,
-            )
-
-            graph = Graph()
-            for record in result:
-                subject = (
-                    URIRef(record["subject"])
-                    if record["subject"].startswith("http")
-                    else BNode(record["subject"])
-                )
-                predicate = URIRef(record["predicate"])
-                obj_value = record["object"]
-
-                if obj_value.startswith("http"):
-                    obj = URIRef(obj_value)
-                elif record.get("datatype"):
-                    obj = Literal(obj_value, datatype=URIRef(record["datatype"]))
-                else:
-                    obj = Literal(obj_value)
-
-                graph.add((subject, predicate, obj))
-
-            logger.debug(
-                f"Reconstructed {len(graph)} triples from stored triples for namespace {namespace_uri}"
-            )
-            return graph
-
-        except Exception as e:
-            logger.debug(f"Failed to reconstruct from stored triples: {e}")
-            return None
 
     def _export_namespace_via_n10s(self, session, namespace_uri: str) -> Graph:
         """Export entities belonging to a namespace using n10s."""
@@ -409,46 +349,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
         try:
             logger.debug("Creating fallback ontology with all data")
 
-            if self.preserve_triples:
-                # Try to get from stored triples first
-                result = session.run("""
-                    MATCH (t:Triple)
-                    RETURN t.subject as subject, t.predicate as predicate, t.object as object, t.datatype as datatype
-                    LIMIT 10000
-                """)
-
-                graph = Graph()
-                for record in result:
-                    subject = (
-                        URIRef(record["subject"])
-                        if record["subject"].startswith("http")
-                        else BNode(record["subject"])
-                    )
-                    predicate = URIRef(record["predicate"])
-                    obj_value = record["object"]
-
-                    if obj_value.startswith("http"):
-                        obj = URIRef(obj_value)
-                    elif record.get("datatype"):
-                        obj = Literal(obj_value, datatype=URIRef(record["datatype"]))
-                    else:
-                        obj = Literal(obj_value)
-
-                    graph.add((subject, predicate, obj))
-
-                if len(graph) > 0:
-                    logger.debug(
-                        f"Created fallback ontology from stored triples with {len(graph)} triples"
-                    )
-                    return Ontology(
-                        graph=graph,
-                        iri="http://example.org/combined-ontology",
-                        ontology_id="combined",
-                        title="Combined Ontology Data",
-                        description="All RDF data from Neo4j (from stored triples)",
-                        version="1.0",
-                    )
-
             # Fallback to n10s export
             result = session.run("""
                 CALL n10s.rdf.export.cypher('MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 5000', {format: 'Turtle'})
@@ -506,10 +406,6 @@ class Neo4jTripleStoreManager(TripleStoreManager):
             )
             summary = result.single()
 
-            # Also store raw triples if preserve_triples is enabled
-            if self.preserve_triples:
-                self._store_raw_triples(session, o.graph)
-
             # Store ontology metadata
             self._store_ontology_metadata(session, o)
 
@@ -526,43 +422,7 @@ class Neo4jTripleStoreManager(TripleStoreManager):
             )
             summary = result.single()
 
-            # Also store raw triples if preserve_triples is enabled
-            if self.preserve_triples:
-                self._store_raw_triples(session, g)
-
         return summary
-
-    def _store_raw_triples(self, session, graph: Graph):
-        """Store raw RDF triples for faithful reconstruction."""
-        triples_data = []
-        for subject, predicate, obj in graph:
-            triple_data = {
-                "subject": str(subject),
-                "predicate": str(predicate),
-                "object": str(obj),
-            }
-
-            # Add datatype if object is a literal with datatype
-            if isinstance(obj, Literal) and obj.datatype:
-                triple_data["datatype"] = str(obj.datatype)
-
-            triples_data.append(triple_data)
-
-        if triples_data:
-            session.run(
-                """
-                UNWIND $triples as triple
-                MERGE (t:Triple {
-                    subject: triple.subject,
-                    predicate: triple.predicate,
-                    object: triple.object
-                })
-                SET t.datatype = triple.datatype
-            """,
-                triples=triples_data,
-            )
-
-            logger.debug(f"Stored {len(triples_data)} raw triples")
 
     def _store_ontology_metadata(self, session, ontology: Ontology):
         """Store ontology metadata for better retrieval."""
