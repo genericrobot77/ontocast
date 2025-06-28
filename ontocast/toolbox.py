@@ -9,6 +9,7 @@ from ontocast.tool import (
     ChunkerTool,
     ConverterTool,
     FilesystemTripleStoreManager,
+    Neo4jTripleStoreManager,
     TripleStoreManager,
 )
 from ontocast.tool.aggregate import ChunkRDFGraphAggregator
@@ -17,17 +18,16 @@ from ontocast.tool.ontology_manager import OntologyManager
 
 
 def update_ontology_properties(o: Ontology, llm_tool: LLMTool):
-    """Update ontology properties using LLM analysis.
+    """Update ontology properties using LLM analysis, only if missing.
 
     This function uses the LLM tool to analyze and update the properties
-    of a given ontology based on its graph content.
-
-    Args:
-        o: The ontology to update.
-        llm_tool: The LLM tool instance for analysis.
+    of a given ontology based on its graph content, but only if any key
+    property is missing or empty.
     """
-    props = render_ontology_summary(o.graph, llm_tool)
-    o.set_properties(**props.model_dump())
+    # Only update if any key property is missing or empty
+    if not (o.title and o.ontology_id and o.description and o.version):
+        props = render_ontology_summary(o.graph, llm_tool)
+        o.set_properties(**props.model_dump())
 
 
 def update_ontology_manager(om: OntologyManager, llm_tool: LLMTool):
@@ -50,32 +50,27 @@ class ToolBox:
     This class initializes and manages various tools needed for document processing,
     ontology management, and LLM interactions.
 
-    Attributes:
-        llm: LLM tool for text processing and analysis.
-        triple_store_manager: Manager for RDF triple storage.
-        ontology_manager: Manager for ontology operations.
-        converter: Tool for document conversion.
-        chunker: Tool for text chunking.
-        aggregator: Tool for aggregating RDF graphs.
+    Args:
+        working_directory: Path to the working directory.
+        ontology_directory: Optional path to ontology directory.
+        model_name: Name of the LLM model to use.
+        llm_base_url: Optional base URL for LLM API.
+        temperature: Temperature setting for LLM.
+        llm_provider: Provider for LLM service (default: "openai").
+        neo4j_uri: (optional) URI for Neo4j connection. If provided with neo4j_auth,
+                    neo4j will be used as triple store.
+        neo4j_auth: (optional) Auth string (user/password) for Neo4j connection.
     """
 
     def __init__(self, **kwargs):
-        """Initialize the ToolBox with required tools.
-
-        Args:
-            working_directory: Path to the working directory.
-            ontology_directory: Optional path to ontology directory.
-            model_name: Name of the LLM model to use.
-            llm_base_url: Optional base URL for LLM API.
-            temperature: Temperature setting for LLM.
-            llm_provider: Provider for LLM service (default: "openai").
-        """
         working_directory: pathlib.Path = kwargs.pop("working_directory")
         ontology_directory: Optional[pathlib.Path] = kwargs.pop("ontology_directory")
         model_name: str = kwargs.pop("model_name")
         llm_base_url: Optional[str] = kwargs.pop("llm_base_url")
         temperature: float = kwargs.pop("temperature")
         llm_provider: str = kwargs.pop("llm_provider", "openai")
+        neo4j_uri: Optional[str] = kwargs.pop("neo4j_uri", None)
+        neo4j_auth: Optional[str] = kwargs.pop("neo4j_auth", None)
 
         self.llm: LLMTool = LLMTool.create(
             provider=llm_provider,
@@ -83,9 +78,18 @@ class ToolBox:
             temperature=temperature,
             base_url=llm_base_url,
         )
-        self.triple_store_manager: TripleStoreManager = FilesystemTripleStoreManager(
-            working_directory=working_directory, ontology_path=ontology_directory
-        )
+        # Triple store manager selection
+        if neo4j_uri and neo4j_auth:
+            self.triple_store_manager: TripleStoreManager = Neo4jTripleStoreManager(
+                uri=neo4j_uri, auth=neo4j_auth
+            )
+        else:
+            self.triple_store_manager: TripleStoreManager = (
+                FilesystemTripleStoreManager(
+                    working_directory=working_directory,
+                    ontology_path=ontology_directory,
+                )
+            )
         self.ontology_manager: OntologyManager = OntologyManager()
         self.converter: ConverterTool = ConverterTool()
         self.chunker: ChunkerTool = ChunkerTool()

@@ -46,7 +46,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
 
     logger.debug(f"Using domain: {state.current_domain}")
 
-    if state.current_ontology.short_name == ONTOLOGY_VOID_ID:
+    if state.current_ontology.ontology_id == ONTOLOGY_VOID_ID:
         logger.info("Creating fresh ontology")
         ontology_instruction = ontology_instruction_fresh
         specific_ontology_instruction = specific_ontology_instruction_fresh.format(

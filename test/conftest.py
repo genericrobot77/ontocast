@@ -10,6 +10,7 @@ from ontocast.tool import (
     LLMTool,
     OntologyManager,
 )
+from ontocast.tool.triple_manager import Neo4jTripleStoreManager
 from ontocast.toolbox import ToolBox, init_toolbox
 
 
@@ -45,14 +46,19 @@ def test_ontology():
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
     @prefix owl: <http://www.w3.org/2002/07/owl#> .
-    @prefix ex: <http://example.org/> .
-
-    ex:TestOntology rdf:type owl:Ontology ;
+    @prefix ex: <http://example.org/to/> .
+    @prefix schema: <https://schema.org/> .
+    @prefix dcterms: <http://purl.org/dc/terms/> .
+    
+    ex: rdf:type owl:Ontology ;
         rdfs:label "Test Domain Ontology" ;
-        rdfs:comment "An ontology for testing that covers basic concepts"""
-        """and relationships in a test domain. """
-        """Used for validating ontology processing functionality." .
-    """
+        dcterms:title "test_onto"^^rdf:XMLLiteral ;
+        rdfs:comment "An ontology for testing that covers basic concepts and relationships in a test domain. Used for validating ontology processing functionality." .
+    
+    ex:SpaceTimeEvent a rdfs:Class ;
+        rdfs:label "Event" ;
+        rdfs:comment "Some kind of event with spacetime coordinates" ;
+        rdfs:subClassOf schema:Event .    """
     )
 
 
@@ -227,3 +233,20 @@ def agent_state_onto_fresh():
 @pytest.fixture
 def agent_state_onto_critique_success():
     return AgentState.load("test/data/agent_state.onto.null.critique.success.json")
+
+
+@pytest.fixture(scope="session")
+def neo4j_uri():
+    return os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+
+
+@pytest.fixture(scope="session")
+def neo4j_auth():
+    return os.environ.get("NEO4J_AUTH", "neo4j/test")
+
+
+@pytest.fixture(scope="function")
+def neo4j_triple_store_manager(neo4j_uri, neo4j_auth):
+    if not (neo4j_uri and neo4j_auth):
+        pytest.skip("Neo4j not configured in environment.")
+    return Neo4jTripleStoreManager(uri=neo4j_uri, auth=neo4j_auth, clean=True)

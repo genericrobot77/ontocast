@@ -14,7 +14,7 @@ from rapidfuzz import fuzz
 from rdflib import Literal, URIRef
 from rdflib.namespace import RDF, RDFS
 
-from ontocast.onto import PROV, Chunk, RDFGraph
+from ontocast.onto import PROV, Chunk, RDFGraph, derive_ontology_id
 
 logger = logging.getLogger(__name__)
 
@@ -424,24 +424,6 @@ class EntityDisambiguator:
         self.similarity_threshold = similarity_threshold
         self.semantic_threshold = semantic_threshold
 
-    def get_local_name(self, uri: URIRef) -> str:
-        """Extract local name from URI, handling both / and # separators.
-
-        Args:
-            uri: The URI to process.
-
-        Returns:
-            str: The local name part of the URI.
-        """
-        uri_str = str(uri)
-        # Handle fragment identifier first, then path separator
-        if "#" in uri_str:
-            return uri_str.split("#")[-1]
-        elif "/" in uri_str:
-            return uri_str.split("/")[-1]
-        else:
-            return uri_str
-
     def normalize_uri(self, uri: URIRef, namespaces: Dict[str, str]) -> Tuple[str, str]:
         """Normalize a URI by expanding any prefixed names.
 
@@ -456,8 +438,8 @@ class EntityDisambiguator:
         for prefix, namespace in namespaces.items():
             if uri_str.startswith(f"{prefix}:"):
                 full_uri = uri_str.replace(f"{prefix}:", str(namespace))
-                return full_uri, self.get_local_name(URIRef(full_uri))
-        return uri_str, self.get_local_name(uri)
+                return full_uri, derive_ontology_id(URIRef(full_uri))
+        return uri_str, derive_ontology_id(uri)
 
     def extract_entity_labels(self, graph: RDFGraph) -> Dict[URIRef, EntityMetadata]:
         """Extract labels for entities from graph, including their local names.
@@ -601,7 +583,7 @@ class EntityDisambiguator:
         )
 
         best_info = entity_labels.get(
-            best_entity, EntityMetadata(local_name=self.get_local_name(best_entity))
+            best_entity, EntityMetadata(local_name=derive_ontology_id(best_entity))
         )
         local_name = best_info.local_name
 
@@ -642,7 +624,7 @@ class EntityDisambiguator:
 
         # Create new canonical URI in document namespace
         best_info = predicate_info.get(
-            best_pred, PredicateMetadata(local_name=self.get_local_name(best_pred))
+            best_pred, PredicateMetadata(local_name=derive_ontology_id(best_pred))
         )
         local_name = best_info.local_name
 

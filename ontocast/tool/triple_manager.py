@@ -11,7 +11,14 @@ from typing import Optional
 
 from rdflib import Graph
 
-from ontocast.onto import Ontology
+try:
+    from neo4j import GraphDatabase
+except ImportError:
+    GraphDatabase = None
+
+from pydantic import Field
+
+from ontocast.onto import Ontology, derive_ontology_id
 
 from .onto import Tool
 
@@ -110,7 +117,7 @@ class FilesystemTripleStoreManager(TripleStoreManager):
             o: The ontology to store.
             **kwargs: Additional keyword arguments for serialization.
         """
-        fname = f"ontology_{o.short_name}_{o.version}"
+        fname = f"ontology_{o.ontology_id}_{o.version}"
         o.graph.serialize(
             format="turtle", destination=self.working_directory / f"{fname}.ttl"
         )
@@ -134,3 +141,219 @@ class FilesystemTripleStoreManager(TripleStoreManager):
             raise TypeError(f"string expected for spec {spec}")
         filename = self.working_directory / fname
         g.serialize(format="turtle", destination=filename)
+
+
+class Neo4jTripleStoreManager(TripleStoreManager):
+    """Neo4j-based triple store manager using n10s (neosemantics) plugin.
+    Args:
+        uri: Neo4j connection URI
+        auth: Neo4j authentication tuple (user, password)
+        clean: If True, delete all nodes in the database on init (default: False)
+    """
+
+    uri: str = Field(..., description="Neo4j connection URI")
+    auth: tuple = Field(..., description="Neo4j authentication tuple (user, password)")
+    clean: bool = Field(
+        default=False, description="If True, clean the database on init."
+    )
+    _driver = None  # private attribute, not a pydantic field
+
+    def __init__(self, uri, auth, clean=False, **kwargs):
+        if isinstance(auth, str):
+            if "/" in auth:
+                user, password = auth.split("/", 1)
+                auth_tuple = (user, password)
+            else:
+                raise ValueError("NEO4J_AUTH must be in 'user/password' format")
+        else:
+            auth_tuple = auth
+        super().__init__(uri=uri, auth=auth_tuple, clean=clean, **kwargs)
+        if GraphDatabase is None:
+            raise ImportError("neo4j Python driver is not installed.")
+        self._driver = GraphDatabase.driver(self.uri, auth=self.auth)
+
+        with self._driver.session() as session:
+            # Clean database if requested
+            if self.clean:
+                try:
+                    session.run("MATCH (n) DETACH DELETE n")
+                    logger.debug("Neo4j database cleaned (all nodes deleted)")
+                except Exception as e:
+                    logger.debug(f"Neo4j cleanup failed: {e}")
+            try:
+                session.run("""CALL n10s.graphconfig.init(
+                            {
+                              handleVocabUris: "MAP",
+                              handleMultival: "OVERWRITE",
+                              typesToLabels: false,
+                              keepLangTag: false,
+                              keepCustomDataTypes: true}
+                            )""")
+            except:
+                pass
+            try:
+                session.run(
+                    "CREATE CONSTRAINT n10s_unique_uri FOR (r:Resource) REQUIRE r.uri IS UNIQUE"
+                )
+                logger.debug("Created n10s URI constraint")
+            except Exception as e:
+                logger.debug(f"Constraint creation (might already exist): {e}")
+
+    def fetch_ontologies(self) -> list[Ontology]:
+        """Fetch ontologies from Neo4j.
+
+        This method looks for RDF data that represents ontologies and reconstructs
+        the Ontology objects with their associated graphs.
+        """
+        ontologies = []
+
+        with self._driver.session() as session:
+            try:
+                result = session.run("""
+                MATCH (o:Ontology)
+                RETURN o.uri as iri,
+                    o.title as title,
+                    o.description as description,
+                    o.versionInfo as version,
+                    o.label as label,
+                    o.comment as comment
+                """)
+
+                ontology_iris = []
+                for record in result:
+                    iri = record.get("iri")
+                    if iri:
+                        title = (
+                            record.get("title")
+                            or record.get("dc_title")
+                            or record.get("rdfs_label")
+                            or ""
+                        )
+
+                        description = (
+                            record.get("description")
+                            or record.get("rdfs_comment")
+                            or ""
+                        )
+
+                        ontology_iris.append(
+                            {
+                                "iri": iri,
+                                "title": title,
+                                "description": description,
+                                "version": record.get("version") or "",
+                            }
+                        )
+
+                # For each ontology IRI, export the related RDF data
+                for ont_info in ontology_iris:
+                    iri = ont_info["iri"]
+                    logger.debug(f"Processing ontology: {iri}")
+
+                    try:
+                        export_result = session.run("""
+                            CALL n10s.rdf.export.cypher('MATCH (n)-[r]->(m)
+                                RETURN n,r,m',
+                                {format: 'Turtle'})
+                            YIELD rdf
+                            RETURN rdf
+                        """)
+
+                        # Combine all RDF data
+                        combined_ttl = ""
+                        for exp_record in export_result:
+                            if exp_record["rdf"]:
+                                combined_ttl += exp_record["rdf"] + "\n"
+
+                        if combined_ttl.strip():
+                            # Parse the combined TTL data
+                            g = Graph()
+                            try:
+                                g.parse(data=combined_ttl, format="turtle")
+                                logger.debug(
+                                    f"Parsed {len(g)} triples for ontology {iri}"
+                                )
+
+                                # Extract short name from IRI
+                                ontology_id = derive_ontology_id(self.iri)
+
+                                ontologies.append(
+                                    Ontology(
+                                        graph=g,
+                                        iri=iri,
+                                        ontology_id=ontology_id,
+                                        title=ont_info["title"] or ontology_id,
+                                        description=ont_info["description"] or "",
+                                        version=ont_info["version"] or "",
+                                    )
+                                )
+                            except Exception as parse_error:
+                                logger.debug(
+                                    f"Failed to parse TTL for {iri}: {parse_error}"
+                                )
+                                logger.debug(
+                                    f"TTL data preview: {combined_ttl[:200]}..."
+                                )
+                        else:
+                            logger.debug(f"No RDF data found for ontology {iri}")
+
+                    except Exception as export_error:
+                        logger.debug(f"Failed to export data for {iri}: {export_error}")
+
+            except Exception as e:
+                logger.debug(f"Error in fetch_ontologies: {e}")
+                # Fallback: create a single ontology with all data
+                try:
+                    logger.debug(
+                        "Attempting fallback: exporting all data as single ontology"
+                    )
+                    export_result = session.run("""
+                        CALL n10s.rdf.export.cypher('MATCH (n)-[r]->(m)
+                            RETURN n,r,m LIMIT 1000',
+                            {format: 'Turtle'})
+                        YIELD rdf
+                        RETURN rdf
+                    """)
+
+                    combined_ttl = ""
+                    for exp_record in export_result:
+                        if exp_record["rdf"]:
+                            combined_ttl += exp_record["rdf"] + "\n"
+
+                    if combined_ttl.strip():
+                        g = Graph()
+                        g.parse(data=combined_ttl, format="turtle")
+                        ontologies.append(
+                            Ontology(
+                                graph=g,
+                                iri="http://example.org/combined-ontology",
+                                ontology_id="combined",
+                                title="Combined Ontology Data",
+                                description="All RDF data from Neo4j",
+                                version="1.0",
+                            )
+                        )
+                        logger.debug(f"Created fallback ontology with {len(g)} triples")
+                except Exception as fallback_error:
+                    logger.debug(f"Fallback also failed: {fallback_error}")
+
+        logger.debug(f"Successfully loaded {len(ontologies)} ontologies")
+        return ontologies
+
+    def serialize_ontology(self, o: Ontology, **kwargs):
+        turtle_data = o.graph.serialize(format="turtle")
+        with self._driver.session() as session:
+            result = session.run(
+                "CALL n10s.rdf.import.inline($ttl, 'Turtle')", ttl=turtle_data
+            )
+            summary = result.single()
+        return summary
+
+    def serialize_facts(self, g: Graph, **kwargs):
+        turtle_data = g.serialize(format="turtle")
+        with self._driver.session() as session:
+            result = session.run(
+                "CALL n10s.rdf.import.inline($ttl, 'Turtle')", ttl=turtle_data
+            )
+            summary = result.single()
+        return summary

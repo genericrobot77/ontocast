@@ -8,8 +8,8 @@ documents.
 import logging
 
 from ontocast.onto import AgentState, Chunk, Status
-from ontocast.text_utils import render_text_hash
 from ontocast.toolbox import ToolBox
+from ontocast.util import render_text_hash
 
 logger = logging.getLogger(__name__)
 

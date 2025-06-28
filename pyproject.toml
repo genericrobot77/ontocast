@@ -34,6 +34,7 @@ dependencies = [
   "langchain-openai>=0.3.17",
   "langchain>=0.3.25",
   "langgraph>=0.2.35",
+  "neo4j>=5.28.1",
   "owlready2>=0.47",
   "rapidfuzz>=3.13.0",
   "rdflib>=7.1.4",

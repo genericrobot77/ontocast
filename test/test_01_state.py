@@ -46,7 +46,7 @@ def test_select_ontology_fsec(
 ):
     state = state_chunked
     state = select_ontology(state=state, tools=tools)
-    assert state.current_ontology.short_name == "FSEC"
+    assert state.current_ontology.ontology_id == "FSEC"
 
     state.serialize(state_onto_selected_filename)
 
@@ -61,6 +61,6 @@ def test_select_ontology_null(
     state = chunk_text(state, tools)
     state = check_chunks_empty(state)
     state = select_ontology(state=state, tools=tools)
-    assert state.current_ontology.short_name == ONTOLOGY_VOID_ID
+    assert state.current_ontology.ontology_id == ONTOLOGY_VOID_ID
 
     state.serialize(state_onto_null_filename)

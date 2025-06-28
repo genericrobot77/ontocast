@@ -207,7 +207,14 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 
 @click.command()
 @click.option(
-    "--env-path", type=click.Path(path_type=pathlib.Path), required=True, default=".env"
+    "--env-path",
+    type=click.Path(path_type=pathlib.Path),
+    required=True,
+    default=".env",
+    help=(
+        "Path to .env file. If NEO4J_URI and NEO4J_AUTH are set, "
+        "neo4j will be used as triple store."
+    ),
 )
 @click.option(
     "--ontology-directory", type=click.Path(path_type=pathlib.Path), default=None
@@ -233,6 +240,12 @@ def run(
     max_visits: int,
     logging_level: Optional[str],
 ):
+    """
+    Main entry point for the OntoCast server/CLI.
+    If NEO4J_URI and NEO4J_AUTH are set in the environment,
+        neo4j will be used as the triple store backend (with n10s plugin).
+    Otherwise, the filesystem backend is used.
+    """
     if logging_level is not None:
         try:
             logger_conf = f"logging.{logging_level}.conf"
@@ -253,6 +266,9 @@ def run(
         working_directory = working_directory.expanduser()
         working_directory.mkdir(parents=True, exist_ok=True)
 
+    neo4j_uri = os.getenv("NEO4J_URI", None)
+    neo4j_auth = os.getenv("NEO4J_AUTH", None)
+
     tools: ToolBox = ToolBox(
         llm_provider=llm_provider,
         llm_base_url=os.getenv("LLM_BASE_URL", None),
@@ -260,6 +276,8 @@ def run(
         temperature=os.getenv("LLM_TEMPERATURE", 0.0),
         working_directory=working_directory,
         ontology_directory=ontology_directory,
+        neo4j_uri=neo4j_uri,
+        neo4j_auth=neo4j_auth,
     )
     init_toolbox(tools)
 

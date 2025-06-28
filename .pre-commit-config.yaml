@@ -22,7 +22,7 @@ repos:
     rev: v0.11.12
     hooks:
     -   id: ruff-check
-        args: [--fix, --ignore, E722]
+        args: [--fix, --ignore, E722, --ignore, W293, --ignore, E501]
     -   id: ruff-format
 -   repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: v2.14.0

@@ -31,15 +31,15 @@ class OntologyManager(Tool):
         """
         super().__init__(**kwargs)
 
-    def update_ontology(self, short_name: str, ontology_addendum: RDFGraph):
+    def update_ontology(self, ontology_id: str, ontology_addendum: RDFGraph):
         """Update an existing ontology with additional triples.
 
         Args:
-            short_name: The short name of the ontology to update.
+            ontology_id: The short name of the ontology to update.
             ontology_addendum: The RDF graph containing additional triples to add.
         """
         current_idx = next(
-            i for i, o in enumerate(self.ontologies) if o.short_name == short_name
+            i for i, o in enumerate(self.ontologies) if o.ontology_id == ontology_id
         )
         self.ontologies[current_idx] += ontology_addendum
 
@@ -49,20 +49,20 @@ class OntologyManager(Tool):
         Returns:
             list[str]: List of ontology short names.
         """
-        return [o.short_name for o in self.ontologies]
+        return [o.ontology_id for o in self.ontologies]
 
-    def get_ontology(self, short_name: str) -> Ontology:
+    def get_ontology(self, ontology_id: str) -> Ontology:
         """Get an ontology by its short name.
 
         Args:
-            short_name: The short name of the ontology to retrieve.
+            ontology_id: The short name of the ontology to retrieve.
 
         Returns:
             Ontology: The matching ontology if found, NULL_ONTOLOGY otherwise.
         """
-        if short_name in [o.short_name for o in self.ontologies]:
+        if ontology_id in [o.ontology_id for o in self.ontologies]:
             current_idx = next(
-                i for i, o in enumerate(self.ontologies) if o.short_name == short_name
+                i for i, o in enumerate(self.ontologies) if o.ontology_id == ontology_id
             )
             return self.ontologies[current_idx]
         else:
