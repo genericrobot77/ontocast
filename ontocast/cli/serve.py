@@ -104,7 +104,7 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     async def process(request: Request):
         """MCP process endpoint."""
         try:
-            content_type = request.headers.get("content-type", "")
+            content_type = request.headers.get("content-type")
             logger.debug(f"Content-Type: {content_type}")
             logger.debug(f"Request headers: {request.headers}")
             logger.debug(f"Request body: {request.body}")
