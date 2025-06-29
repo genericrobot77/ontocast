@@ -246,20 +246,20 @@ def neo4j_auth():
     return os.environ.get("NEO4J_AUTH", "neo4j/test")
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def neo4j_triple_store_manager(neo4j_uri, neo4j_auth):
     if not (neo4j_uri and neo4j_auth):
         pytest.skip("Neo4j not configured in environment.")
     return Neo4jTripleStoreManager(uri=neo4j_uri, auth=neo4j_auth, clean=True)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def fuseki_triple_store_manager():
     uri = os.environ.get("FUSEKI_URI", "http://localhost:3030/test")
     auth = os.environ.get("FUSEKI_AUTH", None)
     if not uri:
         pytest.skip("Fuseki not configured in environment.")
-    return FusekiTripleStoreManager(uri=uri, auth=auth)
+    return FusekiTripleStoreManager(uri=uri, auth=auth, dataset="test")
 
 
 def triple_store_roundtrip(manager, test_ontology):

@@ -9,7 +9,7 @@ from typing import Optional
 
 from rdflib.namespace import OWL, RDF
 
-from ontocast.tool.triple_manager.core import TripleStoreManager
+from ontocast.tool.triple_manager.core import TripleStoreManagerWithAuth
 
 try:
     from neo4j import GraphDatabase
@@ -23,7 +23,7 @@ from ontocast.onto import Ontology, RDFGraph, derive_ontology_id
 logger = logging.getLogger(__name__)
 
 
-class Neo4jTripleStoreManager(TripleStoreManager):
+class Neo4jTripleStoreManager(TripleStoreManagerWithAuth):
     """Neo4j-based triple store manager using n10s (neosemantics) plugin.
 
     This implementation handles RDF data more faithfully by using both the n10s
@@ -35,30 +35,16 @@ class Neo4jTripleStoreManager(TripleStoreManager):
         clean: If True, delete all nodes in the database on init (default: False)
     """
 
-    uri: str = Field(..., description="Neo4j connection URI")
-    auth: tuple = Field(..., description="Neo4j authentication tuple (user, password)")
     clean: bool = Field(
         default=False, description="If True, clean the database on init."
     )
     _driver = None  # private attribute, not a pydantic field
 
-    def __init__(self, uri, auth, clean=False, **kwargs):
-        if isinstance(auth, str):
-            if "/" in auth:
-                user, password = auth.split("/", 1)
-                auth_tuple = (user, password)
-            else:
-                raise ValueError("NEO4J_AUTH must be in 'user/password' format")
-        else:
-            auth_tuple = auth
-
+    def __init__(self, uri=None, auth=None, clean=False, **kwargs):
         super().__init__(
-            uri=uri,
-            auth=auth_tuple,
-            clean=clean,
-            **kwargs,
+            uri=uri, auth=auth, env_uri="NEO4J_URI", env_auth="NEO4J_AUTH", **kwargs
         )
-
+        self.clean = clean
         if GraphDatabase is None:
             raise ImportError("neo4j Python driver is not installed.")
         self._driver = GraphDatabase.driver(self.uri, auth=self.auth)

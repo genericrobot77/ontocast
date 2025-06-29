@@ -1,55 +1,56 @@
 import logging
-import os
 from typing import Optional
 
 import requests
+from pydantic import Field
 from rdflib import Graph, URIRef
 from rdflib.namespace import OWL, RDF
 
 from ontocast.onto import Ontology, derive_ontology_id
-from ontocast.tool.triple_manager.core import TripleStoreManager
+from ontocast.tool.triple_manager.core import TripleStoreManagerWithAuth
 
 logger = logging.getLogger(__name__)
 
 
-class FusekiTripleStoreManager(TripleStoreManager):
+class FusekiTripleStoreManager(TripleStoreManagerWithAuth):
     """Fuseki-based triple store manager."""
 
-    def __init__(
-        self,
-        uri: Optional[str] = None,
-        auth: Optional[str] = None,
-        dataset: Optional[str] = None,
-        **kwargs,
-    ):
-        # URI and auth can be passed or taken from environment
-        self.uri = uri or os.getenv("FUSEKI_URI", "http://localhost:3030")
-        auth_env = auth or os.getenv("FUSEKI_AUTH")
-        if auth_env:
-            if "/" in auth_env:
-                user, password = auth_env.split("/", 1)
-                self.auth = (user, password)
-            else:
-                raise ValueError("FUSEKI_AUTH must be in 'user/password' format")
-        else:
-            self.auth = None
-        # Dataset can be part of the URI or passed separately
-        self.dataset = dataset or self._parse_dataset_from_uri(self.uri)
+    dataset: Optional[str] = Field(default=None, description="Fuseki dataset name")
+
+    def __init__(self, uri=None, auth=None, dataset=None, **kwargs):
+        super().__init__(
+            uri=uri, auth=auth, env_uri="FUSEKI_URI", env_auth="FUSEKI_AUTH", **kwargs
+        )
+        self.dataset = dataset
+        self.init_dataset(self.dataset)
         if self.dataset is None:
             raise ValueError("Dataset must be specified in FUSEKI_URI or as argument")
-        # Base endpoint (strip dataset from uri if present)
-        self.base_url = self.uri.rstrip("/").rsplit("/", 1)[0]
-        super().__init__(**kwargs)
+
+    def init_dataset(self, dataset_name):
+        fuseki_admin_url = f"{self.uri}/$/datasets"
+
+        payload = {"dbName": dataset_name, "dbType": "tdb2"}
+
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        response = requests.post(
+            fuseki_admin_url, data=payload, headers=headers, auth=self.auth
+        )
+
+        if response.status_code == 200 or response.status_code == 201:
+            logger.info(f"Dataset '{dataset_name}' created successfully.")
+        else:
+            logger.error(f"Failed to upload data. Status code: {response.status_code}")
+            logger.error(f"Response: {response.text}")
 
     def _parse_dataset_from_uri(self, uri: str) -> Optional[str]:
-        # Expecting uri like http://localhost:3030/dataset
         parts = uri.rstrip("/").split("/")
         if len(parts) > 0:
             return parts[-1]
         return None
 
     def _get_dataset_url(self):
-        return f"{self.base_url}/{self.dataset}"
+        return f"{self.uri}/{self.dataset}"
 
     def fetch_ontologies(self) -> list[Ontology]:
         """Fetch all named graphs that contain an entity of type owl:Ontology."""
@@ -109,7 +110,7 @@ class FusekiTripleStoreManager(TripleStoreManager):
         """Store an ontology as a named graph in Fuseki."""
         turtle_data = o.graph.serialize(format="turtle")
         graph_uri = o.iri or f"urn:ontology:{o.ontology_id}"
-        url = f"{self._get_dataset_url()}/data?graph={graph_uri}"
+        url = f"{self._get_dataset_url()}/data"
         headers = {"Content-Type": "text/turtle;charset=utf-8"}
         response = requests.put(url, headers=headers, data=turtle_data, auth=self.auth)
         if response.status_code in (200, 201, 204):
