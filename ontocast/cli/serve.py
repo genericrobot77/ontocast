@@ -1,3 +1,25 @@
+"""OntoCast API server implementation.
+
+This module provides a web server implementation for the OntoCast framework
+using Robyn. It exposes REST API endpoints for processing documents and
+extracting semantic triples with ontology assistance.
+
+The server supports:
+- Health check endpoint (/health)
+- Service information endpoint (/info)
+- Document processing endpoint (/process)
+- Multiple input formats (JSON, multipart/form-data)
+- Streaming workflow execution
+- Comprehensive error handling and logging
+
+The server integrates with the OntoCast workflow graph to process documents
+through the complete pipeline: chunking, ontology selection, fact extraction,
+and aggregation.
+
+Example:
+    python -m ontocast.cli.serve --env-path .env --working-directory ./work
+"""
+
 import asyncio
 import logging
 import logging.config

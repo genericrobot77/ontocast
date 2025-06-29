@@ -259,7 +259,7 @@ def fuseki_triple_store_manager():
     auth = os.environ.get("FUSEKI_AUTH", None)
     if not uri:
         pytest.skip("Fuseki not configured in environment.")
-    return FusekiTripleStoreManager(uri=uri, auth=auth, dataset="test")
+    return FusekiTripleStoreManager(uri=uri, auth=auth, dataset="test", clean=True)
 
 
 def triple_store_roundtrip(manager, test_ontology):

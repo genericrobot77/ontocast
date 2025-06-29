@@ -1,3 +1,20 @@
+"""Test API client for OntoCast.
+
+This module provides a simple command-line client for testing the OntoCast API.
+It can send requests to the API server with either a default payload or
+a custom JSON payload from a file.
+
+The client supports:
+- Custom server URLs
+- JSON payload loading from files
+- Default test payload for Apple 10-Q document
+- Response formatting and display
+
+Example:
+    python test_api.py --url http://localhost:8999
+    python test_api.py --url http://localhost:8999 --json-file payload.json
+"""
+
 import json
 
 import click
@@ -13,6 +30,23 @@ import requests
     help="Path to JSON file to send as payload",
 )
 def main(url, json_file):
+    """Send a test request to the OntoCast API server.
+
+    This function sends a POST request to the specified API endpoint with
+    either a custom JSON payload from a file or a default test payload
+    containing Apple's 10-Q document text.
+
+    Args:
+        url: The base URL of the API server to send the request to.
+        json_file: Optional path to a JSON file containing the request payload.
+
+    Example:
+        >>> main("http://localhost:8999", None)
+        # Sends default Apple 10-Q payload
+
+        >>> main("http://localhost:8999", "custom_payload.json")
+        # Sends custom payload from file
+    """
     if json_file:
         with open(json_file, "r") as f:
             payload = json.load(f)
