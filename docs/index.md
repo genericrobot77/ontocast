@@ -20,6 +20,7 @@ OntoCast is a powerful framework that automatically extracts semantic triples fr
 - **Semantic Chunking**: Intelligent text chunking based on semantic similarity
 - **MCP Compatibility**: Fully compatible with the Model Control Protocol (MCP) specification, providing standardized endpoints for health checks, info, and document processing
 - **RDF Output**: Generates standardized RDF/Turtle output
+- **Triple Store Integration**: Support for Neo4j (with n10s plugin) and Apache Fuseki triple stores
 
 ### Extraction Steps
 
@@ -50,13 +51,116 @@ pip install ontocast
 
 ## Configuration
 
+### Environment Variables
 
-Create a `.env` file with your OpenAI API key:
+Create a `.env` file with your configuration:
 
 ```bash
-cp .env.example .env
+# Required: OpenAI API Key
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional: LLM Configuration
+LLM_PROVIDER=openai
+LLM_MODEL_NAME=gpt-4o-mini
+LLM_TEMPERATURE=0.0
+LLM_BASE_URL=
+
+# Optional: Server Configuration
+PORT=8999
+RECURSION_LIMIT=1000
+ESTIMATED_CHUNKS=30
+
+# Optional: Triple Store Configuration (Fuseki preferred over Neo4j)
+FUSEKI_URI=http://localhost:3032/test
+FUSEKI_AUTH=admin/abc123-qwe
+
+NEO4J_URI=bolt://localhost:7689
+NEO4J_AUTH=neo4j/test!passfortesting
 ```
 
+### Triple Store Setup
+
+OntoCast supports multiple triple store backends. When both Fuseki and Neo4j are configured, **Fuseki is preferred**.
+
+#### Apache Fuseki (Recommended)
+
+Fuseki is the preferred triple store for OntoCast due to its native RDF support and SPARQL capabilities.
+
+**Using Docker Compose:**
+
+Copy the example environment file and customize it:
+
+```bash
+# For Fuseki
+cd docker/fuseki
+cp .env.example .env
+# Edit .env if needed
+```
+
+The `.env` file should contain:
+```bash
+# docker/fuseki/.env
+IMAGE_VERSION=secoresearch/fuseki:5.1.0
+ENVIRONMENT_ACTUAL=test
+CONTAINER_NAME="${ENVIRONMENT_ACTUAL}.fuseki"
+STORE_FOLDER="$HOME/tmp/${CONTAINER_NAME}"
+TS_PORT=3032
+TS_PASSWORD="abc123-qwe"
+TS_USERNAME="admin"
+UID=1000
+GID=1000
+```
+
+**Start Fuseki:**
+```bash
+cd docker/fuseki
+docker compose --env-file .env fuseki up -d
+
+```
+
+**Access Fuseki UI:**
+- Web interface: http://localhost:3032
+- Default dataset: `/test`
+
+#### Neo4j with n10s Plugin
+
+Neo4j can be used as an alternative triple store with the n10s (neosemantics) plugin.
+
+**Using Docker Compose:**
+
+Copy the example environment file and customize it:
+
+```bash
+# For Neo4j
+cd docker/neo4j
+cp .env.example .env
+# Edit .env if needed
+```
+
+The `.env` file should contain:
+```bash
+# docker/neo4j/.env
+IMAGE_VERSION=neo4j:5.20
+SPEC=test
+CONTAINER_NAME="${SPEC}.sem.neo4j"
+NEO4J_PORT=7476
+NEO4J_BOLT_PORT=7689
+STORE_FOLDER="$HOME/tmp/${CONTAINER_NAME}"
+NEO4J_PLUGINS='["apoc", "graph-data-science", "n10s"]'
+NEO4J_AUTH="neo4j/test!passfortesting"
+```
+
+**Start Neo4j:**
+```bash
+cd docker/neo4j
+docker compose --env-file .env neo4j up -d
+
+```
+
+**Access Neo4j:**
+- Browser: http://localhost:7476
+- Username: `neo4j`
+- Password: `test!passfortesting`
 
 ### Running the Server
 
@@ -65,7 +169,6 @@ uv run serve \
     --ontology-directory ONTOLOGY_DIR \
     --working-directory WORKING_DIR
 ```
-
 
 ### Process Endpoint
 

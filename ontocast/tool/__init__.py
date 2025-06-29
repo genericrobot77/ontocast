@@ -8,6 +8,7 @@ The package includes:
 - LLMTool: Language model interaction and prompting
 - OntologyManager: Ontology loading and management
 - TripleStoreManager: Abstract interface for triple store operations
+- FusekiTripleStoreManager: Fuseki-specific triple store implementation (preferred)
 - Neo4jTripleStoreManager: Neo4j-specific triple store implementation
 - FilesystemTripleStoreManager: Filesystem-based triple store implementation
 - ConverterTool: Document format conversion utilities
@@ -30,6 +31,7 @@ from .onto import Tool
 from .ontology_manager import OntologyManager
 from .triple_manager import (
     FilesystemTripleStoreManager,
+    FusekiTripleStoreManager,
     Neo4jTripleStoreManager,
     TripleStoreManager,
 )
@@ -38,6 +40,7 @@ __all__ = [
     "LLMTool",
     "OntologyManager",
     "TripleStoreManager",
+    "FusekiTripleStoreManager",
     "Neo4jTripleStoreManager",
     "FilesystemTripleStoreManager",
     "ConverterTool",

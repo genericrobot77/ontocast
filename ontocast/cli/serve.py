@@ -235,7 +235,8 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     default=".env",
     help=(
         "Path to .env file. If NEO4J_URI and NEO4J_AUTH are set, "
-        "neo4j will be used as triple store."
+        "neo4j will be used as triple store. If FUSEKI_URI and FUSEKI_AUTH are set, "
+        "Fuseki will be used as triple store (preferred over Neo4j)."
     ),
 )
 @click.option(
@@ -264,8 +265,10 @@ def run(
 ):
     """
     Main entry point for the OntoCast server/CLI.
+    If FUSEKI_URI and FUSEKI_AUTH are set in the environment,
+        Fuseki will be used as the triple store backend (preferred).
     If NEO4J_URI and NEO4J_AUTH are set in the environment,
-        neo4j will be used as the triple store backend (with n10s plugin).
+        Neo4j will be used as the triple store backend (if Fuseki not available).
     Otherwise, the filesystem backend is used.
     """
     if logging_level is not None:
@@ -290,6 +293,8 @@ def run(
 
     neo4j_uri = os.getenv("NEO4J_URI", None)
     neo4j_auth = os.getenv("NEO4J_AUTH", None)
+    fuseki_uri = os.getenv("FUSEKI_URI", None)
+    fuseki_auth = os.getenv("FUSEKI_AUTH", None)
 
     tools: ToolBox = ToolBox(
         llm_provider=llm_provider,
@@ -300,6 +305,8 @@ def run(
         ontology_directory=ontology_directory,
         neo4j_uri=neo4j_uri,
         neo4j_auth=neo4j_auth,
+        fuseki_uri=fuseki_uri,
+        fuseki_auth=fuseki_auth,
     )
     init_toolbox(tools)
 

@@ -9,6 +9,7 @@ from ontocast.tool import (
     ChunkerTool,
     ConverterTool,
     FilesystemTripleStoreManager,
+    FusekiTripleStoreManager,
     Neo4jTripleStoreManager,
     TripleStoreManager,
 )
@@ -58,8 +59,11 @@ class ToolBox:
         temperature: Temperature setting for LLM.
         llm_provider: Provider for LLM service (default: "openai").
         neo4j_uri: (optional) URI for Neo4j connection. If provided with neo4j_auth,
-                    neo4j will be used as triple store.
+                    neo4j will be used as triple store (unless Fuseki is also provided).
         neo4j_auth: (optional) Auth string (user/password) for Neo4j connection.
+        fuseki_uri: (optional) URI for Fuseki connection. If provided with fuseki_auth,
+                    Fuseki will be used as triple store (preferred over Neo4j).
+        fuseki_auth: (optional) Auth string (user/password) for Fuseki connection.
     """
 
     def __init__(self, **kwargs):
@@ -71,6 +75,8 @@ class ToolBox:
         llm_provider: str = kwargs.pop("llm_provider", "openai")
         neo4j_uri: Optional[str] = kwargs.pop("neo4j_uri", None)
         neo4j_auth: Optional[str] = kwargs.pop("neo4j_auth", None)
+        fuseki_uri: Optional[str] = kwargs.pop("fuseki_uri", None)
+        fuseki_auth: Optional[str] = kwargs.pop("fuseki_auth", None)
 
         self.llm: LLMTool = LLMTool.create(
             provider=llm_provider,
@@ -87,8 +93,16 @@ class ToolBox:
                 ontology_path=ontology_directory,
             )
 
-        # Main triple store manager - always use Neo4j if available, otherwise filesystem
-        if neo4j_uri and neo4j_auth:
+        # Main triple store manager - prefer Fuseki over Neo4j, fallback to filesystem
+        if fuseki_uri and fuseki_auth:
+            # Extract dataset name from URI if not provided
+            dataset = None
+            if "/" in fuseki_uri:
+                dataset = fuseki_uri.split("/")[-1]
+            self.triple_store_manager: TripleStoreManager = FusekiTripleStoreManager(
+                uri=fuseki_uri, auth=fuseki_auth, dataset=dataset
+            )
+        elif neo4j_uri and neo4j_auth:
             self.triple_store_manager: TripleStoreManager = Neo4jTripleStoreManager(
                 uri=neo4j_uri, auth=neo4j_auth
             )
