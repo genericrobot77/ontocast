@@ -104,8 +104,11 @@ OntoCast supports multiple triple store backends. When both Fuseki and Neo4j are
 ```bash
 uv run serve \
     --ontology-directory ONTOLOGY_DIR \
-    --working-directory WORKING_DIR
+    --working-directory WORKING_DIR \
+    --clean
 ```
+
+- `--clean` (optional): If set, the triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup). **Warning:** Use with caution in production!
 
 ---
 

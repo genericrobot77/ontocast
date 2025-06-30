@@ -64,6 +64,7 @@ class ToolBox:
         fuseki_uri: (optional) URI for Fuseki connection. If provided with fuseki_auth,
                     Fuseki will be used as triple store (preferred over Neo4j).
         fuseki_auth: (optional) Auth string (user/password) for Fuseki connection.
+        clean: (optional, default False) If True, triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup).
     """
 
     def __init__(self, **kwargs):
@@ -77,6 +78,7 @@ class ToolBox:
         neo4j_auth: Optional[str] = kwargs.pop("neo4j_auth", None)
         fuseki_uri: Optional[str] = kwargs.pop("fuseki_uri", None)
         fuseki_auth: Optional[str] = kwargs.pop("fuseki_auth", None)
+        clean: bool = kwargs.pop("clean", False)
 
         self.llm: LLMTool = LLMTool.create(
             provider=llm_provider,
@@ -100,11 +102,11 @@ class ToolBox:
             if "/" in fuseki_uri:
                 dataset = fuseki_uri.split("/")[-1]
             self.triple_store_manager: TripleStoreManager = FusekiTripleStoreManager(
-                uri=fuseki_uri, auth=fuseki_auth, dataset=dataset
+                uri=fuseki_uri, auth=fuseki_auth, dataset=dataset, clean=clean
             )
         elif neo4j_uri and neo4j_auth:
             self.triple_store_manager: TripleStoreManager = Neo4jTripleStoreManager(
-                uri=neo4j_uri, auth=neo4j_auth
+                uri=neo4j_uri, auth=neo4j_auth, clean=clean
             )
         else:
             self.triple_store_manager: TripleStoreManager = (

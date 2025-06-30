@@ -40,15 +40,12 @@ The response will include extracted facts and ontology in Turtle format.
 
 ### 3. Visualize the Output
 
-1. Copy the Turtle output from the `facts` or `ontology` field in the response.
-2. Paste it into one of these free online tools:
-   - [WebVOWL](http://www.visualdataweb.de/webvowl/) (for ontologies)
-   - [yEd Live](https://www.yworks.com/yed-live/) (for general graphs)
-   - [Graphviz Online](https://dreampuf.github.io/GraphvizOnline/) (for .dot format, if you convert)
+1. Use neo4j built-in graph navigator
+2. Copy the Turtle output from the `facts` or `ontology` field in the response.
 
 **Example Screenshot:**
 
-![Demo Graph Screenshot](../docs/assets/demo_graph.png)
+![Demo Graph Screenshot](figs/thames-water.png)
 
 ---
 

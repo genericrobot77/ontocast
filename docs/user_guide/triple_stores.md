@@ -173,3 +173,15 @@ cypher-shell -u neo4j -p test!passfortesting "CALL n10s.graphconfig.show()"
 - **Authentication Failed**: Incorrect credentials
 - **Dataset Not Found**: Dataset not created in Fuseki
 - **Plugin Not Loaded**: n10s plugin not installed in Neo4j
+
+---
+
+## Clean Triple Store Initialization
+
+You can start OntoCast with the `--clean` option to initialize the triple store (Neo4j or Fuseki) as clean. This will delete all data from the triple store on startup.
+
+```bash
+serve --working-directory WORKING_DIR --ontology-directory ONTOLOGY_DIR --clean
+```
+
+- **Warning:** This will delete all data from the configured triple store (Neo4j or Fuseki) on startup. Use with caution in production environments!

@@ -254,6 +254,12 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     help="Maximum number of visits allowed per node",
 )
 @click.option("--logging-level", type=click.STRING)
+@click.option(
+    "--clean",
+    is_flag=True,
+    default=False,
+    help="If set, triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup).",
+)
 def run(
     env_path: pathlib.Path,
     ontology_directory: Optional[pathlib.Path],
@@ -262,6 +268,7 @@ def run(
     head_chunks: Optional[int],
     max_visits: int,
     logging_level: Optional[str],
+    clean: bool,
 ):
     """
     Main entry point for the OntoCast server/CLI.
@@ -270,6 +277,8 @@ def run(
     If NEO4J_URI and NEO4J_AUTH are set in the environment,
         Neo4j will be used as the triple store backend (if Fuseki not available).
     Otherwise, the filesystem backend is used.
+
+    If --clean is set, the triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup).
     """
     if logging_level is not None:
         try:
@@ -307,6 +316,7 @@ def run(
         neo4j_auth=neo4j_auth,
         fuseki_uri=fuseki_uri,
         fuseki_auth=fuseki_auth,
+        clean=clean,
     )
     init_toolbox(tools)
 
