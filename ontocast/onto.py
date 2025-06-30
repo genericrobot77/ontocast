@@ -615,12 +615,6 @@ class Ontology(OntologyProperties):
         # Add version
         if self.version:
             add_if_missing(OWL.versionInfo, self.version)
-        # Add license if present
-        if getattr(self, "license", None):
-            add_if_missing(DCTERMS.license, self.license)
-        # Add created if present
-        if getattr(self, "created", None):
-            add_if_missing(DCTERMS.created, self.created)
 
     def sync_properties_from_graph(self):
         """
@@ -670,14 +664,6 @@ class Ontology(OntologyProperties):
         if not getattr(self, "version", None):
             if OWL.versionInfo in pred_map:
                 self.version = str(pred_map[OWL.versionInfo][0])
-        # License
-        if not getattr(self, "license", None):
-            if DCTERMS.license in pred_map:
-                self.license = str(pred_map[DCTERMS.license][0])
-        # Created
-        if not getattr(self, "created", None):
-            if DCTERMS.created in pred_map:
-                self.created = str(pred_map[DCTERMS.created][0])
         # Short name: try dcterms:title if not already used for title
         if not getattr(self, "ontology_id", None):
             if DCTERMS.title in pred_map:
