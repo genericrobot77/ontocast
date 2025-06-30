@@ -1,3 +1,25 @@
+"""OntoCast API server implementation.
+
+This module provides a web server implementation for the OntoCast framework
+using Robyn. It exposes REST API endpoints for processing documents and
+extracting semantic triples with ontology assistance.
+
+The server supports:
+- Health check endpoint (/health)
+- Service information endpoint (/info)
+- Document processing endpoint (/process)
+- Multiple input formats (JSON, multipart/form-data)
+- Streaming workflow execution
+- Comprehensive error handling and logging
+
+The server integrates with the OntoCast workflow graph to process documents
+through the complete pipeline: chunking, ontology selection, fact extraction,
+and aggregation.
+
+Example:
+    python -m ontocast.cli.serve --env-path .env --working-directory ./work
+"""
+
 import asyncio
 import logging
 import logging.config
@@ -104,7 +126,7 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     async def process(request: Request):
         """MCP process endpoint."""
         try:
-            content_type = request.headers.get("content-type", "")
+            content_type = request.headers.get("content-type")
             logger.debug(f"Content-Type: {content_type}")
             logger.debug(f"Request headers: {request.headers}")
             logger.debug(f"Request body: {request.body}")
@@ -207,7 +229,15 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
 
 @click.command()
 @click.option(
-    "--env-path", type=click.Path(path_type=pathlib.Path), required=True, default=".env"
+    "--env-path",
+    type=click.Path(path_type=pathlib.Path),
+    required=True,
+    default=".env",
+    help=(
+        "Path to .env file. If NEO4J_URI and NEO4J_AUTH are set, "
+        "neo4j will be used as triple store. If FUSEKI_URI and FUSEKI_AUTH are set, "
+        "Fuseki will be used as triple store (preferred over Neo4j)."
+    ),
 )
 @click.option(
     "--ontology-directory", type=click.Path(path_type=pathlib.Path), default=None
@@ -224,6 +254,12 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     help="Maximum number of visits allowed per node",
 )
 @click.option("--logging-level", type=click.STRING)
+@click.option(
+    "--clean",
+    is_flag=True,
+    default=False,
+    help="If set, triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup).",
+)
 def run(
     env_path: pathlib.Path,
     ontology_directory: Optional[pathlib.Path],
@@ -232,7 +268,18 @@ def run(
     head_chunks: Optional[int],
     max_visits: int,
     logging_level: Optional[str],
+    clean: bool,
 ):
+    """
+    Main entry point for the OntoCast server/CLI.
+    If FUSEKI_URI and FUSEKI_AUTH are set in the environment,
+        Fuseki will be used as the triple store backend (preferred).
+    If NEO4J_URI and NEO4J_AUTH are set in the environment,
+        Neo4j will be used as the triple store backend (if Fuseki not available).
+    Otherwise, the filesystem backend is used.
+
+    If --clean is set, the triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup).
+    """
     if logging_level is not None:
         try:
             logger_conf = f"logging.{logging_level}.conf"
@@ -253,6 +300,11 @@ def run(
         working_directory = working_directory.expanduser()
         working_directory.mkdir(parents=True, exist_ok=True)
 
+    neo4j_uri = os.getenv("NEO4J_URI", None)
+    neo4j_auth = os.getenv("NEO4J_AUTH", None)
+    fuseki_uri = os.getenv("FUSEKI_URI", None)
+    fuseki_auth = os.getenv("FUSEKI_AUTH", None)
+
     tools: ToolBox = ToolBox(
         llm_provider=llm_provider,
         llm_base_url=os.getenv("LLM_BASE_URL", None),
@@ -260,6 +312,11 @@ def run(
         temperature=os.getenv("LLM_TEMPERATURE", 0.0),
         working_directory=working_directory,
         ontology_directory=ontology_directory,
+        neo4j_uri=neo4j_uri,
+        neo4j_auth=neo4j_auth,
+        fuseki_uri=fuseki_uri,
+        fuseki_auth=fuseki_auth,
+        clean=clean,
     )
     init_toolbox(tools)
 

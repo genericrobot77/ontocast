@@ -13,7 +13,7 @@ def test_agent_text_to_ontology_fresh(
 
     assert state.ontology_addendum.iri is not None
     assert state.ontology_addendum.title is not None
-    assert state.ontology_addendum.short_name is not None
+    assert state.ontology_addendum.ontology_id is not None
     assert state.ontology_addendum.description is not None
     assert state.ontology_addendum.iri.startswith(state.current_domain)
     assert len(state.ontology_addendum.graph) > 0

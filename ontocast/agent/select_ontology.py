@@ -70,11 +70,11 @@ def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
         )
         selector = parser.parse(response.content)
         logger.debug(
-            f"Parsed selector report - Selected ontology: {selector.short_name}"
+            f"Parsed selector report - Selected ontology: {selector.ontology_id}"
         )
 
-        state.current_ontology = om_tool.get_ontology(selector.short_name)
+        state.current_ontology = om_tool.get_ontology(selector.ontology_id)
     else:
         state.current_ontology = NULL_ONTOLOGY
-    logger.debug(f"Current ontology set to: {state.current_ontology.short_name}")
+    logger.debug(f"Current ontology set to: {state.current_ontology.ontology_id}")
     return state

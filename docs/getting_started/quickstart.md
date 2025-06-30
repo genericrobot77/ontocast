@@ -28,13 +28,15 @@ serve \
     --working-directory WORKING_DIR \
     --ontology-directory ONTOLOGY_DIR \
     --logging-level info \
-    --max-visits 2
+    --max-visits 2 \
+    --clean
 ```
 
 - `ONTOLOGY_DIR` is expected to contain ontologies in `turtle` format.
 - `--max-visits` specifies the number of visits per decision node, e.g. `render_onto_triples` or `criticise_facts`
 - for testing, you may use an optional parameter `--head-chunks` to process only `head_chunks` number of chunks
 - LLM setting are provided via `.env`
+- `--clean` (optional): If set, the triple store (Neo4j or Fuseki) will be initialized as clean (all data deleted on startup). Use with caution in production!
 
 ```sh
 # Domain configuration (used for URI generation) 

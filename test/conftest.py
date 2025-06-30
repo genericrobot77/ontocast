@@ -4,12 +4,14 @@ from pathlib import Path
 import pytest
 from suthing import FileHandle
 
-from ontocast.onto import DEFAULT_DOMAIN, AgentState, RDFGraph
+from ontocast.onto import DEFAULT_DOMAIN, AgentState, Ontology, RDFGraph
 from ontocast.tool import (
     FilesystemTripleStoreManager,
     LLMTool,
     OntologyManager,
 )
+from ontocast.tool.triple_manager import Neo4jTripleStoreManager
+from ontocast.tool.triple_manager.fuseki import FusekiTripleStoreManager
 from ontocast.toolbox import ToolBox, init_toolbox
 
 
@@ -45,14 +47,19 @@ def test_ontology():
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
     @prefix owl: <http://www.w3.org/2002/07/owl#> .
-    @prefix ex: <http://example.org/> .
-
-    ex:TestOntology rdf:type owl:Ontology ;
+    @prefix ex: <http://example.org/to/> .
+    @prefix schema: <https://schema.org/> .
+    @prefix dcterms: <http://purl.org/dc/terms/> .
+    
+    ex: rdf:type owl:Ontology ;
         rdfs:label "Test Domain Ontology" ;
-        rdfs:comment "An ontology for testing that covers basic concepts"""
-        """and relationships in a test domain. """
-        """Used for validating ontology processing functionality." .
-    """
+        dcterms:title "test_onto"^^rdf:XMLLiteral ;
+        rdfs:comment "An ontology for testing that covers basic concepts and relationships in a test domain. Used for validating ontology processing functionality." .
+    
+    ex:SpaceTimeEvent a rdfs:Class ;
+        rdfs:label "Event" ;
+        rdfs:comment "Some kind of event with spacetime coordinates" ;
+        rdfs:subClassOf schema:Event .    """
     )
 
 
@@ -227,3 +234,91 @@ def agent_state_onto_fresh():
 @pytest.fixture
 def agent_state_onto_critique_success():
     return AgentState.load("test/data/agent_state.onto.null.critique.success.json")
+
+
+@pytest.fixture(scope="session")
+def neo4j_uri():
+    return os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+
+
+@pytest.fixture(scope="session")
+def neo4j_auth():
+    return os.environ.get("NEO4J_AUTH", "neo4j/test")
+
+
+@pytest.fixture(scope="session")
+def neo4j_triple_store_manager(neo4j_uri, neo4j_auth):
+    if not (neo4j_uri and neo4j_auth):
+        pytest.skip("Neo4j not configured in environment.")
+    return Neo4jTripleStoreManager(uri=neo4j_uri, auth=neo4j_auth, clean=True)
+
+
+@pytest.fixture(scope="session")
+def fuseki_triple_store_manager():
+    uri = os.environ.get("FUSEKI_URI", "http://localhost:3030/test")
+    auth = os.environ.get("FUSEKI_AUTH", None)
+    if not uri:
+        pytest.skip("Fuseki not configured in environment.")
+    return FusekiTripleStoreManager(uri=uri, auth=auth, dataset="test", clean=True)
+
+
+def triple_store_roundtrip(manager, test_ontology):
+    ontology = Ontology(graph=test_ontology)
+    # Store ontology
+    manager.serialize_ontology(ontology)
+    # Fetch ontologies
+    ontologies = manager.fetch_ontologies()
+    # There should be at least one ontology with the correct ontology_id
+    assert any(o.ontology_id == "to" for o in ontologies)
+    # The ontology graph should have the same number of triples as the input
+    assert len(ontologies[0].graph) == len(ontology.graph)
+
+
+def triple_store_serialize_facts(manager):
+    """Test serializing facts (RDF triples) to triple store and retrieving them."""
+    # Create test facts
+    facts = RDFGraph._from_turtle_str(
+        """
+    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix ex: <http://example.org/test/> .
+    @prefix schema: <https://schema.org/> .
+    
+    ex:Person a rdfs:Class ;
+        rdfs:label "Person" ;
+        rdfs:comment "A human being" .
+    
+    ex:John a ex:Person ;
+        rdfs:label "John Doe" ;
+        schema:name "John Doe" ;
+        schema:email "john@example.com" .
+    
+    ex:Jane a ex:Person ;
+        rdfs:label "Jane Smith" ;
+        schema:name "Jane Smith" ;
+        schema:email "jane@example.com" .
+    
+    ex:knows a rdf:Property ;
+        rdfs:label "knows" ;
+        rdfs:comment "Relationship between people who know each other" .
+    
+    ex:John ex:knows ex:Jane .
+    """
+    )
+    # Verify we have the expected number of triples
+    expected_triple_count = len(facts)
+    assert expected_triple_count == 15, "Test facts should contain triples"
+    # Serialize facts to triple store
+    result = manager.serialize_facts(facts)
+    assert result is not None, "serialize_facts should return a result"
+
+
+def triple_store_serialize_empty_facts(manager):
+    """Test serializing empty facts graph."""
+    # Create empty facts
+    empty_facts = RDFGraph()
+    # Serialize empty facts - should not raise an error
+    result = manager.serialize_facts(empty_facts)
+    assert result is not None, (
+        "serialize_facts should return a result even for empty graph"
+    )

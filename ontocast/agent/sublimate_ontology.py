@@ -95,7 +95,7 @@ def sublimate_ontology(state: AgentState, tools: ToolBox):
                 ns_prefix_current_ontology[0], Namespace(state.current_ontology.iri)
             )
 
-        om_tool.update_ontology(state.current_ontology.short_name, graph_onto_addendum)
+        om_tool.update_ontology(state.current_ontology.ontology_id, graph_onto_addendum)
 
         # Ensure graph_facts is an RDFGraph instance
         if not isinstance(graph_facts, RDFGraph):

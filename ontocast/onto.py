@@ -5,13 +5,14 @@ import re
 from collections import defaultdict
 from enum import StrEnum
 from typing import Any, Optional, Union
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, GetCoreSchemaHandler
 from pydantic_core import core_schema
-from rdflib import Graph, Namespace
-from rdflib.namespace import NamespaceManager
+from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib.namespace import DCTERMS, OWL, RDF, RDFS, NamespaceManager
 
-from ontocast.text_utils import render_text_hash
+from ontocast.util import CONVENTIONAL_MAPPINGS, iri2namespace, render_text_hash
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +21,6 @@ ONTOLOGY_VOID_ID = "_void_ontology_name"
 ONTOLOGY_VOID_IRI = "NULL"
 
 DEFAULT_DOMAIN = "https://example.com"
-
-
-def iri2namespace(iri: str, ontology: bool = False) -> str:
-    """Convert an IRI to a namespace string.
-
-    Args:
-        iri: The IRI to convert.
-        ontology: If True, append '#' for ontology namespace, otherwise '/'.
-
-    Returns:
-        str: The converted namespace string.
-    """
-    iri = iri.rstrip("#")
-    return f"{iri}#" if ontology else f"{iri}/"
 
 
 class Status(StrEnum):
@@ -407,16 +394,15 @@ class OntologySelectorReport(BasePydanticModel):
     """Report from ontology selection process.
 
     Attributes:
-        short_name: A short name (identifier) for the ontology that could be used
+        ontology_id: Ontology id that could be used
             to represent the domain of the document, None if no ontology is suitable.
         present: Whether an ontology that could represent the domain of the document
             is present in the list of ontologies.
     """
 
-    short_name: Optional[str] = Field(
-        description="A short name (identifier) for the ontology "
-        "that could be used to represent "
-        "the domain of the document, None if no ontology is suitable"
+    ontology_id: Optional[str] = Field(
+        description="Ontology id for the ontology"
+        "to represent the domain of the document, None if no ontology is suitable"
     )
     present: bool = Field(
         description="Whether an ontology that could represent "
@@ -512,17 +498,16 @@ class OntologyProperties(BaseModel):
     """Properties of an ontology.
 
     Attributes:
-        short_name: A short name (identifier) for the ontology.
+        ontology_id: Ontology identifier.
         title: Ontology title.
         description: A concise description of the ontology.
         version: Version of the ontology.
         iri: Ontology IRI (Internationalized Resource Identifier).
     """
 
-    short_name: Optional[str] = Field(
+    ontology_id: Optional[str] = Field(
         default=None,
-        description="A short name (identifier) for the ontology. "
-        "It should be an abbreviation. Must be provided.",
+        description="Ontology identifier, an human readable lower case abbreviation. Must be provided.",
     )
     title: Optional[str] = Field(
         default=None, description="Ontology title. Must be provided."
@@ -566,6 +551,124 @@ class Ontology(OntologyProperties):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # If graph is provided, sync properties from graph first
+        if self.graph:
+            self.sync_properties_from_graph()
+        # Always ensure graph is up to date with properties
+        self.sync_properties_to_graph()
+
+    def set_properties(self, **kwargs):
+        """Set ontology properties from keyword arguments and sync to graph.
+        Only update properties if they are missing (None or empty)."""
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                current = getattr(self, k)
+                if not current and v:
+                    setattr(self, k, v)
+        self.sync_properties_to_graph()
+
+    def sync_properties_to_graph(self):
+        """
+        Update the RDF graph with the Ontology's properties.
+        Only sync properties for the entity that is explicitly typed as owl:Ontology.
+        Only add property triples if they do not already exist in the graph.
+        Optimized to avoid multiple loops over triples.
+        """
+
+        if self.iri is None:
+            onto_iri = None
+        else:
+            onto_iri = URIRef(self.iri)
+        g = self.graph
+
+        onto_triple = [
+            subj
+            for subj, _, o in g.triples((None, RDF.type, None))
+            if o == OWL.Ontology
+        ]
+        if not onto_triple:
+            if onto_iri is not None:
+                # iri set as a property, but not in ontology
+                g.add((onto_iri, RDF.type, OWL.Ontology))
+        else:
+            onto_iri_graph = onto_triple[0]
+            onto_iri = onto_iri_graph
+
+        # Collect all predicates for this subject in one pass
+        existing_preds = set(p for _, p, _ in g.triples((onto_iri, None, None)))
+
+        def add_if_missing(p, v):
+            if p not in existing_preds:
+                g.add((onto_iri, p, Literal(v)))
+
+        # Add label/title
+        if self.title:
+            add_if_missing(RDFS.label, self.title)
+        if self.ontology_id:
+            add_if_missing(DCTERMS.title, self.ontology_id)
+        # Add description
+        if self.description:
+            add_if_missing(DCTERMS.description, self.description)
+            add_if_missing(RDFS.comment, self.description)
+        # Add version
+        if self.version:
+            add_if_missing(OWL.versionInfo, self.version)
+
+    def sync_properties_from_graph(self):
+        """
+        Update Ontology properties from the RDF graph if present,
+        but only if missing, and only for entities explicitly typed as owl:Ontology.
+        Optimized to avoid multiple loops over triples.
+        """
+        g = self.graph
+        # Only proceed if this subject is explicitly typed as owl:Ontology
+        onto_triple = [
+            subj
+            for subj, _, o in g.triples((None, RDF.type, None))
+            if o == OWL.Ontology
+        ]
+        if not onto_triple:
+            return
+        onto_iri = onto_triple[0]
+        self.iri = str(onto_iri)
+
+        self.ontology_id = derive_ontology_id(self.iri)
+
+        # Collect all predicates and objects for this subject in one pass
+        pred_map = defaultdict(list)
+        for _, p, o in g.triples((onto_iri, None, None)):
+            pred_map[p].append(o)
+
+        # Title: try rdfs:label, dcterms:title
+        if not getattr(self, "title", None):
+            title = None
+            if RDFS.label in pred_map:
+                title = str(pred_map[RDFS.label][0])
+            elif DCTERMS.title in pred_map:
+                title = str(pred_map[DCTERMS.title][0])
+            if title:
+                self.title = title
+
+        # Description: try dcterms:description, rdfs:comment
+        if not getattr(self, "description", None):
+            description = None
+            if DCTERMS.description in pred_map:
+                description = str(pred_map[DCTERMS.description][0])
+            elif RDFS.comment in pred_map:
+                description = str(pred_map[RDFS.comment][0])
+            if description:
+                self.description = description
+        # Version
+        if not getattr(self, "version", None):
+            if OWL.versionInfo in pred_map:
+                self.version = str(pred_map[OWL.versionInfo][0])
+        # Short name: try dcterms:title if not already used for title
+        if not getattr(self, "ontology_id", None):
+            if DCTERMS.title in pred_map:
+                self.ontology_id = str(pred_map[DCTERMS.title][0])
+
     def __iadd__(self, other: Union["Ontology", RDFGraph]) -> "Ontology":
         """In-place addition operator for Ontology instances.
 
@@ -580,7 +683,7 @@ class Ontology(OntologyProperties):
         if isinstance(other, Ontology):
             self.graph += other.graph
             self.title = other.title
-            self.short_name = other.short_name
+            self.ontology_id = other.ontology_id
             self.description = other.description
             self.iri = other.iri
             self.version = other.version
@@ -604,14 +707,6 @@ class Ontology(OntologyProperties):
         graph.parse(file_path, format=format)
         return cls(graph=graph, **kwargs)
 
-    def set_properties(self, **kwargs):
-        """Set ontology properties from keyword arguments.
-
-        Args:
-            **kwargs: Property values to set.
-        """
-        self.__dict__.update(**kwargs)
-
     def describe(self) -> str:
         """Get a human-readable description of the ontology.
 
@@ -619,14 +714,14 @@ class Ontology(OntologyProperties):
             str: A formatted description string.
         """
         return (
-            f"Ontology name: {self.short_name}\n"
+            f"Ontology name: {self.ontology_id}\n"
             f"Description: {self.description}\n"
             f"Ontology IRI: {self.iri}\n"
         )
 
 
 NULL_ONTOLOGY = Ontology(
-    short_name=ONTOLOGY_VOID_ID,
+    ontology_id=ONTOLOGY_VOID_ID,
     title="null title",
     description="null description",
     graph=RDFGraph(),
@@ -739,7 +834,7 @@ class AgentState(BasePydanticModel):
     )
     current_ontology: Ontology = Field(
         default_factory=lambda: Ontology(
-            short_name=ONTOLOGY_VOID_ID,
+            ontology_id=ONTOLOGY_VOID_ID,
             title="null title",
             description="null description",
             graph=RDFGraph(),
@@ -756,7 +851,7 @@ class AgentState(BasePydanticModel):
     )
     ontology_addendum: Ontology = Field(
         default_factory=lambda: Ontology(
-            short_name=ONTOLOGY_VOID_ID,
+            ontology_id=ONTOLOGY_VOID_ID,
             title="null title",
             description="null description",
             graph=RDFGraph(),
@@ -835,3 +930,33 @@ class AgentState(BasePydanticModel):
             str: The document namespace.
         """
         return iri2namespace(self.doc_iri, ontology=False)
+
+
+def derive_ontology_id(iri: str) -> str:
+    if not isinstance(iri, str) or not iri.strip():
+        return ONTOLOGY_VOID_ID
+
+    normalized_iri = iri.strip().rstrip("/#")
+
+    if normalized_iri in CONVENTIONAL_MAPPINGS:
+        return CONVENTIONAL_MAPPINGS[normalized_iri]
+
+    parsed = urlparse(normalized_iri)
+
+    candidate = (
+        parsed.path.rsplit("/", 1)[-1]
+        if parsed.path and "/" in parsed.path
+        else parsed.netloc.split(".")[0]
+        if parsed.netloc
+        else normalized_iri
+    )
+
+    return _clean_derived_id(candidate)
+
+
+def _clean_derived_id(value: str) -> str:
+    value = re.sub(r"\.(owl|ttl|rdf|xml)$", "", value, flags=re.IGNORECASE)
+    match = re.match(r"^(.*?)\.(org|com|net|io|edu|gov|int|mil)$", value, re.IGNORECASE)
+    if match:
+        value = match.group(1)
+    return re.sub(r"[^a-zA-Z0-9_-]", "", value).lower() or ONTOLOGY_VOID_ID

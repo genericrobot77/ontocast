@@ -1,75 +1,44 @@
+import hashlib
 import logging
-import sys
-from functools import wraps
-from typing import Callable
 
-from ontocast.onto import AgentState, Status, WorkflowNode
+from rdflib import Graph
+from rdflib.namespace import NamespaceManager
 
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(debug: bool = False) -> None:
-    """Set up logging configuration for the project.
-
-    This function configures the logging system with appropriate formatting
-    and log level based on the debug flag.
+def iri2namespace(iri: str, ontology: bool = False) -> str:
+    """Convert an IRI to a namespace string.
 
     Args:
-        debug: If True, sets logging level to DEBUG, otherwise INFO.
-    """
-    level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        stream=sys.stdout,
-    )
-
-
-def count_visits_conditional_success(state: AgentState, current_node) -> AgentState:
-    """Track node visits and handle success/failure conditions.
-
-    This function increments the visit counter for a node and manages the state
-    based on success/failure conditions and maximum visit limits.
-
-    Args:
-        state: The current agent state.
-        current_node: The node being visited.
+        iri: The IRI to convert.
+        ontology: If True, append '#' for ontology namespace, otherwise '/'.
 
     Returns:
-        AgentState: Updated agent state after processing visit conditions.
+        str: The converted namespace string.
     """
-    state.node_visits[current_node] += 1
-    if state.status == Status.SUCCESS:
-        logger.info(f"For {current_node}: status is SUCCESS, proceeding to next node")
-        state.clear_failure()
-    elif state.node_visits[current_node] >= state.max_visits:
-        logger.error(f"For {current_node}: maximum visits exceeded")
-        state.set_failure(current_node, reason="Maximum visits exceeded")
-        state.status = Status.SUCCESS
-    return state
+    iri = iri.rstrip("#")
+    return f"{iri}#" if ontology else f"{iri}/"
 
 
-def wrap_with(func, node_name, post_func) -> tuple[WorkflowNode, Callable]:
-    """Add a visit counter to a function.
+def get_rdflib_namespace_mappings() -> dict:
+    g = Graph()
+    ns_manager = NamespaceManager(g)
+    return {str(uri): prefix for prefix, uri in ns_manager.namespaces()}
 
-    This function wraps a given function with logging and post-processing
-    functionality, typically used for workflow node execution.
+
+CONVENTIONAL_MAPPINGS = get_rdflib_namespace_mappings()
+
+
+def render_text_hash(text: str, digits=12) -> str:
+    """
+    Generate a hash for the given text.
 
     Args:
-        func: The function to wrap.
-        node_name: The name of the node.
-        post_func: Function to execute after the main function.
+        text: The text to hash
+        digits: Number of digits in the hash (default: 12)
 
     Returns:
-        tuple[WorkflowNode, Callable]: A tuple containing the node name and
-            the wrapped function.
+        A string hash of the text
     """
-
-    @wraps(func)
-    def wrapper(state: AgentState):
-        logger.info(f"Starting to execute {node_name}")
-        state = func(state)
-        state = post_func(state, node_name)
-        return state
-
-    return node_name, wrapper
+    return hashlib.sha256(text.encode()).hexdigest()[:digits]

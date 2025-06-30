@@ -1,0 +1,13 @@
+services:
+    fuseki:
+        image: ${IMAGE_VERSION}
+        user: "${UID}:${GID}"
+        restart: "no"
+        profiles: ["test.fuseki"]
+        ports:
+        -   "${TS_PORT}:3030"
+        container_name: ${CONTAINER_NAME}
+        volumes:
+        -   ${STORE_FOLDER}:/fuseki
+        environment:
+        -   ADMIN_PASSWORD=${TS_PASSWORD}
