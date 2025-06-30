@@ -1,6 +1,6 @@
 # OntoCast <img src="https://raw.githubusercontent.com/growgraph/ontocast/refs/heads/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
 
-### Agentic ontology assisted framework for semantic triple extraction from documents
+### Agentic ontology assisted framework for semantic triple extraction
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg) 
 [![PyPI version](https://badge.fury.io/py/ontocast.svg)](https://badge.fury.io/py/ontocast)
