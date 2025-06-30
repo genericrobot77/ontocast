@@ -1,6 +1,6 @@
 # OntoCast <img src="https://raw.githubusercontent.com/growgraph/ontocast/refs/heads/main/docs/assets/favicon.ico" alt="Agentic Ontology Triplecast logo" style="height: 32px; width:32px;"/>
 
-### Agentic ontology assisted framework for semantic triple extraction
+### Agentic ontology-assisted framework for semantic triple extraction
 
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg) 
 [![PyPI version](https://badge.fury.io/py/ontocast.svg)](https://badge.fury.io/py/ontocast)
@@ -8,37 +8,36 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![pre-commit](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/growgraph/ontocast/actions/workflows/pre-commit.yml)
 
+---
+
 ## Overview
 
-OntoCast is a powerful framework that automatically extracts semantic triples from documents using an agentic approach. It combines ontology management with natural language processing to create structured knowledge from unstructured text.
+OntoCast is a framework for extracting semantic triples (creating a Knowledge Graph) from documents using an agentic, ontology-driven approach. It combines ontology management, natural language processing, and knowledge graph serialization to turn unstructured text into structured, queryable data.
+
+---
 
 ## Key Features
 
-- **Ontology-Guided Extraction**: Uses ontologies to guide the extraction process and ensure semantic consistency
-- **Entity Disambiguation**: Resolves entity and property references across chunks
-- **Multi-Format Support**: Handles various input formats including text, JSON, PDF, and Markdown
-- **Semantic Chunking**: Intelligent text chunking based on semantic similarity
-- **MCP Compatibility**: Fully compatible with the Model Control Protocol (MCP) specification, providing standardized endpoints for health checks, info, and document processing
-- **RDF Output**: Generates standardized RDF/Turtle output
+- **Ontology-Guided Extraction**: Ensures semantic consistency and co-evolves ontologies
+- **Entity Disambiguation**: Resolves references across document chunks
+- **Multi-Format Support**: Handles text, JSON, PDF, and Markdown
+- **Semantic Chunking**: Splits text based on semantic similarity
+- **MCP Compatibility**: Implements Model Control Protocol endpoints
+- **RDF Output**: Produces standardized RDF/Turtle
+- **Triple Store Integration**: Supports Neo4j (n10s) and Apache Fuseki
 
-### Extraction Steps
+---
 
-- **Document Processing**
-    - Supports PDF, markdown, and text documents
-    - Automated text chunking and processing
+## Applications
 
-- 
-- **Automated Ontology Management**
-    - Intelligent ontology selection and construction
-    - Multi-stage validation and critique system
-    - Ontology sublimation and refinement
+OntoCast can be used for:
+- **Knowledge Graph Construction**: Build domain-specific or general-purpose knowledge graphs from documents
+- **Semantic Search**: Power search and retrieval with structured triples
+- **GraphRAG**: Enable retrieval-augmented generation over knowledge graphs (e.g., with LLMs)
+- **Ontology Management**: Automate ontology creation, validation, and refinement
+- **Data Integration**: Unify data from diverse sources into a semantic graph
 
-- **Knowledge Graph Integration**
-    - RDF-based knowledge graph storage
-    - Triple extraction for both ontologies and facts
-    - Configurable workflow with visit limits
-    - Chunk aggregation preserving fact lineage
-
+---
 
 ## Installation
 
@@ -48,33 +47,34 @@ uv add ontocast
 pip install ontocast
 ```
 
+---
+
 ## Configuration
 
 ### Environment Variables
 
-Create a `.env` file with your configuration:
+Copy the example file and edit as needed:
 
 ```bash
-# Copy the example file
 cp env.example .env
-
 # Edit with your values
-nano .env
 ```
 
-Required and optional environment variables:
-
+**Main options:**
 ```bash
-# Required: OpenAI API Key
+# LLM Configuration
+# common
+LLM_PROVIDER=openai # or ollama
+LLM_MODEL_NAME=gpt-4o-mini # ollama model
+LLM_TEMPERATURE=0.0
+
+# openai
 OPENAI_API_KEY=your_openai_api_key_here
 
-# Optional: LLM Configuration
-LLM_PROVIDER=openai
-LLM_MODEL_NAME=gpt-4o-mini
-LLM_TEMPERATURE=0.0
+# ollama
 LLM_BASE_URL=
 
-# Optional: Server Configuration
+# Server
 PORT=8999
 RECURSION_LIMIT=1000
 ESTIMATED_CHUNKS=30
@@ -87,93 +87,18 @@ NEO4J_URI=bolt://localhost:7689
 NEO4J_AUTH=neo4j/test!passfortesting
 ```
 
-### Triple Store Setup
+---
+
+## Triple Store Setup
 
 OntoCast supports multiple triple store backends. When both Fuseki and Neo4j are configured, **Fuseki is preferred**.
 
-#### Apache Fuseki (Recommended)
+- See [Triple Store Setup](docs/user_guide/triple_stores.md) for detailed Docker Compose instructions and sample `.env.example` files.
+- Quick summary: copy and edit the provided `.env.example` in `docker/fuseki` or `docker/neo4j`, then run `docker compose --env-file .env <service> up -d` in the respective directory.
 
-Fuseki is the preferred triple store for OntoCast due to its native RDF support and SPARQL capabilities.
+---
 
-**Using Docker Compose:**
-
-Copy the example environment file and customize it:
-
-```bash
-# For Fuseki
-cd docker/fuseki
-cp .env.example .env
-# Edit .env if needed
-```
-
-The `.env` file should contain:
-```bash
-# docker/fuseki/.env
-IMAGE_VERSION=secoresearch/fuseki:5.1.0
-ENVIRONMENT_ACTUAL=test
-CONTAINER_NAME="${ENVIRONMENT_ACTUAL}.fuseki"
-STORE_FOLDER="$HOME/tmp/${CONTAINER_NAME}"
-TS_PORT=3032
-TS_PASSWORD="abc123-qwe"
-TS_USERNAME="admin"
-UID=1000
-GID=1000
-```
-
-**Start Fuseki:**
-```bash
-cd docker/fuseki
-docker compose --env-file .env fuseki up -d
-```
-
-**Access Fuseki UI:**
-- Web interface: http://localhost:3032
-- Default dataset: `/test`
-
-#### Neo4j with n10s Plugin
-
-Neo4j can be used as an alternative triple store with the n10s (neosemantics) plugin.
-
-**Using Docker Compose:**
-
-Copy the example environment file and customize it:
-
-```bash
-# For Neo4j
-cd docker/neo4j
-cp .env.example .env
-# Edit .env if needed
-```
-
-The `.env` file should contain:
-```bash
-# docker/neo4j/.env
-IMAGE_VERSION=neo4j:5.20
-SPEC=test
-CONTAINER_NAME="${SPEC}.sem.neo4j"
-NEO4J_PORT=7476
-NEO4J_BOLT_PORT=7689
-STORE_FOLDER="$HOME/tmp/${CONTAINER_NAME}"
-NEO4J_PLUGINS='["apoc", "graph-data-science", "n10s"]'
-NEO4J_AUTH="neo4j/test!passfortesting"
-```
-
-The Docker Compose file (`docker/neo4j/docker-compose.yml`) is already configured to use these environment variables.
-
-**Start Neo4j:**
-```bash
-cd docker/neo4j
-docker compose --env-file .env neo4j up -d
-```
-
-**Access Neo4j:**
-- Browser: http://localhost:7476
-- Username: `neo4j`
-- Password: `test!passfortesting`
-
-**For detailed triple store setup instructions, see the [Triple Store Configuration](https://growgraph.github.io/ontocast/user_guide/triple_stores/) guide.**
-
-### Running the Server
+## Running OntoCast Server
 
 ```bash
 uv run serve \
@@ -181,118 +106,127 @@ uv run serve \
     --working-directory WORKING_DIR
 ```
 
+---
 
-### Process Endpoint
+## API Usage
 
-The `/process` endpoint accepts:
-- `application/json`: JSON data
-- `multipart/form-data`: File uploads
+- **POST /process**: Accepts `application/json` or file uploads (`multipart/form-data`).
+- Returns: JSON with extracted facts (Turtle), ontology (Turtle), and processing metadata. Triples are also serialized to the configured triple store.
 
-And returns:
-- `application/json`: Processing results including:
-  - Extracted facts in Turtle format
-  - Generated ontology in Turtle format
-  - Processing metadata
-
-
+**Example:**
 ```bash
-# Process a PDF file
-curl -X POST http://url:port/process -F "file=@data/pdf/sample.pdf"
-
-curl -X POST http://url:port/process -F "file=@test2/sample.json"
-
-# Process text content
 curl -X POST http://localhost:8999/process \
     -H "Content-Type: application/json" \
     -d '{"text": "Your document text here"}'
+    
+# Process a PDF file
+curl -X POST http://url:port/process -F "file=@data/pdf/sample.pdf"
+
+# Process a json file
+curl -X POST http://url:port/process -F "file=@test2/sample.json"
 ```
+
+---
 
 ## MCP Endpoints
 
-OntoCast implements the following MCP-compatible endpoints:
+- `GET /health`: Health check
+- `GET /info`: Service info
+- `POST /process`: Document processing
 
-- `GET /health`: Health check endpoint
-- `GET /info`: Service information endpoint
-- `POST /process`: Document processing endpoint
+---
 
-### Processing Filesystem Documents
+## Filesystem Mode
 
-```bash
-uv run serve \
-    --ontology-directory ONTOLOGY_DIR \
-    --working-directory WORKING_DIR \
-    --input-path DOCUMENT_DIR
-```
+If no triple store is configured, OntoCast stores ontologies and facts as Turtle files in the working directory.
 
+---
 
-### NB
-- json documents are expected to contain text in `text` field
-- recursion_limit is calculated based on max_visits * estimated_chunks, the estimated number of chunks is taken to be 30 or otherwise fetched from `.env` (vie `ESTIMATED_CHUNKS`)   
-- default 8999 is used default port
+## Notes
 
+- JSON documents must contain a `text` field, e.g.:
+  ```json
+  { "text": "abc" }
+  ```
+- `recursion_limit` is calculated as `max_visits * estimated_chunks` (default 30, or set via `.env`)
+- Default port: 8999
 
-### Docker
+---
 
-To build docker
+## Docker
+
+To build the OntoCast Docker image:
 ```sh
-docker buildx build -t growgraph/ontocast:0.1.1 . 2>&1 | tee build.log
+docker buildx build -t growgraph/ontocast:0.1.4 . 2>&1 | tee build.log
 ```
+
+---
 
 ## Project Structure
 
 ```
-src/
-├── agent.py          # Main agent workflow implementation
-├── onto.py           # Ontology and RDF graph handling
-├── nodes/            # Individual workflow nodes
-├── tools/            # Tool implementations
-└── prompts/          # LLM prompts
+ontocast/
+├── agent/           # Agent workflow and orchestration
+├── cli/             # CLI utilities and server
+├── prompt/          # LLM prompt templates
+├── stategraph/      # State graph logic
+├── tool/            # Triple store, chunking, and ontology tools
+├── toolbox.py       # Toolbox for agent tools
+├── onto.py          # Ontology and RDF graph handling
+├── util.py          # Utilities
 ```
+Other directories:
+- `docker/` – Docker Compose and .env.example files for triple stores
+- `data/` – Example data, ontologies, and test files
+- `docs/` – Documentation and user guides
+- `test/` – Test suite
+
+---
 
 ## Workflow
 
 The extraction follows a multi-stage workflow:
 
-<img src="https://github.com/growgraph/ontocast/blob/main/docs/assets/graph.png?raw=True" alt="Workflow diagram" width="350" style="float: right; margin-left: 20px;"/>
-
+<img src="https://github.com/growgraph/ontocast/blob/main/docs/assets/graph.png?raw=true" alt="Workflow diagram" width="350" style="float: right; margin-left: 20px;"/>
 
 1. **Document Preparation**
     - [Optional] Convert to Markdown
     - Text chunking
-
 2. **Ontology Processing**
     - Ontology selection
     - Text to ontology triples
     - Ontology critique
-
 3. **Fact Extraction**
     - Text to facts
     - Facts critique
     - Ontology sublimation
-
 4. **Chunk Normalization**
     - Chunk KG aggregation
     - Entity/Property Disambiguation
-
 5. **Storage**
-    - Knowledge graph storage
+    - Triple/KG serialization
 
-
+---
 
 ## Documentation
 
-Full documentation is available at: [growgraph.github.io/ontocast](https://growgraph.github.io/ontocast)
+- Full documentation: [growgraph.github.io/ontocast](https://growgraph.github.io/ontocast)
 
+---
 
 ## Roadmap
 
-1. Add a triple store for serialization/ontology management
-2. Replace graph to text by a symbolic graph interface (agent tools for working with triples) 
+- [x] Add Jena Fuseki triple store for triple serialization
+- [x] Add Neo4j n10s for triple serialization
+- [ ] Replace triple prompting with a tool for local graph retrieval
 
+---
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
 
 ## Acknowledgments
 

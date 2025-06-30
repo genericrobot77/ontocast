@@ -2,6 +2,8 @@
 
 OntoCast supports multiple triple store backends for storing and managing RDF data. This guide covers the setup and configuration of supported triple stores.
 
+---
+
 ## Overview
 
 OntoCast supports the following triple store backends:
@@ -15,9 +17,11 @@ When multiple triple stores are configured, OntoCast uses the following priority
 2. Neo4j (if `NEO4J_URI` and `NEO4J_AUTH` are set)
 3. Filesystem (default fallback)
 
+---
+
 ## Environment Variables
 
-Configure your triple store connection using environment variables in your `.env` file:
+Configure your triple store connection using environment variables in your main `.env` file:
 
 ```bash
 # Fuseki Configuration (Preferred)
@@ -27,31 +31,23 @@ FUSEKI_AUTH=admin/abc123-qwe
 # Neo4j Configuration (Alternative)
 NEO4J_URI=bolt://localhost:7689
 NEO4J_AUTH=neo4j/test!passfortesting
-
-# Server Configuration
-PORT=8999
-RECURSION_LIMIT=1000
-ESTIMATED_CHUNKS=30
 ```
+
+---
 
 ## Apache Fuseki Setup
 
-Apache Fuseki is the recommended triple store for OntoCast due to its native RDF support, SPARQL capabilities, and excellent performance with semantic data.
+Sample configurations are provided here: [ontocast/docker](https://github.com/growgraph/ontocast/tree/main/docker).
 
-### Using Docker Compose
-
-Copy the example environment file and customize it:
-
+**1. Prepare the environment file:**
 ```bash
-# For Fuseki
 cd docker/fuseki
 cp .env.example .env
-# Edit .env if needed
+# Edit with your values
 ```
 
-The `.env` file should contain:
+**Example `docker/fuseki/.env.example`:**
 ```bash
-# docker/fuseki/.env
 IMAGE_VERSION=secoresearch/fuseki:5.1.0
 ENVIRONMENT_ACTUAL=test
 CONTAINER_NAME="${ENVIRONMENT_ACTUAL}.fuseki"
@@ -63,57 +59,35 @@ UID=1000
 GID=1000
 ```
 
-The Docker Compose file (`docker/fuseki/docker-compose.yml`) is already configured to use these environment variables.
-
-### Starting Fuseki
-
+**2. Start/Stop Fuseki:**
 ```bash
-# Navigate to fuseki directory
+# Start
 cd docker/fuseki
-
-# Start Fuseki
 docker compose --env-file .env fuseki up -d
 
-# Check status
-docker ps -a
-
-# Stop Fuseki
+# Stop
+# (use the container name from your .env, e.g. test.fuseki)
 docker compose stop test.fuseki
 ```
 
-### Accessing Fuseki
+**3. Access Fuseki:**
+- Web interface: http://localhost:3032
+- Default dataset: `/test`
+- SPARQL endpoint: http://localhost:3032/test/sparql
 
-- **Web Interface**: http://localhost:3032
-- **Default Dataset**: `/test`
-- **SPARQL Endpoint**: http://localhost:3032/test/sparql
-- **Dataset Management**: http://localhost:3032/$/datasets
-
-### Fuseki Features
-
-- **Native RDF Support**: Direct storage of RDF triples
-- **SPARQL 1.1**: Full SPARQL query language support
-- **Named Graphs**: Support for multiple named graphs
-- **REST API**: Comprehensive REST API for data management
-- **Performance**: Optimized for semantic data operations
+---
 
 ## Neo4j with n10s Plugin Setup
 
-Neo4j can be used as an alternative triple store with the n10s (neosemantics) plugin, which provides RDF capabilities within the Neo4j graph database.
-
-### Using Docker Compose
-
-Copy the example environment file and customize it:
-
+**1. Prepare the environment file:**
 ```bash
-# For Neo4j
 cd docker/neo4j
 cp .env.example .env
-# Edit .env if needed
+# Edit with your values
 ```
 
-The `.env` file should contain:
+**Example `docker/neo4j/.env.example`:**
 ```bash
-# docker/neo4j/.env
 IMAGE_VERSION=neo4j:5.20
 SPEC=test
 CONTAINER_NAME="${SPEC}.sem.neo4j"
@@ -124,53 +98,31 @@ NEO4J_PLUGINS='["apoc", "graph-data-science", "n10s"]'
 NEO4J_AUTH="neo4j/test!passfortesting"
 ```
 
-The Docker Compose file (`docker/neo4j/docker-compose.yml`) is already configured to use these environment variables.
-
-### Starting Neo4j
-
+**2. Start/Stop Neo4j:**
 ```bash
-# Navigate to neo4j directory
+# Start
 cd docker/neo4j
-
-# Start Neo4j
 docker compose --env-file .env neo4j up -d
 
-# Stop Neo4j
-docker stop test.sem.neo4j
+# Stop
+docker compose stop neo4j
 ```
 
-### Accessing Neo4j
+**3. Access Neo4j:**
+- Browser: http://localhost:7476
+- Username: `neo4j`
+- Password: `test!passfortesting`
+- Bolt: bolt://localhost:7689
 
-- **Browser**: http://localhost:7476
-- **Username**: `neo4j`
-- **Password**: `test!passfortesting`
-- **Bolt Connection**: `bolt://localhost:7689`
+---
 
-### Neo4j Features
+## Filesystem Storage (Fallback)
 
-- **Graph Database**: Native graph data model
-- **n10s Plugin**: RDF import/export capabilities
-- **Cypher Query Language**: Powerful graph querying
-- **Visualization**: Built-in graph visualization
-- **Scalability**: Enterprise-grade scalability
+If neither Fuseki nor Neo4j is configured, OntoCast will store ontologies and facts as Turtle files in the working directory.
 
-## Filesystem Storage
+**No setup required.**
 
-When no triple store is configured, OntoCast falls back to filesystem storage. This mode stores ontologies and facts as Turtle files in the working directory.
-
-### Configuration
-
-```bash
-# No triple store environment variables needed
-# OntoCast will use filesystem storage automatically
-```
-
-### Filesystem Features
-
-- **Simple Setup**: No additional services required
-- **Portable**: Easy to backup and transfer
-- **Human Readable**: Turtle files can be inspected directly
-- **Development Friendly**: Ideal for development and testing
+---
 
 ## Triple Store Comparison
 
@@ -182,35 +134,30 @@ When no triple store is configured, OntoCast falls back to filesystem storage. T
 | **Visualization** | ⚠️ Basic | ✅ Excellent | ❌ None |
 | **Production Ready** | ✅ Yes | ✅ Yes | ❌ No |
 
+---
+
 ## Best Practices
 
-### For Development
-- Use **Filesystem** storage for quick setup and testing
-- Use **Fuseki** for RDF-focused development
+- Use **Filesystem** for quick setup and testing.
+- Use **Fuseki** for RDF-focused or production deployments.
+- Use **Neo4j** if you need advanced graph analytics or visualization.
+- Monitor triple store performance and logs.
+- Backup your data regularly.
 
-### For Production
-- Use **Fuseki** for semantic data applications
-- Use **Neo4j** if you need advanced graph analytics
-
-### Configuration Tips
-- Always set `FUSEKI_AUTH` or `NEO4J_AUTH` for security
-- Use health checks in Docker Compose for reliability
-- Monitor triple store performance and logs
-- Backup your data regularly
+---
 
 ## Troubleshooting
 
-### Fuseki Issues
+### Fuseki
 ```bash
 # Check if Fuseki is running
 curl http://localhost:3032/$/ping
-
 
 # Restart Fuseki
 docker compose restart fuseki
 ```
 
-### Neo4j Issues
+### Neo4j
 ```bash
 # Check if Neo4j is running
 curl http://localhost:7476
@@ -223,4 +170,4 @@ cypher-shell -u neo4j -p test!passfortesting "CALL n10s.graphconfig.show()"
 - **Connection Refused**: Triple store not running
 - **Authentication Failed**: Incorrect credentials
 - **Dataset Not Found**: Dataset not created in Fuseki
-- **Plugin Not Loaded**: n10s plugin not installed in Neo4j 
+- **Plugin Not Loaded**: n10s plugin not installed in Neo4j
