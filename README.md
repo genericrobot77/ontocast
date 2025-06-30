@@ -31,6 +31,7 @@ OntoCast is a framework for extracting semantic triples (creating a Knowledge Gr
 ## Applications
 
 OntoCast can be used for:
+
 - **Knowledge Graph Construction**: Build domain-specific or general-purpose knowledge graphs from documents
 - **Semantic Search**: Power search and retrieval with structured triples
 - **GraphRAG**: Enable retrieval-augmented generation over knowledge graphs (e.g., with LLMs)

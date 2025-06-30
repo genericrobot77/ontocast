@@ -12,13 +12,13 @@
 
 ## Overview
 
-OntoCast is a framework for extracting semantic triples from documents using an agentic, ontology-driven approach. It combines ontology management, natural language processing, and knowledge graph serialization to turn unstructured text into structured, queryable data.
+OntoCast is a framework for extracting semantic triples (creating a Knowledge Graph) from documents using an agentic, ontology-driven approach. It combines ontology management, natural language processing, and knowledge graph serialization to turn unstructured text into structured, queryable data.
 
 ---
 
 ## Key Features
 
-- **Ontology-Guided Extraction**: Ensures semantic consistency using ontologies
+- **Ontology-Guided Extraction**: Ensures semantic consistency and co-evolves ontologies
 - **Entity Disambiguation**: Resolves references across document chunks
 - **Multi-Format Support**: Handles text, JSON, PDF, and Markdown
 - **Semantic Chunking**: Splits text based on semantic similarity
@@ -31,6 +31,7 @@ OntoCast is a framework for extracting semantic triples from documents using an 
 ## Applications
 
 OntoCast can be used for:
+
 - **Knowledge Graph Construction**: Build domain-specific or general-purpose knowledge graphs from documents
 - **Semantic Search**: Power search and retrieval with structured triples
 - **GraphRAG**: Enable retrieval-augmented generation over knowledge graphs (e.g., with LLMs)
@@ -93,7 +94,7 @@ NEO4J_AUTH=neo4j/test!passfortesting
 
 OntoCast supports multiple triple store backends. When both Fuseki and Neo4j are configured, **Fuseki is preferred**.
 
-- See [Triple Store Setup](docs/user_guide/triple_stores.md) for detailed Docker Compose instructions and sample `.env.example` files.
+- See [Triple Store Setup](user_guide/triple_stores.md) for detailed Docker Compose instructions and sample `.env.example` files.
 - Quick summary: copy and edit the provided `.env.example` in `docker/fuseki` or `docker/neo4j`, then run `docker compose --env-file .env <service> up -d` in the respective directory.
 
 ---

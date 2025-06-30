@@ -71,6 +71,7 @@ docker compose stop test.fuseki
 ```
 
 **3. Access Fuseki:**
+
 - Web interface: http://localhost:3032
 - Default dataset: `/test`
 - SPARQL endpoint: http://localhost:3032/test/sparql
@@ -109,6 +110,7 @@ docker compose stop neo4j
 ```
 
 **3. Access Neo4j:**
+
 - Browser: http://localhost:7476
 - Username: `neo4j`
 - Password: `test!passfortesting`
