@@ -70,7 +70,8 @@ def ontology_path():
 
 @pytest.fixture
 def working_directory():
-    return Path("test/tmp")
+    return None
+    # return Path("test/tmp")
 
 
 @pytest.fixture

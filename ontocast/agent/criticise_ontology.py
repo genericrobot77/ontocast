@@ -11,7 +11,7 @@ from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 
 from ontocast.onto import (
-    ONTOLOGY_VOID_IRI,
+    ONTOLOGY_NULL_IRI,
     AgentState,
     FailureStages,
     OntologyUpdateCritiqueReport,
@@ -47,7 +47,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
         state.status = Status.FAILED
         return state
 
-    if state.current_ontology.iri == ONTOLOGY_VOID_IRI:
+    if state.current_ontology.iri == ONTOLOGY_NULL_IRI:
         prompt = prompt_fresh
         ontology_original_str = ""
     else:
@@ -81,7 +81,7 @@ def criticise_ontology(state: AgentState, tools: ToolBox) -> AgentState:
         f"score: {critique.ontology_update_score}"
     )
 
-    if state.current_ontology.iri == ONTOLOGY_VOID_IRI:
+    if state.current_ontology.iri == ONTOLOGY_NULL_IRI:
         logger.debug("Adding new ontology to manager")
         om_tool.ontologies.append(state.ontology_addendum)
         state.current_ontology = state.ontology_addendum

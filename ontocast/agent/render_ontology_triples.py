@@ -10,7 +10,7 @@ import logging
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 
-from ontocast.onto import ONTOLOGY_VOID_ID, AgentState, FailureStages, Ontology, Status
+from ontocast.onto import ONTOLOGY_NULL_ID, AgentState, FailureStages, Ontology, Status
 from ontocast.prompt.render_ontology import (
     failure_instruction,
     instructions,
@@ -46,7 +46,7 @@ def render_onto_triples(state: AgentState, tools: ToolBox) -> AgentState:
 
     logger.debug(f"Using domain: {state.current_domain}")
 
-    if state.current_ontology.ontology_id == ONTOLOGY_VOID_ID:
+    if state.current_ontology.ontology_id == ONTOLOGY_NULL_ID:
         logger.info("Creating fresh ontology")
         ontology_instruction = ontology_instruction_fresh
         specific_ontology_instruction = specific_ontology_instruction_fresh.format(

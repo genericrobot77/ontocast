@@ -17,10 +17,40 @@ from ontocast.util import CONVENTIONAL_MAPPINGS, iri2namespace, render_text_hash
 logger = logging.getLogger(__name__)
 
 
-ONTOLOGY_VOID_ID = "_void_ontology_name"
-ONTOLOGY_VOID_IRI = "NULL"
+ONTOLOGY_NULL_ID = "_void_ontology_name"
+ONTOLOGY_NULL_IRI = "NULL"
 
 DEFAULT_DOMAIN = "https://example.com"
+
+
+def derive_ontology_id(iri: str) -> str:
+    if not isinstance(iri, str) or not iri.strip():
+        return ONTOLOGY_NULL_ID
+
+    normalized_iri = iri.strip().rstrip("/#")
+
+    if normalized_iri in CONVENTIONAL_MAPPINGS:
+        return CONVENTIONAL_MAPPINGS[normalized_iri]
+
+    parsed = urlparse(normalized_iri)
+
+    candidate = (
+        parsed.path.rsplit("/", 1)[-1]
+        if parsed.path and "/" in parsed.path
+        else parsed.netloc.split(".")[0]
+        if parsed.netloc
+        else normalized_iri
+    )
+
+    return _clean_derived_id(candidate)
+
+
+def _clean_derived_id(value: str) -> str:
+    value = re.sub(r"\.(owl|ttl|rdf|xml)$", "", value, flags=re.IGNORECASE)
+    match = re.match(r"^(.*?)\.(org|com|net|io|edu|gov|int|mil)$", value, re.IGNORECASE)
+    if match:
+        value = match.group(1)
+    return re.sub(r"[^a-zA-Z0-9_-]", "", value).lower() or ONTOLOGY_NULL_ID
 
 
 class Status(StrEnum):
@@ -401,7 +431,11 @@ class OntologySelectorReport(BasePydanticModel):
     """
 
     ontology_id: Optional[str] = Field(
-        description="Ontology id for the ontology"
+        description="id of the ontology"
+        "to represent the domain of the document, None if no ontology is suitable"
+    )
+    ontology_iri: Optional[str] = Field(
+        description="URI / IRI of the ontology"
         "to represent the domain of the document, None if no ontology is suitable"
     )
     present: bool = Field(
@@ -518,8 +552,8 @@ class OntologyProperties(BaseModel):
         "(domain, purpose, applicability, etc.)",
     )
     version: Optional[str] = Field(
-        description="Version of the ontology",
-        default="0.0.0",
+        default=None,
+        description="Version of the ontology (use semantic versioning)",
     )
     iri: Optional[str] = Field(
         default=None,
@@ -541,6 +575,7 @@ class Ontology(OntologyProperties):
 
     Attributes:
         graph: The RDF graph containing the ontology data.
+        current_domain: The domain used to construct the ontology IRI if ontology_id is set.
     """
 
     graph: RDFGraph = Field(
@@ -548,25 +583,77 @@ class Ontology(OntologyProperties):
         description="Semantic triples (abstract entities/relations) "
         "that define the ontology in turtle (ttl) format as a string.",
     )
+    current_domain: str = Field(
+        default=DEFAULT_DOMAIN, description="Domain for ontology IRI construction."
+    )
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # If graph is provided, sync properties from graph first
+        # Pop current_domain if provided, else use DEFAULT_DOMAIN
+        current_domain = kwargs.pop("current_domain", DEFAULT_DOMAIN)
+        super().__init__(current_domain=current_domain, **kwargs)
+        # --- Only apply fallback logic if graph does not contain a proper owl:Ontology subject ---
+        # Try to sync from graph first
+        graph_had_ontology = False
         if self.graph:
+            # Try to extract from graph
             self.sync_properties_from_graph()
+            # If after sync, both iri and ontology_id are set, do nothing further
+            if (
+                self.iri
+                and self.iri != ONTOLOGY_NULL_IRI
+                and self.ontology_id
+                and self.ontology_id != ONTOLOGY_NULL_ID
+            ):
+                graph_had_ontology = True
+        # Only apply fallback if graph did not provide a valid pair
+        if not graph_had_ontology:
+            if self.ontology_id and (not self.iri or self.iri == ONTOLOGY_NULL_IRI):
+                self.iri = f"{self.current_domain}/{self.ontology_id}"
+            elif self.ontology_id and self.iri:
+                expected_iri = f"{self.current_domain}/{self.ontology_id}"
+                if not self.iri.endswith(f"/{self.ontology_id}"):
+                    logger.warning(
+                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}'"
+                    )
+            elif not self.ontology_id and self.iri and self.iri != ONTOLOGY_NULL_IRI:
+                self.ontology_id = derive_ontology_id(self.iri)
         # Always ensure graph is up to date with properties
         self.sync_properties_to_graph()
 
     def set_properties(self, **kwargs):
         """Set ontology properties from keyword arguments and sync to graph.
-        Only update properties if they are missing (None or empty)."""
+        Only update properties if they are missing (None or empty).
+        Also enforces ontology_id/iri consistency as in __init__, but only if graph does not provide a valid pair.
+        """
         for k, v in kwargs.items():
             if hasattr(self, k):
                 current = getattr(self, k)
                 if not current and v:
                     setattr(self, k, v)
+        # Try to sync from graph first
+        graph_had_ontology = False
+        if self.graph:
+            self.sync_properties_from_graph()
+            if (
+                self.iri
+                and self.iri != ONTOLOGY_NULL_IRI
+                and self.ontology_id
+                and self.ontology_id != ONTOLOGY_NULL_ID
+            ):
+                graph_had_ontology = True
+        if not graph_had_ontology:
+            if self.ontology_id and (not self.iri or self.iri == ONTOLOGY_NULL_IRI):
+                self.iri = f"{self.current_domain}/{self.ontology_id}"
+            elif self.ontology_id and self.iri:
+                expected_iri = f"{self.current_domain}/{self.ontology_id}"
+                if not self.iri.endswith(f"/{self.ontology_id}"):
+                    logger.warning(
+                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}'"
+                    )
+            elif not self.ontology_id and self.iri and self.iri != ONTOLOGY_NULL_IRI:
+                self.ontology_id = derive_ontology_id(self.iri)
         self.sync_properties_to_graph()
 
     def sync_properties_to_graph(self):
@@ -577,8 +664,20 @@ class Ontology(OntologyProperties):
         Optimized to avoid multiple loops over triples.
         """
 
-        if self.iri is None:
-            onto_iri = None
+        if self.ontology_id is not None and self.ontology_id is not ONTOLOGY_NULL_ID:
+            if self.iri and (not self.iri or self.iri == ONTOLOGY_NULL_IRI):
+                self.iri = f"{self.current_domain}/{self.ontology_id}"
+            elif self.iri:
+                expected_iri = f"{self.current_domain}/{self.ontology_id}"
+                if not self.iri.endswith(f"/{self.ontology_id}"):
+                    logger.warning(
+                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}'"
+                    )
+        elif self.iri:
+            self.ontology_id = derive_ontology_id(self.iri)
+
+        if self.iri is ONTOLOGY_NULL_IRI or self.iri is None:
+            return
         else:
             onto_iri = URIRef(self.iri)
         g = self.graph
@@ -714,18 +813,18 @@ class Ontology(OntologyProperties):
             str: A formatted description string.
         """
         return (
-            f"Ontology name: {self.ontology_id}\n"
+            f"Ontology id: {self.ontology_id}\n"
             f"Description: {self.description}\n"
             f"Ontology IRI: {self.iri}\n"
         )
 
 
 NULL_ONTOLOGY = Ontology(
-    ontology_id=ONTOLOGY_VOID_ID,
+    ontology_id=ONTOLOGY_NULL_ID,
     title="null title",
     description="null description",
     graph=RDFGraph(),
-    iri=ONTOLOGY_VOID_IRI,
+    iri=ONTOLOGY_NULL_IRI,
 )
 
 
@@ -834,11 +933,11 @@ class AgentState(BasePydanticModel):
     )
     current_ontology: Ontology = Field(
         default_factory=lambda: Ontology(
-            ontology_id=ONTOLOGY_VOID_ID,
+            ontology_id=ONTOLOGY_NULL_ID,
             title="null title",
             description="null description",
             graph=RDFGraph(),
-            iri=ONTOLOGY_VOID_IRI,
+            iri=ONTOLOGY_NULL_IRI,
         ),
         description="Ontology object that contain the semantic graph "
         "as well as the description, name, short name, version, "
@@ -851,11 +950,11 @@ class AgentState(BasePydanticModel):
     )
     ontology_addendum: Ontology = Field(
         default_factory=lambda: Ontology(
-            ontology_id=ONTOLOGY_VOID_ID,
+            ontology_id=ONTOLOGY_NULL_ID,
             title="null title",
             description="null description",
             graph=RDFGraph(),
-            iri=ONTOLOGY_VOID_IRI,
+            iri=ONTOLOGY_NULL_IRI,
         ),
         description="Ontology object that contain the semantic graph "
         "as well as the description, name, short name, version, "
@@ -930,33 +1029,3 @@ class AgentState(BasePydanticModel):
             str: The document namespace.
         """
         return iri2namespace(self.doc_iri, ontology=False)
-
-
-def derive_ontology_id(iri: str) -> str:
-    if not isinstance(iri, str) or not iri.strip():
-        return ONTOLOGY_VOID_ID
-
-    normalized_iri = iri.strip().rstrip("/#")
-
-    if normalized_iri in CONVENTIONAL_MAPPINGS:
-        return CONVENTIONAL_MAPPINGS[normalized_iri]
-
-    parsed = urlparse(normalized_iri)
-
-    candidate = (
-        parsed.path.rsplit("/", 1)[-1]
-        if parsed.path and "/" in parsed.path
-        else parsed.netloc.split(".")[0]
-        if parsed.netloc
-        else normalized_iri
-    )
-
-    return _clean_derived_id(candidate)
-
-
-def _clean_derived_id(value: str) -> str:
-    value = re.sub(r"\.(owl|ttl|rdf|xml)$", "", value, flags=re.IGNORECASE)
-    match = re.match(r"^(.*?)\.(org|com|net|io|edu|gov|int|mil)$", value, re.IGNORECASE)
-    if match:
-        value = match.group(1)
-    return re.sub(r"[^a-zA-Z0-9_-]", "", value).lower() or ONTOLOGY_VOID_ID
