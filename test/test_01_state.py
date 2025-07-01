@@ -3,7 +3,7 @@ from rdflib import Literal, URIRef
 
 from ontocast.agent import check_chunks_empty, chunk_text, select_ontology
 from ontocast.onto import (
-    ONTOLOGY_VOID_ID,
+    ONTOLOGY_NULL_ID,
     AgentState,
     Ontology,
 )
@@ -11,7 +11,7 @@ from ontocast.onto import (
 
 def test_agent_state_json():
     state = AgentState()
-    state.current_ontology = Ontology(short_name="ex")
+    state.current_ontology = Ontology(ontology_id="ex")
     state.current_ontology.graph.add(
         (
             URIRef("http://example.com/subject"),
@@ -24,7 +24,7 @@ def test_agent_state_json():
 
     loaded_state = AgentState.model_validate_json(state_json)
 
-    assert len(loaded_state.current_ontology.graph) > 0
+    assert len(loaded_state.current_ontology.graph) == 4
 
 
 def test_chunks(apple_report: dict, tools, state_chunked_filename):
@@ -46,7 +46,7 @@ def test_select_ontology_fsec(
 ):
     state = state_chunked
     state = select_ontology(state=state, tools=tools)
-    assert state.current_ontology.ontology_id == "FSEC"
+    assert state.current_ontology.ontology_id == "fsec"
 
     state.serialize(state_onto_selected_filename)
 
@@ -61,6 +61,6 @@ def test_select_ontology_null(
     state = chunk_text(state, tools)
     state = check_chunks_empty(state)
     state = select_ontology(state=state, tools=tools)
-    assert state.current_ontology.ontology_id == ONTOLOGY_VOID_ID
+    assert state.current_ontology.ontology_id == ONTOLOGY_NULL_ID
 
     state.serialize(state_onto_null_filename)

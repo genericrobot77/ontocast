@@ -72,8 +72,10 @@ def select_ontology(state: AgentState, tools: ToolBox) -> AgentState:
         logger.debug(
             f"Parsed selector report - Selected ontology: {selector.ontology_id}"
         )
-
-        state.current_ontology = om_tool.get_ontology(selector.ontology_id)
+        # Always select ontology using id and/or IRI (consistency check is handled in OntologyManager)
+        state.current_ontology = om_tool.get_ontology(
+            selector.ontology_id, selector.ontology_iri
+        )
     else:
         state.current_ontology = NULL_ONTOLOGY
     logger.debug(f"Current ontology set to: {state.current_ontology.ontology_id}")
