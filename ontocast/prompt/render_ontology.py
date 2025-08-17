@@ -4,8 +4,8 @@ Propose/develop a new domain ontology based on the provided document. When decid
 
 specific_ontology_instruction_fresh = """
 - all new abstract entities/classes/types or properties added to the new ontology must be linked to entities from basic ontologies (RDFS, OWL, schema etc), e.g. rdfs:Class, rdfs:subClassOf, rdf:Property, rdfs:domain, owl:Restriction, schema:Person, schema:Organization, etc
-- propose and use a domain specific and succinct specifier (short name) for the new ontology, which should be an abbreviation, consistent with the Ontology property `ontology_id`, for example it could be <{current_domain}/ont_abc> for a some imaginary A... B... of C... Ontology.
-- derive from the ontology short name/specifier an IRI (URI) using domain {current_domain}
+- propose a domain specific and succinct specifier  if for the new ontology, which should be an abbreviation, consistent with the Ontology property `ontology_id`, for example it could be `abc` for a hypothetical A... B... of C... Ontology.
+- derive from a proposed `ontology_id` an IRI (URI) using domain {current_domain}, for example `{current_domain}/abc`
 - explicitly use namespace `co:` for entities/properties placed in the proposed ontology.
 """
 

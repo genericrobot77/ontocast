@@ -6,6 +6,7 @@ structured data extraction capabilities.
 """
 
 import asyncio
+import logging
 from typing import Any, Optional, Type, TypeVar
 
 from langchain.output_parsers import PydanticOutputParser
@@ -17,6 +18,8 @@ from pydantic import BaseModel, Field
 from .onto import Tool
 
 T = TypeVar("T", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
 
 
 class LLMTool(Tool):
@@ -86,6 +89,11 @@ class LLMTool(Tool):
             ValueError: If the provider is not supported.
         """
         if self.provider == "openai":
+            if self.model.startswith("gpt-5"):
+                self.temperature = 1.0
+                logger.warning(
+                    f"Setting temperature to {self.temperature} for gpt-5 class model {self.model}"
+                )
             self._llm = ChatOpenAI(
                 model=self.model,
                 temperature=self.temperature,

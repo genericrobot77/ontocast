@@ -7,7 +7,7 @@
 @prefix fca: <https://example.com/fcaont#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 
-<https://example.com/fcaont#> a owl:Ontology ;
+<https://example.com/fcaont> a owl:Ontology ;
     rdfs:label "French (Supreme) Court of Appeal Ontology" ;
     dcterms:created "2024-12-18" ;
     owl:versionInfo "3.0" ;

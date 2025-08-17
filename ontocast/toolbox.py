@@ -69,15 +69,18 @@ class ToolBox:
 
     def __init__(self, **kwargs):
         working_directory: pathlib.Path = kwargs.pop("working_directory")
-        ontology_directory: Optional[pathlib.Path] = kwargs.pop("ontology_directory")
+        ontology_directory: pathlib.Path | None = kwargs.pop("ontology_directory")
         model_name: str = kwargs.pop("model_name")
         llm_base_url: Optional[str] = kwargs.pop("llm_base_url")
         temperature: float = kwargs.pop("temperature")
         llm_provider: str = kwargs.pop("llm_provider", "openai")
+
         neo4j_uri: Optional[str] = kwargs.pop("neo4j_uri", None)
         neo4j_auth: Optional[str] = kwargs.pop("neo4j_auth", None)
+
         fuseki_uri: Optional[str] = kwargs.pop("fuseki_uri", None)
         fuseki_auth: Optional[str] = kwargs.pop("fuseki_auth", None)
+
         clean: bool = kwargs.pop("clean", False)
 
         self.llm: LLMTool = LLMTool.create(
@@ -88,12 +91,14 @@ class ToolBox:
         )
 
         # Filesystem manager for initial ontology loading (if ontology_directory provided)
-        self.filesystem_manager: Optional[FilesystemTripleStoreManager] = None
-        if ontology_directory:
+        self.filesystem_manager: FilesystemTripleStoreManager | None = None
+        if ontology_directory is not None:
             self.filesystem_manager = FilesystemTripleStoreManager(
                 working_directory=working_directory,
                 ontology_path=ontology_directory,
             )
+
+        self.triple_store_manager: TripleStoreManager
 
         # Main triple store manager - prefer Fuseki over Neo4j, fallback to filesystem
         if fuseki_uri and fuseki_auth:
@@ -101,19 +106,17 @@ class ToolBox:
             dataset = None
             if "/" in fuseki_uri:
                 dataset = fuseki_uri.split("/")[-1]
-            self.triple_store_manager: TripleStoreManager = FusekiTripleStoreManager(
+            self.triple_store_manager = FusekiTripleStoreManager(
                 uri=fuseki_uri, auth=fuseki_auth, dataset=dataset, clean=clean
             )
         elif neo4j_uri and neo4j_auth:
-            self.triple_store_manager: TripleStoreManager = Neo4jTripleStoreManager(
+            self.triple_store_manager = Neo4jTripleStoreManager(
                 uri=neo4j_uri, auth=neo4j_auth, clean=clean
             )
         else:
-            self.triple_store_manager: TripleStoreManager = (
-                FilesystemTripleStoreManager(
-                    working_directory=working_directory,
-                    ontology_path=ontology_directory,
-                )
+            self.triple_store_manager = FilesystemTripleStoreManager(
+                working_directory=working_directory,
+                ontology_path=ontology_directory,
             )
         self.ontology_manager: OntologyManager = OntologyManager()
         self.converter: ConverterTool = ConverterTool()
@@ -131,8 +134,9 @@ def init_toolbox(toolbox: ToolBox):
     Args:
         toolbox: The ToolBox instance to initialize.
     """
+
     # If we have a filesystem manager, use it to load initial ontologies
-    if toolbox.filesystem_manager:
+    if toolbox.filesystem_manager is not None:
         initial_ontologies = toolbox.filesystem_manager.fetch_ontologies()
         # Store these ontologies in the main triple store manager
         for ontology in initial_ontologies:

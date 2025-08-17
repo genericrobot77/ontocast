@@ -63,7 +63,7 @@ GID=1000
 ```bash
 # Start
 cd docker/fuseki
-docker compose --env-file .env fuseki up -d
+docker compose --env-file .env up fuseki -d
 
 # Stop
 # (use the container name from your .env, e.g. test.fuseki)
@@ -102,7 +102,7 @@ NEO4J_AUTH="neo4j/test!passfortesting"
 ```bash
 # Start
 cd docker/neo4j
-docker compose --env-file .env neo4j up -d
+docker compose --env-file .env up neo4j -d
 
 # Stop
 docker compose stop neo4j

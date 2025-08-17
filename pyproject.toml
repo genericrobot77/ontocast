@@ -58,7 +58,7 @@ serve = "ontocast.cli.serve:run"
 test-api = "ontocast.cli.test_api:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["ontocast"]
+packages = ["data", "ontocast"]
 
 [tool.pyright]
 venv = ".venv"

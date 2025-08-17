@@ -17,10 +17,10 @@ from ontocast.util import CONVENTIONAL_MAPPINGS, iri2namespace, render_text_hash
 logger = logging.getLogger(__name__)
 
 
-ONTOLOGY_NULL_ID = "_void_ontology_name"
-ONTOLOGY_NULL_IRI = "NULL"
-
 DEFAULT_DOMAIN = "https://example.com"
+
+ONTOLOGY_NULL_ID = "__null_id"
+ONTOLOGY_NULL_IRI = f"{DEFAULT_DOMAIN}/{ONTOLOGY_NULL_ID}"
 
 
 def derive_ontology_id(iri: str) -> str:
@@ -430,11 +430,11 @@ class OntologySelectorReport(BasePydanticModel):
             is present in the list of ontologies.
     """
 
-    ontology_id: Optional[str] = Field(
+    ontology_id: str | None = Field(
         description="id of the ontology"
         "to represent the domain of the document, None if no ontology is suitable"
     )
-    ontology_iri: Optional[str] = Field(
+    ontology_iri: str | None = Field(
         description="URI / IRI of the ontology"
         "to represent the domain of the document, None if no ontology is suitable"
     )
@@ -481,7 +481,7 @@ class OntologyUpdateCritiqueReport(BaseModel):
             successfully, False otherwise.
         ontology_update_score: Score 0-100 for how well the update improves
             the original domain ontology of the document.
-        ontology_update_critique_comment: A concrete explanation of why the
+        ontology_update_critique: A concrete explanation of why the
             ontology update is not satisfactory.
     """
 
@@ -494,10 +494,15 @@ class OntologyUpdateCritiqueReport(BaseModel):
         "the original domain ontology of the document. "
         "0 is the worst, 100 is the best."
     )
-    ontology_update_critique_comment: Optional[str] = Field(
+    ontology_update_critique: str | None = Field(
+        None,
         description="A concrete explanation of why "
         "the ontology update is not satisfactory. "
-        "The explanation should be very specific and detailed."
+        "The explanation should be very specific and detailed.",
+    )
+
+    ontology_update_failed: str | None = Field(
+        None, description="A null ontology update was returned."
     )
 
 
@@ -521,10 +526,11 @@ class KGCritiqueReport(BaseModel):
         description="Score 0-100 for how well the triples of facts "
         "represent the original document. 0 is the worst, 100 is the best."
     )
-    facts_graph_derivation_critique_comment: Optional[str] = Field(
+    facts_graph_derivation_critique_comment: str | None = Field(
+        None,
         description="A concrete explanation of why the semantic graph "
         "of facts derivation is not satisfactory. "
-        "The explanation should be very specific and detailed."
+        "The explanation should be very specific and detailed.",
     )
 
 
@@ -539,23 +545,23 @@ class OntologyProperties(BaseModel):
         iri: Ontology IRI (Internationalized Resource Identifier).
     """
 
-    ontology_id: Optional[str] = Field(
+    ontology_id: str | None = Field(
         default=None,
         description="Ontology identifier, an human readable lower case abbreviation. Must be provided.",
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         default=None, description="Ontology title. Must be provided."
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="A concise description (3-4 sentences) of the ontology "
         "(domain, purpose, applicability, etc.)",
     )
-    version: Optional[str] = Field(
+    version: str | None = Field(
         default=None,
         description="Version of the ontology (use semantic versioning)",
     )
-    iri: Optional[str] = Field(
+    iri: str | None = Field(
         default=None,
         description="Ontology IRI (Internationalized Resource Identifier)",
     )
@@ -615,8 +621,9 @@ class Ontology(OntologyProperties):
                 expected_iri = f"{self.current_domain}/{self.ontology_id}"
                 if not self.iri.endswith(f"/{self.ontology_id}"):
                     logger.warning(
-                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}'"
+                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}', we correct ontology IRI"
                     )
+                    self.iri = expected_iri
             elif not self.ontology_id and self.iri and self.iri != ONTOLOGY_NULL_IRI:
                 self.ontology_id = derive_ontology_id(self.iri)
         # Always ensure graph is up to date with properties
@@ -671,8 +678,9 @@ class Ontology(OntologyProperties):
                 expected_iri = f"{self.current_domain}/{self.ontology_id}"
                 if not self.iri.endswith(f"/{self.ontology_id}"):
                     logger.warning(
-                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}'"
+                        f"Ontology IRI '{self.iri}' does not match expected '{expected_iri}', fixing"
                     )
+                    self.iri = expected_iri
         elif self.iri:
             self.ontology_id = derive_ontology_id(self.iri)
 
@@ -915,7 +923,7 @@ class AgentState(BasePydanticModel):
     current_domain: str = Field(
         description="IRI used for forming document namespace", default=DEFAULT_DOMAIN
     )
-    doc_hid: Optional[str] = Field(
+    doc_hid: str | None = Field(
         description="An almost unique hash / id for the parent document of the chunk",
         default=None,
     )
@@ -960,8 +968,8 @@ class AgentState(BasePydanticModel):
         "as well as the description, name, short name, version, "
         "and IRI of the ontology",
     )
-    failure_stage: Optional[str] = None
-    failure_reason: Optional[str] = None
+    failure_stage: str | None = None
+    failure_reason: str | None = None
     success_score: Optional[float] = 0.0
     status: Status = Status.SUCCESS
     node_visits: defaultdict[WorkflowNode, int] = Field(

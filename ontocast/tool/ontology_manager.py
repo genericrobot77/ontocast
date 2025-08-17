@@ -33,6 +33,14 @@ class OntologyManager(Tool):
         """
         super().__init__(**kwargs)
 
+    def __contains__(self, item):
+        """Check if an item is in the ontology manager.
+        Args:
+        """
+        return any(item == o.ontology_id for o in self.ontologies) or any(
+            item == o.iri for o in self.ontologies
+        )
+
     def update_ontology(self, ontology_id: str, ontology_addendum: RDFGraph):
         """Update an existing ontology with additional triples.
 
@@ -54,7 +62,7 @@ class OntologyManager(Tool):
         return [o.ontology_id for o in self.ontologies]
 
     def get_ontology(
-        self, ontology_id: str = None, ontology_iri: str = None
+        self, ontology_id: str | None = None, ontology_iri: str | None = None
     ) -> Ontology:
         """Get an ontology by its short name or IRI.
 
@@ -65,8 +73,8 @@ class OntologyManager(Tool):
         Returns:
             Ontology: The matching ontology if found, NULL_ONTOLOGY otherwise.
         """
-        # Try by id first if provided
-        if ontology_id:
+        # Try by ontology_id if provided
+        if ontology_id is not None:
             for o in self.ontologies:
                 if o.ontology_id == ontology_id:
                     # If IRI is also provided, check consistency
@@ -78,8 +86,9 @@ class OntologyManager(Tool):
                                 f"Ontology id '{ontology_id}' does not match id derived from IRI '{ontology_iri}': '{derived_id}'"
                             )
                     return o
+
         # Try by IRI if provided
-        if ontology_iri:
+        if ontology_iri is not None:
             for o in self.ontologies:
                 if o.iri == ontology_iri:
                     return o
