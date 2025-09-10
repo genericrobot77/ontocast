@@ -15,7 +15,7 @@ config:
     primaryTextColor: '#372237'
 ---
 graph TD;
-	__start__([<p>Doc Incoming</p>]):::first
+	__start__([<p>__start__</p>]):::first
 	Convert_to_Markdown(Convert to Markdown)
 	Chunk_Text(Chunk Text)
 	Select_Ontology(Select Ontology)
@@ -26,15 +26,17 @@ graph TD;
 	Criticise_Facts(Criticise Facts)
 	Chunks_Empty_(Chunks Empty?)
 	Aggregate_Facts(Aggregate Facts)
-	__end__([<p>Serialize Ont/Facts</p>]):::last
+	__end__([<p>__end__</p>]):::last
 	Aggregate_Facts --> __end__;
 	Chunk_Text --> Chunks_Empty_;
 	Convert_to_Markdown --> Chunk_Text;
-	Select_Ontology --> Text_to_Ontology;
 	Sublimate_Ontology --> Criticise_Facts;
 	__start__ --> Convert_to_Markdown;
 	Chunks_Empty_ -. &nbsp;success&nbsp; .-> Aggregate_Facts;
 	Chunks_Empty_ -. &nbsp;failed&nbsp; .-> Select_Ontology;
+	Select_Ontology -. &nbsp;ontology not found; fast forward to END&nbsp; .-> __end__;
+	Select_Ontology -. &nbsp;improve/create ontology&nbsp; .-> Text_to_Ontology;
+	Select_Ontology -. &nbsp;ontology found; skip to facts&nbsp; .-> Text_to_Facts;
 	Text_to_Ontology -. &nbsp;success&nbsp; .-> Criticise_Ontology;
 	Criticise_Ontology -. &nbsp;success&nbsp; .-> Text_to_Facts;
 	Criticise_Ontology -. &nbsp;failed&nbsp; .-> Text_to_Ontology;

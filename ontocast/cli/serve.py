@@ -63,7 +63,12 @@ def calculate_recursion_limit(
         return max(base_recursion_limit, max_visits * estimated_chunks * 10)
 
 
-def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: int = 3):
+def create_app(
+    tools: ToolBox,
+    head_chunks: Optional[int] = None,
+    max_visits: int = 3,
+    skip_ontology_development=False,
+):
     app = Robyn(__file__)
     workflow: CompiledStateGraph = create_agent_graph(tools)
     recursion_limit = calculate_recursion_limit(max_visits, head_chunks)
@@ -170,7 +175,10 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
                 )
 
             state = AgentState(
-                files=files, max_visits=max_visits, max_chunks=head_chunks
+                files=files,
+                max_visits=max_visits,
+                max_chunks=head_chunks,
+                skip_ontology_development=skip_ontology_development,
             )
 
             async for chunk in workflow.astream(
@@ -253,6 +261,12 @@ def create_app(tools: ToolBox, head_chunks: Optional[int] = None, max_visits: in
     default=3,
     help="Maximum number of visits allowed per node",
 )
+@click.option(
+    "--skip-ontology-development",
+    is_flag=True,
+    default=False,
+    help="Skip the ontology critique step and accept the ontology as it is.",
+)
 @click.option("--logging-level", type=click.STRING)
 @click.option(
     "--clean",
@@ -269,6 +283,7 @@ def run(
     max_visits: int,
     logging_level: Optional[str],
     clean: bool,
+    skip_ontology_development: bool,  # Add this parameter
 ):
     """
     Main entry point for the OntoCast server/CLI.
@@ -341,6 +356,7 @@ def run(
                         files={file_path.as_posix(): file_path.read_bytes()},
                         max_visits=max_visits,
                         max_chunks=head_chunks,
+                        skip_ontology_development=skip_ontology_development,
                     )
                     async for _ in workflow.astream(
                         state,
@@ -354,7 +370,12 @@ def run(
 
         asyncio.run(process_files())
     else:
-        app = create_app(tools, head_chunks, max_visits=max_visits)
+        app = create_app(
+            tools,
+            head_chunks,
+            max_visits=max_visits,
+            skip_ontology_development=skip_ontology_development,
+        )
         logger.info(f"Starting MCP-ready server on port {port}")
         app.start(port=port)
 

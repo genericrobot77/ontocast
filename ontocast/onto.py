@@ -71,6 +71,14 @@ class ToolType(StrEnum):
     CHUNKER = "document chunker"
 
 
+class OntologyDecision(StrEnum):
+    """Enumeration of Ontology Decisions used in the workflow."""
+
+    SKIP_TO_FACTS = "ontology found; skip to facts"
+    FAILURE_NO_ONTOLOGY = "ontology not found; fast forward to END"
+    IMPROVE_CREATE_ONTOLOGY = "improve/create ontology"
+
+
 class FailureStages(StrEnum):
     """Enumeration of possible failure stages in the workflow."""
 
@@ -981,6 +989,9 @@ class AgentState(BasePydanticModel):
     )
     max_chunks: Optional[int] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
+    skip_ontology_development: bool = Field(
+        default=False, description="Skip ontology create/improve steps if True"
+    )
 
     def model_post_init(self, __context):
         """Post-initialization hook for the model."""

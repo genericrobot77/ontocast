@@ -83,6 +83,8 @@ class ToolBox:
 
         clean: bool = kwargs.pop("clean", False)
 
+        self.llm_provider = llm_provider
+
         self.llm: LLMTool = LLMTool.create(
             provider=llm_provider,
             model=model_name,

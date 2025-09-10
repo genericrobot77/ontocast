@@ -16,7 +16,7 @@ from ontocast.agent import (
     select_ontology,
     sublimate_ontology,
 )
-from ontocast.onto import AgentState, Status, WorkflowNode
+from ontocast.onto import AgentState, OntologyDecision, Status, WorkflowNode
 from ontocast.stategraph.util import count_visits_conditional_success, wrap_with
 from ontocast.toolbox import ToolBox
 
@@ -66,6 +66,37 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     sublimate_ontology_tuple = partial(sublimate_ontology, tools=tools)
     aggregate_facts_tuple = partial(aggregate_serialize, tools=tools)
 
+    def ontology_routing(state: AgentState):
+        """Custom routing function for TEXT_TO_ONTOLOGY node.
+
+        Routes to CRITICISE_ONTOLOGY if skip_ontology_development is False,
+        otherwise routes directly to TEXT_TO_FACTS.
+
+        Args:
+            state: The current agent state.
+
+        Returns:
+            WorkflowNode: The next node to execute.
+        """
+        if state.skip_ontology_development:
+            if state.status:
+                return OntologyDecision.SKIP_TO_FACTS
+            else:
+                return OntologyDecision.FAILURE_NO_ONTOLOGY
+        else:
+            return OntologyDecision.IMPROVE_CREATE_ONTOLOGY
+
+    def simple_routing(state: AgentState):
+        """Simple routing function based on state status.
+
+        Args:
+            state: The current agent state.
+
+        Returns:
+            Status: The current status of the state.
+        """
+        return state.status
+
     # Add nodes using string values
     workflow.add_node(WorkflowNode.CONVERT_TO_MD, convert_document_)
     workflow.add_node(WorkflowNode.CHUNK, chunk_text_)
@@ -82,20 +113,9 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
     workflow.add_edge(START, WorkflowNode.CONVERT_TO_MD)
     workflow.add_edge(WorkflowNode.CONVERT_TO_MD, WorkflowNode.CHUNK)
     workflow.add_edge(WorkflowNode.CHUNK, WorkflowNode.CHUNKS_EMPTY)
-    workflow.add_edge(WorkflowNode.SELECT_ONTOLOGY, WorkflowNode.TEXT_TO_ONTOLOGY)
+    # workflow.add_edge(WorkflowNode.SELECT_ONTOLOGY, WorkflowNode.TEXT_TO_ONTOLOGY)
     workflow.add_edge(WorkflowNode.SUBLIMATE_ONTOLOGY, WorkflowNode.CRITICISE_FACTS)
     workflow.add_edge(WorkflowNode.AGGREGATE_FACTS, END)
-
-    def simple_routing(state: AgentState):
-        """Simple routing function based on state status.
-
-        Args:
-            state: The current agent state.
-
-        Returns:
-            Status: The current status of the state.
-        """
-        return state.status
 
     # Add conditional edges for workflow control
     workflow.add_conditional_edges(
@@ -104,6 +124,16 @@ def create_agent_graph(tools: ToolBox) -> CompiledStateGraph:
         {
             Status.SUCCESS: WorkflowNode.AGGREGATE_FACTS,
             Status.FAILED: WorkflowNode.SELECT_ONTOLOGY,
+        },
+    )
+
+    workflow.add_conditional_edges(
+        WorkflowNode.SELECT_ONTOLOGY,
+        ontology_routing,
+        {
+            OntologyDecision.FAILURE_NO_ONTOLOGY: END,
+            OntologyDecision.IMPROVE_CREATE_ONTOLOGY: WorkflowNode.TEXT_TO_ONTOLOGY,
+            OntologyDecision.SKIP_TO_FACTS: WorkflowNode.TEXT_TO_FACTS,
         },
     )
 
