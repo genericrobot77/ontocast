@@ -37,5 +37,6 @@ EXPOSE 8999
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:8999/health || exit 1
 
-ENTRYPOINT ["uv", "run", "python", "serve"]
+ENTRYPOINT ["/app/.venv/bin/python", "serve"]
 CMD ["--env-path", ".env", "--ontology-path", "./data/ontologies", "--working-directory", "./cwd"]
+
